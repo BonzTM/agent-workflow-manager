@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-18
+
+Project renamed `agent-context-manager` (`acm`) → `agent-workflow-manager` (`awm`), reflecting the tool's role as a governed-workflow control plane. Breaking change across binaries, Go module path, `.awm/` config, `AWM_*` env prefix, and `awm_*` database identifiers, with an automatic in-place legacy-database upgrade guard. The Codex hooks bootstrap template is corrected to `[features] hooks = true`.
+
 ### Added
 
 - `migrateLegacyAcmSchema` pre-migration guard in both the Postgres (`internal/adapters/postgres/migrations.go`) and SQLite (`internal/adapters/sqlite/migrations.go`) adapters — upgrades a pre-rename `acm_*` database to the current `awm_*` naming in place on first run, before the migration ledger is consulted, so no migration is re-run and existing data is preserved. No-op on fresh databases and on databases already using `awm_*`.
@@ -25,9 +29,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Codex hooks bootstrap template (`internal/bootstrap/bootstrap_templates/codex-hooks/files/.codex/config.toml`) now sets the current `[features] hooks = true` flag instead of the deprecated `codex_hooks = true`. The `codex-hooks` init-template id is unchanged.
+
 ### Refactored
 
 ### Removed
+
+See [docs/release-notes/RELEASE_NOTES_1.3.0.md](docs/release-notes/RELEASE_NOTES_1.3.0.md) for the full release notes.
 
 ## [1.2.1] - 2026-03-27
 
@@ -213,6 +221,7 @@ Initial public release of awm (agent-workflow-manager).
 
 See [docs/release-notes/RELEASE_NOTES_1.0.0.md](docs/release-notes/RELEASE_NOTES_1.0.0.md) for the full release notes.
 
+[1.3.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.3.0
 [1.2.1]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.2.1
 [1.2.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.2.0
 [1.1.2]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.1.2
