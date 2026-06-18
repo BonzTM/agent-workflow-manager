@@ -1,6 +1,6 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: codex-hooks
-summary: Seed experimental Codex hooks that reinforce the ACM task loop.
+summary: Seed experimental Codex hooks that reinforce the AWM task loop.
 operations:
   - type: create_if_missing
     target: .codex/config.toml
@@ -9,18 +9,18 @@ operations:
     target: .codex/hooks.json
     source: files/.codex/hooks.json
   - type: create_if_missing
-    target: .codex/hooks/acm-common.sh
-    source: files/.codex/hooks/acm-common.sh
+    target: .codex/hooks/awm-common.sh
+    source: files/.codex/hooks/awm-common.sh
     mode: "0755"
   - type: create_if_missing
-    target: .codex/hooks/acm-session-context.sh
-    source: files/.codex/hooks/acm-session-context.sh
+    target: .codex/hooks/awm-session-context.sh
+    source: files/.codex/hooks/awm-session-context.sh
     mode: "0755"
   - type: create_if_missing
-    target: .codex/hooks/acm-prompt-guard.sh
-    source: files/.codex/hooks/acm-prompt-guard.sh
+    target: .codex/hooks/awm-prompt-guard.sh
+    source: files/.codex/hooks/awm-prompt-guard.sh
     mode: "0755"
   - type: create_if_missing
-    target: .codex/hooks/acm-stop-guard.sh
-    source: files/.codex/hooks/acm-stop-guard.sh
+    target: .codex/hooks/awm-stop-guard.sh
+    source: files/.codex/hooks/awm-stop-guard.sh
     mode: "0755"

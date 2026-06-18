@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestBuildCandidatePointersQuery_DeterministicInputs(t *testing.T) {
@@ -88,7 +88,7 @@ func TestBuildFetchReceiptScopeQuery_DeterministicOrdering(t *testing.T) {
 	if !strings.Contains(sql, "r.pointer_keys") {
 		t.Fatalf("expected receipt metadata columns in query:\n%s", sql)
 	}
-	if strings.Contains(sql, "acm_pointers p") || strings.Contains(sql, "unnest(r.pointer_keys)") {
+	if strings.Contains(sql, "awm_pointers p") || strings.Contains(sql, "unnest(r.pointer_keys)") {
 		t.Fatalf("did not expect mutable pointer joins in query:\n%s", sql)
 	}
 	wantArgs := []any{"project-a", "receipt-123"}
@@ -111,7 +111,7 @@ func TestBuildMarkDeletedPointersStaleQuery_DeterministicAndValidated(t *testing
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "UPDATE acm_pointers") || !strings.Contains(sql, "path = ANY") {
+	if !strings.Contains(sql, "UPDATE awm_pointers") || !strings.Contains(sql, "path = ANY") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	wantArgs := []any{"project-a", []string{"a/path.go", "b/path.go"}}
@@ -132,7 +132,7 @@ func TestBuildMarkMissingPointersStaleQuery_DeterministicAndValidated(t *testing
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "UPDATE acm_pointers") || !strings.Contains(sql, "NOT (path = ANY") {
+	if !strings.Contains(sql, "UPDATE awm_pointers") || !strings.Contains(sql, "NOT (path = ANY") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	wantArgs := []any{"project-a", []string{"a/path.go", "b/path.go"}}
@@ -154,7 +154,7 @@ func TestBuildRefreshPointersQuery_DeterministicAndValidated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "UPDATE acm_pointers p") || !strings.Contains(sql, "content_hash") {
+	if !strings.Contains(sql, "UPDATE awm_pointers p") || !strings.Contains(sql, "content_hash") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	wantArgs := []any{"project-a", "a/path.go", "aaaa", "b/path.go", "bbbb"}
@@ -179,7 +179,7 @@ func TestBuildInsertPointerCandidatesQuery_DeterministicAndValidated(t *testing.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "INSERT INTO acm_pointer_candidates") || !strings.Contains(sql, "ON CONFLICT (project_id, path) DO NOTHING") {
+	if !strings.Contains(sql, "INSERT INTO awm_pointer_candidates") || !strings.Contains(sql, "ON CONFLICT (project_id, path) DO NOTHING") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	wantArgs := []any{"project-a", "a/path.go", "aaaa", "b/path.go", "bbbb"}
@@ -203,7 +203,7 @@ func TestBuildLookupFetchStateQuery_DeterministicAndValidated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "FROM acm_receipts") || !strings.Contains(sql, "LEFT JOIN LATERAL") {
+	if !strings.Contains(sql, "FROM awm_receipts") || !strings.Contains(sql, "LEFT JOIN LATERAL") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	if !strings.Contains(sql, "ORDER BY created_at DESC, run_id DESC") {
@@ -230,7 +230,7 @@ func TestBuildLookupPointerByKeyQuery_DeterministicAndValidated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "FROM acm_pointers") || !strings.Contains(sql, "pointer_key = $2") || !strings.Contains(sql, "is_stale = FALSE") {
+	if !strings.Contains(sql, "FROM awm_pointers") || !strings.Contains(sql, "pointer_key = $2") || !strings.Contains(sql, "is_stale = FALSE") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	wantArgs := []any{"project-a", "pointer-123"}
@@ -254,7 +254,7 @@ func TestBuildListWorkItemsQuery_DeterministicAndValidated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "FROM acm_work_items") || !strings.Contains(sql, "ORDER BY item_key ASC") {
+	if !strings.Contains(sql, "FROM awm_work_items") || !strings.Contains(sql, "ORDER BY item_key ASC") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	wantArgs := []any{"project-a", "receipt-123"}
@@ -284,7 +284,7 @@ func TestBuildUpsertWorkItemsQuery_DeterministicAndValidated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(sql, "INSERT INTO acm_work_items") || !strings.Contains(sql, "ON CONFLICT (project_id, receipt_id, item_key) DO UPDATE") {
+	if !strings.Contains(sql, "INSERT INTO awm_work_items") || !strings.Contains(sql, "ON CONFLICT (project_id, receipt_id, item_key) DO UPDATE") {
 		t.Fatalf("unexpected SQL:\n%s", sql)
 	}
 	if !strings.Contains(sql, "WITH incoming(item_key, status)") {

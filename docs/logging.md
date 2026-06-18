@@ -2,7 +2,7 @@
 
 ## Goal
 
-`agent-context-manager` uses centralized structured logging for runtime wiring, service execution, and adapter ingress/dispatch flow. Logging is contract-driven and enforced by deterministic tests.
+`agent-workflow-manager` uses centralized structured logging for runtime wiring, service execution, and adapter ingress/dispatch flow. Logging is contract-driven and enforced by deterministic tests.
 
 ## Logger Contract
 
@@ -65,8 +65,8 @@ Required fields by stage:
 ## Runtime Configuration Boundary
 
 - Runtime logger configuration is bounded and env-driven:
-  - `ACM_LOG_LEVEL`: `debug|info|warn|error` (default `info`)
-  - `ACM_LOG_SINK`: `stderr|stdout|discard` (default `stderr`)
+  - `AWM_LOG_LEVEL`: `debug|info|warn|error` (default `info`)
+  - `AWM_LOG_SINK`: `stderr|stdout|discard` (default `stderr`)
 - Invalid or unset values must fall back to defaults (`info`, `stderr`).
 - Configuration only controls emission threshold and sink destination.
 - Contract constraints (must not drift):

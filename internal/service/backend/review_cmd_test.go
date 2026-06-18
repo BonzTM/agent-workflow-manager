@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,27 +14,27 @@ import (
 	"time"
 )
 
-func TestRunWorkflowReviewCommand_LoadsDotEnvBackedACMRuntimeEnv(t *testing.T) {
+func TestRunWorkflowReviewCommand_LoadsDotEnvBackedAWMRuntimeEnv(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("ACM_PG_DSN=postgres://dotenv\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("AWM_PG_DSN=postgres://dotenv\n"), 0o644); err != nil {
 		t.Fatalf("write .env: %v", err)
 	}
 
 	command := workflowRunDefinition{
-		Argv:       []string{os.Args[0], "-test.run=TestRunACMCommandDotEnvHelperProcess", "--"},
+		Argv:       []string{os.Args[0], "-test.run=TestRunAWMCommandDotEnvHelperProcess", "--"},
 		CWD:        ".",
 		TimeoutSec: 5,
 		Env: map[string]string{
-			"GO_WANT_ACM_COMMAND_DOTENV_HELPER_PROCESS": "1",
-			"ACM_EXPECTED_PG_DSN":                       "postgres://dotenv",
-			"ACM_EXPECTED_REVIEW_KEY":                   "review:cross-llm",
-			"ACM_EXPECTED_PLAN_KEY":                     "plan:receipt.abc123",
+			"GO_WANT_AWM_COMMAND_DOTENV_HELPER_PROCESS": "1",
+			"AWM_EXPECTED_PG_DSN":                       "postgres://dotenv",
+			"AWM_EXPECTED_REVIEW_KEY":                   "review:cross-llm",
+			"AWM_EXPECTED_PLAN_KEY":                     "plan:receipt.abc123",
 		},
 	}
 
 	run := runWorkflowReviewCommand(context.Background(), root, command, map[string]string{
-		"ACM_REVIEW_KEY": "review:cross-llm",
-		"ACM_PLAN_KEY":   "plan:receipt.abc123",
+		"AWM_REVIEW_KEY": "review:cross-llm",
+		"AWM_PLAN_KEY":   "plan:receipt.abc123",
 	})
 	if run.Err != nil {
 		t.Fatalf("unexpected command error: %v\nstdout=%q\nstderr=%q", run.Err, run.Stdout, run.Stderr)
@@ -46,11 +46,11 @@ func TestRunWorkflowReviewCommand_LoadsDotEnvBackedACMRuntimeEnv(t *testing.T) {
 
 func TestReview_RunExecutesWorkflowCommandAndRecordsCompleteTask(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        cwd: .\n        timeout_sec: 600\n        env:\n          ACM_REVIEW_PROVIDER: codex\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        cwd: .\n        timeout_sec: 600\n        env:\n          AWM_REVIEW_PROVIDER: codex\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -97,16 +97,16 @@ func TestReview_RunExecutesWorkflowCommandAndRecordsCompleteTask(t *testing.T) {
 	if result.AttemptsRun != 1 || result.MaxAttempts != 0 || result.PassingRuns != 1 {
 		t.Fatalf("unexpected review attempt counts: %+v", result)
 	}
-	if result.Execution == nil || result.Execution.TimeoutSec != 600 || len(result.Execution.CommandArgv) != 1 || result.Execution.CommandArgv[0] != "scripts/acm-cross-review.sh" {
+	if result.Execution == nil || result.Execution.TimeoutSec != 600 || len(result.Execution.CommandArgv) != 1 || result.Execution.CommandArgv[0] != "scripts/awm-cross-review.sh" {
 		t.Fatalf("unexpected execution payload: %+v", result.Execution)
 	}
-	if got := gotCommand.Env["ACM_REVIEW_PROVIDER"]; got != "codex" {
+	if got := gotCommand.Env["AWM_REVIEW_PROVIDER"]; got != "codex" {
 		t.Fatalf("unexpected command env: got %q want %q", got, "codex")
 	}
-	if gotEnv["ACM_PLAN_KEY"] != "plan:receipt.abc123" || gotEnv["ACM_REVIEW_KEY"] != v1.DefaultReviewTaskKey {
+	if gotEnv["AWM_PLAN_KEY"] != "plan:receipt.abc123" || gotEnv["AWM_REVIEW_KEY"] != v1.DefaultReviewTaskKey {
 		t.Fatalf("unexpected injected env: %+v", gotEnv)
 	}
-	if gotEnv["ACM_REVIEW_ATTEMPT"] != "1" || gotEnv["ACM_REVIEW_MAX_ATTEMPTS"] != "0" {
+	if gotEnv["AWM_REVIEW_ATTEMPT"] != "1" || gotEnv["AWM_REVIEW_MAX_ATTEMPTS"] != "0" {
 		t.Fatalf("unexpected review attempt env: %+v", gotEnv)
 	}
 	if len(repo.reviewAttemptCalls) != 1 || repo.reviewAttemptCalls[0].Status != "passed" {
@@ -132,16 +132,16 @@ func TestReview_RunExecutesWorkflowCommandAndRecordsCompleteTask(t *testing.T) {
 
 func TestReview_RunInjectsEffectiveScopeAndTaskDeltaEnv(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        timeout_sec: 600\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        timeout_sec: 600\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 	writeRepoFile(t, root, "src/scoped.go", "package src\n\nfunc scoped() string { return \"before\" }\n")
 	writeRepoFile(t, root, "docs/discovered.md", "notes\n")
-	baselinePaths := []string{".acm/acm-workflows.yaml", "docs/discovered.md", "src/scoped.go"}
+	baselinePaths := []string{".awm/awm-workflows.yaml", "docs/discovered.md", "src/scoped.go"}
 	baselineHashes, err := computeFileHashes(root, baselinePaths)
 	if err != nil {
 		t.Fatalf("compute baseline hashes: %v", err)
@@ -155,7 +155,7 @@ func TestReview_RunInjectsEffectiveScopeAndTaskDeltaEnv(t *testing.T) {
 			InitialScopePaths: []string{"src/scoped.go"},
 			BaselineCaptured:  true,
 			BaselinePaths: []core.SyncPath{
-				{Path: ".acm/acm-workflows.yaml", ContentHash: baselineHashes[".acm/acm-workflows.yaml"]},
+				{Path: ".awm/awm-workflows.yaml", ContentHash: baselineHashes[".awm/awm-workflows.yaml"]},
 				{Path: "docs/discovered.md", ContentHash: baselineHashes["docs/discovered.md"]},
 				{Path: "src/scoped.go", ContentHash: baselineHashes["src/scoped.go"]},
 			},
@@ -204,12 +204,12 @@ func TestReview_RunInjectsEffectiveScopeAndTaskDeltaEnv(t *testing.T) {
 	if !result.Executed || result.ReviewStatus != v1.WorkItemStatusComplete {
 		t.Fatalf("unexpected review result: %+v", result)
 	}
-	if gotEnv["ACM_REVIEW_BASELINE_CAPTURED"] != "true" || gotEnv["ACM_REVIEW_TASK_DELTA_SOURCE"] != "receipt_baseline" {
+	if gotEnv["AWM_REVIEW_BASELINE_CAPTURED"] != "true" || gotEnv["AWM_REVIEW_TASK_DELTA_SOURCE"] != "receipt_baseline" {
 		t.Fatalf("unexpected baseline env: %+v", gotEnv)
 	}
 
 	var changedPaths []string
-	if err := json.Unmarshal([]byte(gotEnv["ACM_REVIEW_CHANGED_PATHS_JSON"]), &changedPaths); err != nil {
+	if err := json.Unmarshal([]byte(gotEnv["AWM_REVIEW_CHANGED_PATHS_JSON"]), &changedPaths); err != nil {
 		t.Fatalf("decode changed paths env: %v", err)
 	}
 	if !reflect.DeepEqual(changedPaths, []string{"src/scoped.go"}) {
@@ -217,7 +217,7 @@ func TestReview_RunInjectsEffectiveScopeAndTaskDeltaEnv(t *testing.T) {
 	}
 
 	var effectiveScope []string
-	if err := json.Unmarshal([]byte(gotEnv["ACM_REVIEW_EFFECTIVE_SCOPE_PATHS_JSON"]), &effectiveScope); err != nil {
+	if err := json.Unmarshal([]byte(gotEnv["AWM_REVIEW_EFFECTIVE_SCOPE_PATHS_JSON"]), &effectiveScope); err != nil {
 		t.Fatalf("decode effective scope env: %v", err)
 	}
 	if !containsString(effectiveScope, "src/scoped.go") || !containsString(effectiveScope, "docs/discovered.md") {
@@ -227,11 +227,11 @@ func TestReview_RunInjectsEffectiveScopeAndTaskDeltaEnv(t *testing.T) {
 
 func TestReview_RunRecordsBlockedTaskWhenCommandFails(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        timeout_sec: 300\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        timeout_sec: 300\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -288,11 +288,11 @@ func TestReview_RunRecordsBlockedTaskWhenCommandFails(t *testing.T) {
 
 func TestReview_RunInjectsDerivedReceiptIDForPlanKeyOnlyRequests(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        timeout_sec: 600\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        timeout_sec: 600\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -331,21 +331,21 @@ func TestReview_RunInjectsDerivedReceiptIDForPlanKeyOnlyRequests(t *testing.T) {
 	if result.ReviewStatus != v1.WorkItemStatusComplete {
 		t.Fatalf("unexpected review result: %+v", result)
 	}
-	if gotEnv["ACM_RECEIPT_ID"] != "receipt.abc123" {
-		t.Fatalf("unexpected derived ACM_RECEIPT_ID: %+v", gotEnv)
+	if gotEnv["AWM_RECEIPT_ID"] != "receipt.abc123" {
+		t.Fatalf("unexpected derived AWM_RECEIPT_ID: %+v", gotEnv)
 	}
-	if gotEnv["ACM_PLAN_KEY"] != "plan:receipt.abc123" {
-		t.Fatalf("unexpected derived ACM_PLAN_KEY: %+v", gotEnv)
+	if gotEnv["AWM_PLAN_KEY"] != "plan:receipt.abc123" {
+		t.Fatalf("unexpected derived AWM_PLAN_KEY: %+v", gotEnv)
 	}
 }
 
 func TestReview_RunRequiresWorkflowRunCommand(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -370,11 +370,11 @@ func TestReview_RunRequiresWorkflowRunCommand(t *testing.T) {
 
 func TestReview_RunRequiresConfiguredWorkflowKey(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:human\n      run:\n        argv: [\"scripts/acm-human-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:human\n      run:\n        argv: [\"scripts/awm-human-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -406,11 +406,11 @@ func TestReview_RunRequiresConfiguredWorkflowKey(t *testing.T) {
 
 func TestReview_RunRejectsInvalidWorkflowDefinitions(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        bad_field: true\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        bad_field: true\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -441,11 +441,11 @@ func TestReview_RunRejectsInvalidWorkflowDefinitions(t *testing.T) {
 
 func TestReview_RunRejectsZeroMaxAttempts(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      max_attempts: 0\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      max_attempts: 0\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -475,17 +475,17 @@ func TestReview_RunRejectsZeroMaxAttempts(t *testing.T) {
 
 func TestReview_RunSkipsDuplicateFingerprintWithoutExecutingRunner(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
 	scope := core.ReceiptScope{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}
-	fingerprint, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", workflowRunDefinition{
-		Argv:       []string{"scripts/acm-cross-review.sh"},
+	fingerprint, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", workflowRunDefinition{
+		Argv:       []string{"scripts/awm-cross-review.sh"},
 		CWD:        ".",
 		TimeoutSec: 300,
 	}, scope, nil)
@@ -547,25 +547,25 @@ func TestReview_RunSkipsDuplicateFingerprintWithoutExecutingRunner(t *testing.T)
 
 func TestComputeReviewFingerprintIncludesCompletionManagedPaths(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte("version: acm.tests.v1\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte("version: awm.tests.v1\n"), 0o644); err != nil {
 		t.Fatalf("write tests file: %v", err)
 	}
 
 	command := workflowRunDefinition{
-		Argv:       []string{"scripts/acm-cross-review.sh"},
+		Argv:       []string{"scripts/awm-cross-review.sh"},
 		TimeoutSec: 300,
 	}
-	first, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", command, core.ReceiptScope{}, nil)
+	first, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", command, core.ReceiptScope{}, nil)
 	if apiErr != nil {
 		t.Fatalf("compute first fingerprint: %+v", apiErr)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte("version: acm.tests.v1\nsmoke: []\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte("version: awm.tests.v1\nsmoke: []\n"), 0o644); err != nil {
 		t.Fatalf("rewrite tests file: %v", err)
 	}
-	second, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", command, core.ReceiptScope{}, nil)
+	second, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", command, core.ReceiptScope{}, nil)
 	if apiErr != nil {
 		t.Fatalf("compute second fingerprint: %+v", apiErr)
 	}
@@ -576,11 +576,11 @@ func TestComputeReviewFingerprintIncludesCompletionManagedPaths(t *testing.T) {
 
 func TestReview_RunRerunsAfterInterruptedSameFingerprintAttempt(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      rerun_requires_new_fingerprint: true\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        timeout_sec: 300\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      rerun_requires_new_fingerprint: true\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        timeout_sec: 300\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -641,11 +641,11 @@ func TestReview_RunRerunsAfterInterruptedSameFingerprintAttempt(t *testing.T) {
 
 func TestReview_RunBlocksWhenMaxAttemptsAreExhausted(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      max_attempts: 2\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      max_attempts: 2\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -695,8 +695,8 @@ func TestReview_RunBlocksWhenMaxAttemptsAreExhausted(t *testing.T) {
 
 func TestReportCompletionFlagsStaleReviewForCurrentFingerprint(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "internal"), 0o755); err != nil {
 		t.Fatalf("mkdir internal: %v", err)
@@ -704,8 +704,8 @@ func TestReportCompletionFlagsStaleReviewForCurrentFingerprint(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "internal", "review.txt"), []byte("new content"), 0o644); err != nil {
 		t.Fatalf("write scoped file: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        phases: [\"review\"]\n        changed_paths_any: [\"internal/**\"]\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        phases: [\"review\"]\n        changed_paths_any: [\"internal/**\"]\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -761,14 +761,14 @@ func TestReportCompletionFlagsStaleReviewForCurrentFingerprint(t *testing.T) {
 
 func TestReportCompletionFlagsStaleReviewForManagedGovernanceFileCurrentFingerprint(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte("version: acm.tests.v1\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte("version: awm.tests.v1\n"), 0o644); err != nil {
 		t.Fatalf("write tests file: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        phases: [\"review\"]\n        changed_paths_any: [\".acm/**\"]\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        phases: [\"review\"]\n        changed_paths_any: [\".awm/**\"]\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -778,14 +778,14 @@ func TestReportCompletionFlagsStaleReviewForManagedGovernanceFileCurrentFingerpr
 		Phase:     "review",
 	}
 	command := workflowRunDefinition{
-		Argv:       []string{"scripts/acm-cross-review.sh"},
+		Argv:       []string{"scripts/awm-cross-review.sh"},
 		TimeoutSec: 300,
 	}
-	staleFingerprint, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", command, scope, nil)
+	staleFingerprint, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", command, scope, nil)
 	if apiErr != nil {
 		t.Fatalf("compute stale fingerprint: %+v", apiErr)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte("version: acm.tests.v1\nsmoke: []\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte("version: awm.tests.v1\nsmoke: []\n"), 0o644); err != nil {
 		t.Fatalf("rewrite tests file: %v", err)
 	}
 
@@ -819,7 +819,7 @@ func TestReportCompletionFlagsStaleReviewForManagedGovernanceFileCurrentFingerpr
 	result, apiErr := svc.Done(context.Background(), v1.DonePayload{
 		ProjectID:    "project.alpha",
 		ReceiptID:    "receipt.abc123",
-		FilesChanged: []string{".acm/acm-tests.yaml"},
+		FilesChanged: []string{".awm/awm-tests.yaml"},
 		Outcome:      "done",
 		ScopeMode:    v1.ScopeModeStrict,
 	})
@@ -836,11 +836,11 @@ func TestReportCompletionFlagsStaleReviewForManagedGovernanceFileCurrentFingerpr
 
 func TestReview_ManualCompleteRejectsRunnableWorkflowGate(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -868,17 +868,17 @@ func TestReview_ManualCompleteRejectsRunnableWorkflowGate(t *testing.T) {
 
 func TestReview_RunRerunsAfterFailedSameFingerprintAttempt(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      rerun_requires_new_fingerprint: true\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        timeout_sec: 300\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      summary: Cross-LLM review\n      rerun_requires_new_fingerprint: true\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        timeout_sec: 300\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
 	scope := core.ReceiptScope{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}
-	fingerprint, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", workflowRunDefinition{
-		Argv:       []string{"scripts/acm-cross-review.sh"},
+	fingerprint, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", workflowRunDefinition{
+		Argv:       []string{"scripts/awm-cross-review.sh"},
 		TimeoutSec: 300,
 	}, scope, nil)
 	if apiErr != nil {
@@ -939,20 +939,20 @@ func TestReview_RunRerunsAfterFailedSameFingerprintAttempt(t *testing.T) {
 
 func TestComputeReviewFingerprintChangesWhenScopedDirectoryChildChanges(t *testing.T) {
 	root := t.TempDir()
-	writeRepoFile(t, root, "scripts/acm-cross-review.sh", "#!/usr/bin/env bash\nexit 0\n")
+	writeRepoFile(t, root, "scripts/awm-cross-review.sh", "#!/usr/bin/env bash\nexit 0\n")
 	writeRepoFile(t, root, "src/nested/review.txt", "before\n")
 
 	command := workflowRunDefinition{
-		Argv:       []string{"scripts/acm-cross-review.sh"},
+		Argv:       []string{"scripts/awm-cross-review.sh"},
 		TimeoutSec: 300,
 	}
 	scope := core.ReceiptScope{InitialScopePaths: []string{"src"}}
-	first, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", command, scope, nil)
+	first, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", command, scope, nil)
 	if apiErr != nil {
 		t.Fatalf("compute first fingerprint: %+v", apiErr)
 	}
 	writeRepoFile(t, root, "src/nested/review.txt", "after\n")
-	second, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", command, scope, nil)
+	second, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", command, scope, nil)
 	if apiErr != nil {
 		t.Fatalf("compute second fingerprint: %+v", apiErr)
 	}
@@ -970,12 +970,12 @@ func TestComputeReviewFingerprintChangesWhenWorkflowArgumentFileChanges(t *testi
 		Argv:       []string{"python3", "scripts/review_runner.py", "configs/review.json"},
 		TimeoutSec: 300,
 	}
-	first, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", command, core.ReceiptScope{}, nil)
+	first, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", command, core.ReceiptScope{}, nil)
 	if apiErr != nil {
 		t.Fatalf("compute first fingerprint: %+v", apiErr)
 	}
 	writeRepoFile(t, root, "configs/review.json", "{\"level\":2}\n")
-	second, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".acm/acm-workflows.yaml", command, core.ReceiptScope{}, nil)
+	second, apiErr := computeReviewFingerprint(root, "project.alpha", "receipt.abc123", v1.DefaultReviewTaskKey, ".awm/awm-workflows.yaml", command, core.ReceiptScope{}, nil)
 	if apiErr != nil {
 		t.Fatalf("compute second fingerprint: %+v", apiErr)
 	}

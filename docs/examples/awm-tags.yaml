@@ -1,0 +1,27 @@
+# awm-tags.yaml
+# Broad starter taxonomy for a new repo using awm.
+# Save this as .awm/awm-tags.yaml (preferred).
+
+version: awm.tags.v1
+canonical_tags:
+  api: [api, http, rest, grpc]
+  auth: [auth, authentication, authorization, login, oauth, session]
+  backend: [backend, server, service]
+  ci: [ci, pipeline, github-actions, actions]
+  data: [data, persistence, storage]
+  db: [db, database, postgres, mysql, sqlite]
+  docs: [docs, documentation, md]
+  frontend: [frontend, ui, web, client]
+  infra: [infra, infrastructure, ops, platform]
+  observability: [observability, logging, metrics, tracing, telemetry]
+  performance: [performance, perf, latency, throughput]
+  security: [security, secure, hardening]
+  test: [test, tests, testing, qa]
+  tooling: [tooling, developer-experience, dx, build]
+
+# Field notes:
+# - version: required; must be awm.tags.v1.
+# - canonical_tags keys: canonical tag values awm should emit/store.
+# - canonical_tags values: accepted aliases (case-insensitive) that normalize to the key.
+# - Repo-local aliases override the embedded base dictionary when the same alias appears in both.
+# - Start broad, then trim or specialize once the repo settles on its own vocabulary.

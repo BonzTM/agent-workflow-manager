@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/projectid"
+	"github.com/bonztm/agent-workflow-manager/internal/projectid"
 )
 
 var (
@@ -33,7 +33,7 @@ func DecodeAndValidateCommandWithDefaults(data []byte, defaults ValidationDefaul
 	}
 
 	if env.Version != Version {
-		return CommandEnvelope{}, nil, validationError(ErrCodeInvalidVersion, "version must be acm.v1")
+		return CommandEnvelope{}, nil, validationError(ErrCodeInvalidVersion, "version must be awm.v1")
 	}
 	spec, ok := LookupCommand(env.Command)
 	if !ok {

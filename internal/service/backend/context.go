@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 const (

@@ -3,7 +3,7 @@ package commands
 import (
 	"testing"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 )
 
 func TestDispatchHandlersCoverCommandCatalog(t *testing.T) {

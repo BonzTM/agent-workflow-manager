@@ -1,10 +1,10 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: opencode-pack
-summary: Seed OpenCode ACM companion docs into .opencode/acm-broker.
+summary: Seed OpenCode AWM companion docs into .opencode/awm-broker.
 operations:
   - type: create_if_missing
-    target: .opencode/acm-broker/README.md
-    source: files/.opencode/acm-broker/README.md
+    target: .opencode/awm-broker/README.md
+    source: files/.opencode/awm-broker/README.md
   - type: create_if_missing
-    target: .opencode/acm-broker/AGENTS.example.md
-    source: files/.opencode/acm-broker/AGENTS.example.md
+    target: .opencode/awm-broker/AGENTS.example.md
+    source: files/.opencode/awm-broker/AGENTS.example.md

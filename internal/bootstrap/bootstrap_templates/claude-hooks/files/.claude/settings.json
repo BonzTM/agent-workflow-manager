@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/acm-session-context.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/awm-session-context.sh"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/acm-session-context.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/awm-session-context.sh"
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/acm-receipt-guard.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/awm-receipt-guard.sh"
           }
         ]
       }
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/acm-edit-state.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/awm-edit-state.sh"
           }
         ]
       },
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/acm-receipt-mark.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/awm-receipt-mark.sh"
           }
         ]
       }
@@ -57,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/acm-stop-guard.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/awm-stop-guard.sh"
           }
         ]
       }

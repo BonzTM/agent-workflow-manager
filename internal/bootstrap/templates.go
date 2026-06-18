@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,14 +23,14 @@ import (
 var initTemplateFS embed.FS
 
 const (
-	initTemplateManifestVersion             = "acm.init-template.v1"
+	initTemplateManifestVersion             = "awm.init-template.v1"
 	initTemplateOpCreateIfMissing           = "create_if_missing"
 	initTemplateOpCreateOrReplaceIfPristine = "create_or_replace_if_pristine"
 	initTemplateOpReplaceIfPristine         = "replace_if_pristine"
 	initTemplateOpMergeJSON                 = "merge_json"
-	BlankRulesContents                      = "version: acm.rules.v1\nrules: []\n"
-	BlankTestsContents                      = "version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n"
-	BlankWorkflowsContents                  = "version: acm.workflows.v1\ncompletion:\n  required_tasks: []\n"
+	BlankRulesContents                      = "version: awm.rules.v1\nrules: []\n"
+	BlankTestsContents                      = "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n"
+	BlankWorkflowsContents                  = "version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n"
 )
 
 type initTemplateManifest struct {
@@ -611,9 +611,9 @@ func initPristineContent(pristineID string) ([]byte, bool) {
 	case "starter_contract_claude_v1":
 		return initPristineEmbeddedContent("bootstrap_templates/starter-contract/files/CLAUDE.md")
 	case "starter_contract_rules_v1":
-		return initPristineEmbeddedContent("bootstrap_templates/starter-contract/files/.acm/acm-rules.yaml")
+		return initPristineEmbeddedContent("bootstrap_templates/starter-contract/files/.awm/awm-rules.yaml")
 	case "verify_generic_tests_v1":
-		return initPristineEmbeddedContent("bootstrap_templates/verify-generic/files/.acm/acm-tests.yaml")
+		return initPristineEmbeddedContent("bootstrap_templates/verify-generic/files/.awm/awm-tests.yaml")
 	default:
 		return nil, false
 	}

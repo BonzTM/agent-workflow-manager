@@ -1,0 +1,32 @@
+# awm-workflows.yaml
+#
+# Save this as .awm/awm-workflows.yaml (preferred) or awm-workflows.yaml in the project root.
+# Use it to declare which work tasks must be complete before done should be considered complete.
+# Init seeds a thin `required_tasks: []` skeleton by default; gates like `review:cross-llm` are opt-in examples.
+# `review` is for named workflow gates; keep deterministic executable checks in `.awm/awm-tests.yaml`.
+# Add `run` blocks only when you want `review --run` / `run=true` to execute a repo-local script or command.
+
+version: awm.workflows.v1
+
+completion:
+  required_tasks:
+    - key: verify:tests
+      select:
+        changed_paths_any: ["cmd/**", "internal/**", "go.mod", "go.sum"]
+
+    - key: review:cross-llm
+      summary: Cross-LLM review
+      # Agents normally satisfy this gate with `awm review --run` or MCP `review` + `run=true`.
+      # By default AWM treats runnable review gates as terminal checks: it skips reruns for the
+      # same scoped fingerprint. Add `max_attempts` only when you want an explicit retry cap.
+      rerun_requires_new_fingerprint: true
+      select:
+        phases: ["review"]
+        changed_paths_any: ["cmd/**", "internal/**", "spec/**"]
+      run:
+        # Repo-local script flags belong in argv, so you can pin the review provider and native
+        # review flags here. Supported examples include Codex `--provider codex --yolo` and
+        # Claude `--provider claude --dangerously-skip-permissions`.
+        argv: ["scripts/awm-cross-review.sh", "--provider", "codex", "--yolo"]
+        cwd: .
+        timeout_sec: 1800

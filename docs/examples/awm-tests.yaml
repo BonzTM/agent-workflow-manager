@@ -1,0 +1,75 @@
+# Save this as .awm/awm-tests.yaml (preferred) or awm-tests.yaml in the project root.
+# Go-oriented starter verification file for a new service repo.
+# Keep the structure, then swap argv/selectors to match your stack.
+# `verify` is for deterministic repo-defined executable checks.
+# Repo-local verify scripts can inspect AWM_RECEIPT_ID, AWM_PLAN_KEY,
+# AWM_VERIFY_PHASE, AWM_VERIFY_TAGS_JSON, and AWM_VERIFY_FILES_CHANGED_JSON.
+
+version: awm.tests.v1
+
+defaults:
+  cwd: .
+  timeout_sec: 300
+
+tests:
+  - id: smoke
+    summary: Run fast smoke checks on every verification pass
+    command:
+      argv: ["go", "test", "./cmd/...", "./internal/..."]
+    select:
+      always_run: true
+    expected:
+      exit_code: 0
+
+  - id: go-unit
+    summary: Run Go unit and package tests when application code changes
+    command:
+      argv: ["go", "test", "./..."]
+      env:
+        GOFLAGS: "-count=1"
+    select:
+      phases: ["execute", "review"]
+      changed_paths_any: ["cmd/**", "internal/**", "pkg/**", "go.mod", "go.sum"]
+    expected:
+      exit_code: 0
+
+  - id: go-build
+    summary: Ensure CLI and service entrypoints still build
+    command:
+      argv: ["go", "build", "./cmd/..."]
+    select:
+      phases: ["execute", "review"]
+      changed_paths_any: ["cmd/**", "internal/**", "pkg/**", "go.mod", "go.sum"]
+    expected:
+      exit_code: 0
+
+  - id: go-vet
+    summary: Run static checks before closing Go changes
+    command:
+      argv: ["go", "vet", "./..."]
+    select:
+      phases: ["review"]
+      changed_paths_any: ["cmd/**", "internal/**", "pkg/**", "go.mod", "go.sum"]
+    expected:
+      exit_code: 0
+
+# Optional stricter feature-plan validation:
+#   - id: feature-plan-help
+#     summary: Ensure the repo-local feature-plan validator exposes help
+#     command:
+#       argv: ["python3", "scripts/awm-feature-plan-validate.py", "--help"]
+#     select:
+#       phases: ["execute", "review"]
+#       changed_paths_any: ["AGENTS.md", "CLAUDE.md", ".awm/**", "README.md", "docs/**", "scripts/**", "skills/**"]
+#     expected:
+#       exit_code: 0
+#
+#   - id: feature-plan-validate
+#     summary: Validate the repo-local feature plan schema for active feature work
+#     command:
+#       argv: ["python3", "scripts/awm-feature-plan-validate.py"]
+#     select:
+#       phases: ["execute", "review"]
+#       changed_paths_any: ["cmd/**", "internal/**", "docs/**", "scripts/**", ".awm/**"]
+#     expected:
+#       exit_code: 0

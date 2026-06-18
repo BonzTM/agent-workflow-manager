@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 const reviewAttemptEvidencePrefix = "reviewattempt:"
@@ -261,27 +261,27 @@ func reviewCommandEnvironment(projectRoot, workflowSourcePath string, payload v1
 	}
 
 	env := map[string]string{
-		"ACM_PROJECT_ID":           strings.TrimSpace(payload.ProjectID),
-		"ACM_PROJECT_ROOT":         strings.TrimSpace(projectRoot),
-		"ACM_RECEIPT_ID":           receiptID,
-		"ACM_PLAN_KEY":             planKey,
-		"ACM_REVIEW_KEY":           strings.TrimSpace(payload.Key),
-		"ACM_REVIEW_SUMMARY":       reviewSummary,
-		"ACM_REVIEW_ATTEMPT":       strconv.Itoa(attempt),
-		"ACM_REVIEW_MAX_ATTEMPTS":  strconv.Itoa(maxAttempts),
-		"ACM_REVIEW_PASSING_RUNS":  strconv.Itoa(passingRuns),
-		"ACM_REVIEW_FINGERPRINT":   strings.TrimSpace(fingerprint),
-		"ACM_WORKFLOW_SOURCE_PATH": strings.TrimSpace(workflowSourcePath),
+		"AWM_PROJECT_ID":           strings.TrimSpace(payload.ProjectID),
+		"AWM_PROJECT_ROOT":         strings.TrimSpace(projectRoot),
+		"AWM_RECEIPT_ID":           receiptID,
+		"AWM_PLAN_KEY":             planKey,
+		"AWM_REVIEW_KEY":           strings.TrimSpace(payload.Key),
+		"AWM_REVIEW_SUMMARY":       reviewSummary,
+		"AWM_REVIEW_ATTEMPT":       strconv.Itoa(attempt),
+		"AWM_REVIEW_MAX_ATTEMPTS":  strconv.Itoa(maxAttempts),
+		"AWM_REVIEW_PASSING_RUNS":  strconv.Itoa(passingRuns),
+		"AWM_REVIEW_FINGERPRINT":   strings.TrimSpace(fingerprint),
+		"AWM_WORKFLOW_SOURCE_PATH": strings.TrimSpace(workflowSourcePath),
 	}
 	if encodedScope, err := json.Marshal(normalizeCompletionPaths(effectiveScope)); err == nil {
-		env["ACM_REVIEW_EFFECTIVE_SCOPE_PATHS_JSON"] = string(encodedScope)
+		env["AWM_REVIEW_EFFECTIVE_SCOPE_PATHS_JSON"] = string(encodedScope)
 	}
-	env["ACM_REVIEW_BASELINE_CAPTURED"] = strconv.FormatBool(reliableDetection)
+	env["AWM_REVIEW_BASELINE_CAPTURED"] = strconv.FormatBool(reliableDetection)
 	if reliableDetection {
 		if encodedChanged, err := json.Marshal(normalizeCompletionPaths(detectedFiles)); err == nil {
-			env["ACM_REVIEW_CHANGED_PATHS_JSON"] = string(encodedChanged)
+			env["AWM_REVIEW_CHANGED_PATHS_JSON"] = string(encodedChanged)
 		}
-		env["ACM_REVIEW_TASK_DELTA_SOURCE"] = "receipt_baseline"
+		env["AWM_REVIEW_TASK_DELTA_SOURCE"] = "receipt_baseline"
 	}
 	return env
 }
@@ -409,7 +409,7 @@ type reviewFingerprintEntry struct {
 
 func computeReviewFingerprint(projectRoot, projectID, receiptID, reviewKey, workflowSourcePath string, command workflowRunDefinition, scope core.ReceiptScope, plan *core.WorkPlan) (string, *core.APIError) {
 	hasher := sha256.New()
-	writeFingerprintPart(hasher, "acm.review.fingerprint.v2")
+	writeFingerprintPart(hasher, "awm.review.fingerprint.v2")
 	writeFingerprintPart(hasher, strings.TrimSpace(projectID))
 	writeFingerprintPart(hasher, strings.TrimSpace(receiptID))
 	writeFingerprintPart(hasher, strings.TrimSpace(reviewKey))

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestSaveAndListReviewAttempts_RoundTrip(t *testing.T) {
@@ -40,8 +40,8 @@ func TestSaveAndListReviewAttempts_RoundTrip(t *testing.T) {
 		Status:             " failed ",
 		Passed:             false,
 		Outcome:            " Found blocking drift ",
-		WorkflowSourcePath: " .acm/acm-workflows.yaml ",
-		CommandArgv:        []string{" scripts/acm-cross-review.sh ", "", " --strict "},
+		WorkflowSourcePath: " .awm/awm-workflows.yaml ",
+		CommandArgv:        []string{" scripts/awm-cross-review.sh ", "", " --strict "},
 		CommandCWD:         " . ",
 		TimeoutSec:         600,
 		ExitCode:           &exitCode,
@@ -64,8 +64,8 @@ func TestSaveAndListReviewAttempts_RoundTrip(t *testing.T) {
 		Status:             "passed",
 		Passed:             true,
 		Outcome:            "No blocking findings",
-		WorkflowSourcePath: ".acm/acm-workflows.yaml",
-		CommandArgv:        []string{"scripts/acm-cross-review.sh"},
+		WorkflowSourcePath: ".awm/awm-workflows.yaml",
+		CommandArgv:        []string{"scripts/awm-cross-review.sh"},
 		CommandCWD:         ".",
 		TimeoutSec:         600,
 		CreatedAt:          secondCreatedAt,
@@ -95,8 +95,8 @@ func TestSaveAndListReviewAttempts_RoundTrip(t *testing.T) {
 			Status:             "failed",
 			Passed:             false,
 			Outcome:            "Found blocking drift",
-			WorkflowSourcePath: ".acm/acm-workflows.yaml",
-			CommandArgv:        []string{"scripts/acm-cross-review.sh", "--strict"},
+			WorkflowSourcePath: ".awm/awm-workflows.yaml",
+			CommandArgv:        []string{"scripts/awm-cross-review.sh", "--strict"},
 			CommandCWD:         ".",
 			TimeoutSec:         600,
 			ExitCode:           &exitCode,
@@ -116,8 +116,8 @@ func TestSaveAndListReviewAttempts_RoundTrip(t *testing.T) {
 			Status:             "passed",
 			Passed:             true,
 			Outcome:            "No blocking findings",
-			WorkflowSourcePath: ".acm/acm-workflows.yaml",
-			CommandArgv:        []string{"scripts/acm-cross-review.sh"},
+			WorkflowSourcePath: ".awm/awm-workflows.yaml",
+			CommandArgv:        []string{"scripts/awm-cross-review.sh"},
 			CommandCWD:         ".",
 			TimeoutSec:         600,
 			ExitCode:           nil,

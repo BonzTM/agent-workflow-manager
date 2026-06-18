@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 func (s *Service) Done(ctx context.Context, payload v1.DonePayload) (v1.DoneResult, *core.APIError) {

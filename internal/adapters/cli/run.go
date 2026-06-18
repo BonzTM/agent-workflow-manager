@@ -6,11 +6,11 @@ import (
 	"io"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/commands"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/commands"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 )
 
 const (

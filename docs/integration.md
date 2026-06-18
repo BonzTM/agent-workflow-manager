@@ -1,22 +1,22 @@
-# ACM Integration Guide
+# AWM Integration Guide
 
-This guide describes how to integrate the Agent Context Manager (ACM) into any Model Context Protocol (MCP) compatible runtime using the JSON-RPC 2.0 stdio protocol.
+This guide describes how to integrate the Agent Workflow Manager (AWM) into any Model Context Protocol (MCP) compatible runtime using the JSON-RPC 2.0 stdio protocol.
 
 ## Overview
 
-ACM exposes its tools via the `acm-mcp` binary. This binary implements the MCP standard over standard input and output (stdio). It allows LLM runtimes to discover and call ACM tools for context management, task tracking, and workflow governance.
+AWM exposes its tools via the `awm-mcp` binary. This binary implements the MCP standard over standard input and output (stdio). It allows LLM runtimes to discover and call AWM tools for context management, task tracking, and workflow governance.
 
 ## Protocol
 
-ACM uses JSON-RPC 2.0 over stdio. Communications are line-delimited JSON objects.
-- Standard input (stdin) for requests and notifications to ACM.
-- Standard output (stdout) for responses and notifications from ACM.
+AWM uses JSON-RPC 2.0 over stdio. Communications are line-delimited JSON objects.
+- Standard input (stdin) for requests and notifications to AWM.
+- Standard output (stdout) for responses and notifications from AWM.
 
 ## Handshake
 
 Every session begins with a standard MCP handshake.
 
-### 1. Initialize Request (Client → ACM)
+### 1. Initialize Request (Client → AWM)
 The client sends its capabilities and version.
 
 ```json
@@ -35,8 +35,8 @@ The client sends its capabilities and version.
 }
 ```
 
-### 2. Initialize Response (ACM → Client)
-ACM responds with its capabilities, including the tool server.
+### 2. Initialize Response (AWM → Client)
+AWM responds with its capabilities, including the tool server.
 
 ```json
 {
@@ -48,14 +48,14 @@ ACM responds with its capabilities, including the tool server.
       "tools": {}
     },
     "serverInfo": {
-      "name": "acm-mcp",
+      "name": "awm-mcp",
       "version": "0.1.0"
     }
   }
 }
 ```
 
-### 3. Initialized Notification (Client → ACM)
+### 3. Initialized Notification (Client → AWM)
 The client confirms it has processed the initialization.
 
 ```json
@@ -77,7 +77,7 @@ To discover available tools, use the `tools/list` method.
 }
 ```
 
-ACM returns a list of 12 tools, including `context`, `work`, `verify`, and `done`, along with their descriptions and input schemas.
+AWM returns a list of 12 tools, including `context`, `work`, `verify`, and `done`, along with their descriptions and input schemas.
 
 ## Calling Tools
 
@@ -110,7 +110,7 @@ Responses are wrapped in a content array.
     "content": [
       {
         "type": "text",
-        "text": "{\"version\":\"acm.v1\",\"status\":\"success\",...}"
+        "text": "{\"version\":\"awm.v1\",\"status\":\"success\",...}"
       }
     ]
   }
@@ -123,7 +123,7 @@ Responses are wrapped in a content array.
 Standard JSON-RPC error codes are used for transport or protocol failures (e.g., -32601 for Method not found).
 
 ### Application Errors
-If a tool execution fails, ACM returns a response with `isError: true` and the error details in the content.
+If a tool execution fails, AWM returns a response with `isError: true` and the error details in the content.
 
 ```json
 {
@@ -134,7 +134,7 @@ If a tool execution fails, ACM returns a response with `isError: true` and the e
     "content": [
       {
         "type": "text",
-        "text": "{\"version\":\"acm.v1\",\"status\":\"error\",\"message\":\"project not found\"}"
+        "text": "{\"version\":\"awm.v1\",\"status\":\"error\",\"message\":\"project not found\"}"
       }
     ]
   }
@@ -144,16 +144,16 @@ If a tool execution fails, ACM returns a response with `isError: true` and the e
 ## Runtime Configuration
 
 ### Claude Desktop
-Add ACM to your `claude_desktop_config.json`:
+Add AWM to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "acm": {
-      "command": "acm-mcp",
+    "awm": {
+      "command": "awm-mcp",
       "args": [],
       "env": {
-        "ACM_PROJECT_ID": "my-project"
+        "AWM_PROJECT_ID": "my-project"
       }
     }
   }
@@ -161,20 +161,20 @@ Add ACM to your `claude_desktop_config.json`:
 ```
 
 ### OpenCode
-Configure ACM as an MCP server in your OpenCode settings using the `acm-mcp` binary path.
+Configure AWM as an MCP server in your OpenCode settings using the `awm-mcp` binary path.
 
 ### Generic Integration
-Launch `acm-mcp` as a subprocess and communicate via stdin/stdout.
+Launch `awm-mcp` as a subprocess and communicate via stdin/stdout.
 
 ## Environment Variables
 
 | Variable | Description |
 |---|---|
-| `ACM_PROJECT_ID` | Default project ID for ACM operations |
-| `ACM_PG_DSN` | PostgreSQL connection string (if using Postgres storage) |
-| `ACM_SQLITE_PATH` | Path to SQLite database (default: `~/.acm/acm.db`) |
-| `ACM_LOG_LEVEL` | Logging verbosity (debug, info, warn, error) |
-| `ACM_LOG_SINK` | Where to send logs (stderr, file path) |
+| `AWM_PROJECT_ID` | Default project ID for AWM operations |
+| `AWM_PG_DSN` | PostgreSQL connection string (if using Postgres storage) |
+| `AWM_SQLITE_PATH` | Path to SQLite database (default: `~/.awm/awm.db`) |
+| `AWM_LOG_LEVEL` | Logging verbosity (debug, info, warn, error) |
+| `AWM_LOG_SINK` | Where to send logs (stderr, file path) |
 
 ## Typical Workflow
 

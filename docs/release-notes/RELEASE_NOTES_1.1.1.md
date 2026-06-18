@@ -6,24 +6,24 @@ Post-release cleanup following the 1.1.0 memory removal. This patch completes th
 
 ## Fixed
 
-- `acm fetch` — dead code paths for `mem:<id>` key lookups cleaned up (no behavior change; keys already returned not-found in 1.1.0)
-- `acm health` — stale `memory` tag removed from `canonical_tags.json`; `unknown_tags` check no longer flags memory-era pointer tags
+- `awm fetch` — dead code paths for `mem:<id>` key lookups cleaned up (no behavior change; keys already returned not-found in 1.1.0)
+- `awm health` — stale `memory` tag removed from `canonical_tags.json`; `unknown_tags` check no longer flags memory-era pointer tags
 
 ## Added
 
 ### Architecture Diagrams
 
-- `docs/architecture/acm-architecture-layers.excalidraw` — Layer diagram source with light and dark PNG exports
-- `docs/architecture/acm-flow-diagram.excalidraw` — Flow diagram source with light and dark PNG exports
+- `docs/architecture/awm-architecture-layers.excalidraw` — Layer diagram source with light and dark PNG exports
+- `docs/architecture/awm-flow-diagram.excalidraw` — Flow diagram source with light and dark PNG exports
 - `docs/maintainer-reference.md` — Architecture diagram pointers added
 
 ### Codex Hooks Init Template
 
 - `codex-hooks` — New init template that seeds `.codex/hooks.json`, `.codex/config.toml`, and four hook scripts:
-  - `acm-common.sh` — shared utility functions
-  - `acm-prompt-guard.sh` — receipt guard for Codex prompt submissions
-  - `acm-session-context.sh` — session-start context injection
-  - `acm-stop-guard.sh` — task closure guard
+  - `awm-common.sh` — shared utility functions
+  - `awm-prompt-guard.sh` — receipt guard for Codex prompt submissions
+  - `awm-session-context.sh` — session-start context injection
+  - `awm-stop-guard.sh` — task closure guard
 
 ### Tests
 
@@ -35,9 +35,9 @@ Post-release cleanup following the 1.1.0 memory removal. This patch completes th
 
 ### Claude Hooks
 
-- `acm-receipt-guard.sh` — improved error handling, more robust receipt detection
-- `acm-session-context.sh` — updated context injection logic
-- `acm-stop-guard.sh` — improved guard logic and error reporting
+- `awm-receipt-guard.sh` — improved error handling, more robust receipt detection
+- `awm-session-context.sh` — updated context injection logic
+- `awm-stop-guard.sh` — improved guard logic and error reporting
 
 ### Documentation
 
@@ -51,15 +51,15 @@ Post-release cleanup following the 1.1.0 memory removal. This patch completes th
 
 ### Init Templates
 
-- `starter-contract` — `AGENTS.md`, `CLAUDE.md`, and `acm-rules.yaml` updated for memory removal
-- `detailed-planning-enforcement` — `AGENTS.md`, `CLAUDE.md`, and `acm-rules.yaml` updated for memory removal
+- `starter-contract` — `AGENTS.md`, `CLAUDE.md`, and `awm-rules.yaml` updated for memory removal
+- `detailed-planning-enforcement` — `AGENTS.md`, `CLAUDE.md`, and `awm-rules.yaml` updated for memory removal
 
 ### Skill-Pack Docs
 
-- `skills/acm-broker/SKILL.md` — AMM migration notes
-- `skills/acm-broker/claude/README.md` — AMM integration notes
-- `skills/acm-broker/codex/README.md` — AMM integration notes
-- `skills/acm-broker/opencode/README.md` — AMM integration notes
+- `skills/awm-broker/SKILL.md` — AMM migration notes
+- `skills/awm-broker/claude/README.md` — AMM integration notes
+- `skills/awm-broker/codex/README.md` — AMM integration notes
+- `skills/awm-broker/opencode/README.md` — AMM integration notes
 
 ### Web Dashboard
 
@@ -70,7 +70,7 @@ Post-release cleanup following the 1.1.0 memory removal. This patch completes th
 ### Spec
 
 - `spec/v1/README.md` — updated tool count and surface descriptions to reflect 12-tool catalog
-- `skills/acm-broker/assets/requests/mcp_history.json` — entity list updated (memory removed)
+- `skills/awm-broker/assets/requests/mcp_history.json` — entity list updated (memory removed)
 
 ### Storage Adapters
 
@@ -85,28 +85,28 @@ Post-release cleanup following the 1.1.0 memory removal. This patch completes th
 - `web/static/app.js` — memory page JavaScript removed
 - `spec/v1/shared.schema.json` — remaining memory-era definitions (130 lines) removed
 - `spec/v1/cli.result.schema.json` — remaining memory result definitions (66 lines) removed
-- `skills/acm-broker/assets/requests/mcp_memory.json` — MCP memory request template removed
-- `skills/acm-broker/assets/requests/memory.json` — CLI memory request template removed
+- `skills/awm-broker/assets/requests/mcp_memory.json` — MCP memory request template removed
+- `skills/awm-broker/assets/requests/memory.json` — CLI memory request template removed
 - `internal/service/backend/canonical_tags.json` — `memory` tag removed from embedded tag dictionary
-- `.acm/acm-tags.yaml` — stale memory tag entry removed
+- `.awm/awm-tags.yaml` — stale memory tag entry removed
 
 ## Admin/Operations
 
-- No binary changes — the `acm`, `acm-mcp`, and `acm-web` binaries are unchanged from 1.1.0. This release is docs, hooks, tests, and web asset cleanup only.
+- No binary changes — the `awm`, `awm-mcp`, and `awm-web` binaries are unchanged from 1.1.0. This release is docs, hooks, tests, and web asset cleanup only.
 - Database schema unchanged from 1.1.0.
 
 ## Deployment and Distribution
 
-- Go install: `go install github.com/bonztm/agent-context-manager/cmd/acm@v1.1.1`
-- Go install (MCP): `go install github.com/bonztm/agent-context-manager/cmd/acm-mcp@v1.1.1`
-- Go install (Web): `go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.1.1`
-- Source: `https://github.com/BonzTM/agent-context-manager`
-- Prebuilt binaries: download `acm-binaries` artifact from GitHub Actions `Go Build` workflow.
+- Go install: `go install github.com/bonztm/agent-workflow-manager/cmd/awm@v1.1.1`
+- Go install (MCP): `go install github.com/bonztm/agent-workflow-manager/cmd/awm-mcp@v1.1.1`
+- Go install (Web): `go install github.com/bonztm/agent-workflow-manager/cmd/awm-web@v1.1.1`
+- Source: `https://github.com/BonzTM/agent-workflow-manager`
+- Prebuilt binaries: download `awm-binaries` artifact from GitHub Actions `Go Build` workflow.
 
 ```bash
-go install github.com/bonztm/agent-context-manager/cmd/acm@v1.1.1
-go install github.com/bonztm/agent-context-manager/cmd/acm-mcp@v1.1.1
-go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.1.1
+go install github.com/bonztm/agent-workflow-manager/cmd/awm@v1.1.1
+go install github.com/bonztm/agent-workflow-manager/cmd/awm-mcp@v1.1.1
+go install github.com/bonztm/agent-workflow-manager/cmd/awm-web@v1.1.1
 ```
 
 ## Breaking Changes
@@ -125,5 +125,5 @@ go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.1.1
 
 ## Full Changelog
 
-- Compare changes: https://github.com/BonzTM/agent-context-manager/compare/1.1.0...1.1.1
-- Full changelog: https://github.com/BonzTM/agent-context-manager/commits/1.1.1
+- Compare changes: https://github.com/BonzTM/agent-workflow-manager/compare/1.1.0...1.1.1
+- Full changelog: https://github.com/BonzTM/agent-workflow-manager/commits/1.1.1

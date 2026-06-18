@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ACM Board</title>
+  <title>AWM Board</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <nav class="navbar">
     <div class="navbar-brand">
-      <span class="navbar-logo">ACM</span>
+      <span class="navbar-logo">AWM</span>
     </div>
     <div class="navbar-links">
       <a href="/" class="nav-link active">Board</a>
@@ -22,13 +22,13 @@
       <h1>Plans</h1>
       <div class="header-meta">
         <div class="scope-toggle">
-          <button class="scope-btn active" data-scope="current" onclick="ACM.setScope('current')">Current</button>
-          <button class="scope-btn" data-scope="completed" onclick="ACM.setScope('completed')">Completed</button>
-          <button class="scope-btn" data-scope="all" onclick="ACM.setScope('all')">All</button>
+          <button class="scope-btn active" data-scope="current" onclick="AWM.setScope('current')">Current</button>
+          <button class="scope-btn" data-scope="completed" onclick="AWM.setScope('completed')">Completed</button>
+          <button class="scope-btn" data-scope="all" onclick="AWM.setScope('all')">All</button>
         </div>
         <div class="scope-toggle">
-          <button class="scope-btn active" data-filter="work" onclick="ACM.setFilter('work')">Work Items</button>
-          <button class="scope-btn" data-filter="all" onclick="ACM.setFilter('all')">All Tasks</button>
+          <button class="scope-btn active" data-filter="work" onclick="AWM.setFilter('work')">Work Items</button>
+          <button class="scope-btn" data-filter="all" onclick="AWM.setFilter('all')">All Tasks</button>
         </div>
         <span class="poll-indicator" id="poll-indicator" title="Live updating">
           <span class="poll-dot"></span>

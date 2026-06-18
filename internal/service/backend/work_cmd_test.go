@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"reflect"
 	"strings"
 	"testing"
@@ -458,7 +458,7 @@ func TestWork_UpsertsPlanAndTasksWhenPlanRepositoryAvailable(t *testing.T) {
 		Mode:      v1.WorkPlanModeMerge,
 		Plan: &v1.WorkPlanPayload{
 			Title:     "Import Optimization",
-			Objective: "Track execution centrally in acm",
+			Objective: "Track execution centrally in awm",
 		},
 		Tasks: []v1.WorkTaskPayload{
 			{
@@ -504,7 +504,7 @@ func TestFetchPlanItem_UsesStoredPlanRepositoryContent(t *testing.T) {
 			PlanKey:   "plan:receipt.abc123",
 			ReceiptID: "receipt.abc123",
 			Title:     "Import Optimization",
-			Objective: "Consolidate planning state in acm",
+			Objective: "Consolidate planning state in awm",
 			Status:    core.PlanStatusBlocked,
 			Stages: core.WorkPlanStages{
 				SpecOutline:        core.PlanStatusComplete,
@@ -537,7 +537,7 @@ func TestFetchPlanItem_UsesStoredPlanRepositoryContent(t *testing.T) {
 	if item.Type != "plan" || item.Status != core.PlanStatusBlocked {
 		t.Fatalf("unexpected fetch item metadata: %+v", item)
 	}
-	if !strings.Contains(item.Content, "\"objective\":\"Consolidate planning state in acm\"") {
+	if !strings.Contains(item.Content, "\"objective\":\"Consolidate planning state in awm\"") {
 		t.Fatalf("expected serialized plan content to include objective, got %s", item.Content)
 	}
 	if len(repo.workPlanLookupCalls) != 1 {

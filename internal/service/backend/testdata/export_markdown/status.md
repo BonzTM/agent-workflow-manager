@@ -13,7 +13,7 @@ ready=false missing=1 warnings=1
 - Detected Repo Root: /repo
 - Backend: sqlite
 - Postgres Configured: false
-- SQLite Path: /repo/.acm/context.db
+- SQLite Path: /repo/.awm/context.db
 - Uses Implicit SQLite Path: true
 - Unbounded: false
 
@@ -21,8 +21,8 @@ ready=false missing=1 warnings=1
 
 ### rules
 
-- Source Path: .acm/acm-rules.yaml
-- Absolute Path: /repo/.acm/acm-rules.yaml
+- Source Path: .awm/awm-rules.yaml
+- Absolute Path: /repo/.awm/awm-rules.yaml
 - Exists: true
 - Loaded: true
 - Item Count: 3
@@ -33,7 +33,7 @@ ready=false missing=1 warnings=1
 
 ## Integrations
 
-### acm-broker
+### awm-broker
 
 - Summary: Skill pack installed
 - Installed: true

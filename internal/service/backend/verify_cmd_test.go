@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,10 +15,10 @@ import (
 
 func TestVerify_DryRunSelectsDeterministicallyWithoutPersistence(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	testsYAML := `version: acm.tests.v1
+	testsYAML := `version: awm.tests.v1
 defaults:
   cwd: .
   timeout_sec: 45
@@ -38,7 +38,7 @@ tests:
     command:
       argv: ["echo", "noop"]
       env:
-        ACM_VERIFY_TEST_MODE: smoke
+        AWM_VERIFY_TEST_MODE: smoke
     select:
       always_run: true
   - id: delta-unscoped
@@ -46,7 +46,7 @@ tests:
     command:
       argv: ["echo", "noop"]
 `
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
 		t.Fatalf("write tests file: %v", err)
 	}
 
@@ -110,10 +110,10 @@ tests:
 
 func TestVerify_ExecutesPersistsAndUpdatesWork(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	testsYAML := `version: acm.tests.v1
+	testsYAML := `version: awm.tests.v1
 defaults:
   cwd: .
   timeout_sec: 45
@@ -135,7 +135,7 @@ tests:
     select:
       always_run: true
 `
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
 		t.Fatalf("write tests file: %v", err)
 	}
 
@@ -167,20 +167,20 @@ tests:
 				FinishedAt: base.Add(2 * time.Second),
 			}
 		case "gamma-smoke":
-			if got := extraEnv["ACM_RECEIPT_ID"]; got != "receipt.abc123" {
-				t.Fatalf("unexpected injected ACM_RECEIPT_ID: %+v", extraEnv)
+			if got := extraEnv["AWM_RECEIPT_ID"]; got != "receipt.abc123" {
+				t.Fatalf("unexpected injected AWM_RECEIPT_ID: %+v", extraEnv)
 			}
-			if got := extraEnv["ACM_PLAN_KEY"]; got != "plan:receipt.abc123" {
-				t.Fatalf("unexpected injected ACM_PLAN_KEY: %+v", extraEnv)
+			if got := extraEnv["AWM_PLAN_KEY"]; got != "plan:receipt.abc123" {
+				t.Fatalf("unexpected injected AWM_PLAN_KEY: %+v", extraEnv)
 			}
-			if got := extraEnv["ACM_VERIFY_PHASE"]; got != "review" {
-				t.Fatalf("unexpected injected ACM_VERIFY_PHASE: %+v", extraEnv)
+			if got := extraEnv["AWM_VERIFY_PHASE"]; got != "review" {
+				t.Fatalf("unexpected injected AWM_VERIFY_PHASE: %+v", extraEnv)
 			}
-			if got := extraEnv["ACM_VERIFY_TAGS_JSON"]; got != `["backend"]` {
-				t.Fatalf("unexpected injected ACM_VERIFY_TAGS_JSON: %+v", extraEnv)
+			if got := extraEnv["AWM_VERIFY_TAGS_JSON"]; got != `["backend"]` {
+				t.Fatalf("unexpected injected AWM_VERIFY_TAGS_JSON: %+v", extraEnv)
 			}
-			if got := extraEnv["ACM_VERIFY_FILES_CHANGED_JSON"]; got != `["internal/service/backend/service.go"]` {
-				t.Fatalf("unexpected injected ACM_VERIFY_FILES_CHANGED_JSON: %+v", extraEnv)
+			if got := extraEnv["AWM_VERIFY_FILES_CHANGED_JSON"]; got != `["internal/service/backend/service.go"]` {
+				t.Fatalf("unexpected injected AWM_VERIFY_FILES_CHANGED_JSON: %+v", extraEnv)
 			}
 			exitCode := 0
 			return verifyCommandRun{
@@ -230,7 +230,7 @@ tests:
 	}
 
 	saved := repo.verifySaveCalls[0]
-	if saved.Status != "passed" || saved.TestsSourcePath != ".acm/acm-tests.yaml" {
+	if saved.Status != "passed" || saved.TestsSourcePath != ".awm/awm-tests.yaml" {
 		t.Fatalf("unexpected persisted batch: %+v", saved)
 	}
 	if saved.ReceiptID != "receipt.abc123" || saved.PlanKey != "plan:receipt.abc123" {
@@ -300,10 +300,10 @@ func TestVerify_WorkEvidenceIsCapped(t *testing.T) {
 
 func TestVerify_InjectsDerivedPlanKeyIntoCommandEnv(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	testsYAML := `version: acm.tests.v1
+	testsYAML := `version: awm.tests.v1
 tests:
   - id: smoke
     summary: Run smoke verification
@@ -312,7 +312,7 @@ tests:
     select:
       always_run: true
 `
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
 		t.Fatalf("write tests file: %v", err)
 	}
 
@@ -357,29 +357,29 @@ tests:
 	if result.Status != v1.VerifyStatusPassed || !result.Passed {
 		t.Fatalf("unexpected verify result: %+v", result)
 	}
-	if gotEnv["ACM_RECEIPT_ID"] != "receipt.abc123" {
-		t.Fatalf("unexpected injected ACM_RECEIPT_ID: %+v", gotEnv)
+	if gotEnv["AWM_RECEIPT_ID"] != "receipt.abc123" {
+		t.Fatalf("unexpected injected AWM_RECEIPT_ID: %+v", gotEnv)
 	}
-	if gotEnv["ACM_PLAN_KEY"] != "plan:receipt.abc123" {
-		t.Fatalf("unexpected derived ACM_PLAN_KEY: %+v", gotEnv)
+	if gotEnv["AWM_PLAN_KEY"] != "plan:receipt.abc123" {
+		t.Fatalf("unexpected derived AWM_PLAN_KEY: %+v", gotEnv)
 	}
-	if gotEnv["ACM_VERIFY_PHASE"] != "execute" {
-		t.Fatalf("unexpected derived ACM_VERIFY_PHASE: %+v", gotEnv)
+	if gotEnv["AWM_VERIFY_PHASE"] != "execute" {
+		t.Fatalf("unexpected derived AWM_VERIFY_PHASE: %+v", gotEnv)
 	}
-	if gotEnv["ACM_VERIFY_TAGS_JSON"] != "[]" {
-		t.Fatalf("unexpected derived ACM_VERIFY_TAGS_JSON: %+v", gotEnv)
+	if gotEnv["AWM_VERIFY_TAGS_JSON"] != "[]" {
+		t.Fatalf("unexpected derived AWM_VERIFY_TAGS_JSON: %+v", gotEnv)
 	}
-	if gotEnv["ACM_VERIFY_FILES_CHANGED_JSON"] != "[]" {
-		t.Fatalf("unexpected derived ACM_VERIFY_FILES_CHANGED_JSON: %+v", gotEnv)
+	if gotEnv["AWM_VERIFY_FILES_CHANGED_JSON"] != "[]" {
+		t.Fatalf("unexpected derived AWM_VERIFY_FILES_CHANGED_JSON: %+v", gotEnv)
 	}
 }
 
 func TestVerify_RejectsAlwaysRunCombinedWithSelectors(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	testsYAML := `version: acm.tests.v1
+	testsYAML := `version: awm.tests.v1
 defaults:
   cwd: .
   timeout_sec: 45
@@ -392,7 +392,7 @@ tests:
       always_run: true
       phases: ["review"]
 `
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), []byte(testsYAML), 0o644); err != nil {
 		t.Fatalf("write tests file: %v", err)
 	}
 
@@ -424,7 +424,7 @@ tests:
 
 func TestResolveProjectSourcePath_PreservesAbsoluteOverrides(t *testing.T) {
 	projectRoot := filepath.Join(t.TempDir(), "repo")
-	absolute := filepath.Join(t.TempDir(), "acm-tests.yaml")
+	absolute := filepath.Join(t.TempDir(), "awm-tests.yaml")
 
 	sourcePath, absolutePath, err := resolveProjectSourcePath(projectRoot, absolute)
 	if err != nil {
@@ -446,13 +446,13 @@ func TestRunVerifyCommand_AppliesCommandEnv(t *testing.T) {
 		TimeoutSec: 5,
 		Env: map[string]string{
 			"GO_WANT_VERIFY_HELPER_PROCESS": "1",
-			"ACM_VERIFY_ENV_CHECK":          "expected-value",
+			"AWM_VERIFY_ENV_CHECK":          "expected-value",
 		},
 	}
 
 	run := runVerifyCommand(context.Background(), root, def, map[string]string{
-		"ACM_RECEIPT_ID": "receipt.abc123",
-		"ACM_PLAN_KEY":   "plan:receipt.abc123",
+		"AWM_RECEIPT_ID": "receipt.abc123",
+		"AWM_PLAN_KEY":   "plan:receipt.abc123",
 	})
 	if run.Err != nil {
 		t.Fatalf("unexpected command error: %v\nstdout=%q\nstderr=%q", run.Err, run.Stdout, run.Stderr)
@@ -462,27 +462,27 @@ func TestRunVerifyCommand_AppliesCommandEnv(t *testing.T) {
 	}
 }
 
-func TestRunVerifyCommand_DoesNotLoadDotEnvBackedACMRuntimeEnv(t *testing.T) {
+func TestRunVerifyCommand_DoesNotLoadDotEnvBackedAWMRuntimeEnv(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("ACM_PG_DSN=postgres://dotenv\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("AWM_PG_DSN=postgres://dotenv\n"), 0o644); err != nil {
 		t.Fatalf("write .env: %v", err)
 	}
 
 	def := verifyTestDefinition{
-		Argv:       []string{os.Args[0], "-test.run=TestRunACMCommandDotEnvHelperProcess", "--"},
+		Argv:       []string{os.Args[0], "-test.run=TestRunAWMCommandDotEnvHelperProcess", "--"},
 		CWD:        ".",
 		TimeoutSec: 5,
 		Env: map[string]string{
-			"GO_WANT_ACM_COMMAND_DOTENV_HELPER_PROCESS": "1",
-			"ACM_EXPECTED_PG_DSN":                       "__EXPECT_EMPTY__",
-			"ACM_EXPECTED_RECEIPT_ID":                   "receipt.abc123",
-			"ACM_EXPECTED_PLAN_KEY":                     "plan:receipt.abc123",
+			"GO_WANT_AWM_COMMAND_DOTENV_HELPER_PROCESS": "1",
+			"AWM_EXPECTED_PG_DSN":                       "__EXPECT_EMPTY__",
+			"AWM_EXPECTED_RECEIPT_ID":                   "receipt.abc123",
+			"AWM_EXPECTED_PLAN_KEY":                     "plan:receipt.abc123",
 		},
 	}
 
 	run := runVerifyCommand(context.Background(), root, def, map[string]string{
-		"ACM_RECEIPT_ID": "receipt.abc123",
-		"ACM_PLAN_KEY":   "plan:receipt.abc123",
+		"AWM_RECEIPT_ID": "receipt.abc123",
+		"AWM_PLAN_KEY":   "plan:receipt.abc123",
 	})
 	if run.Err != nil {
 		t.Fatalf("unexpected command error: %v\nstdout=%q\nstderr=%q", run.Err, run.Stdout, run.Stderr)
@@ -492,20 +492,20 @@ func TestRunVerifyCommand_DoesNotLoadDotEnvBackedACMRuntimeEnv(t *testing.T) {
 	}
 }
 
-func TestRunVerifyCommand_CommandEnvOverridesDotEnvBackedACMRuntimeEnv(t *testing.T) {
+func TestRunVerifyCommand_CommandEnvOverridesDotEnvBackedAWMRuntimeEnv(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("ACM_PG_DSN=postgres://dotenv\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("AWM_PG_DSN=postgres://dotenv\n"), 0o644); err != nil {
 		t.Fatalf("write .env: %v", err)
 	}
 
 	def := verifyTestDefinition{
-		Argv:       []string{os.Args[0], "-test.run=TestRunACMCommandDotEnvHelperProcess", "--"},
+		Argv:       []string{os.Args[0], "-test.run=TestRunAWMCommandDotEnvHelperProcess", "--"},
 		CWD:        ".",
 		TimeoutSec: 5,
 		Env: map[string]string{
-			"GO_WANT_ACM_COMMAND_DOTENV_HELPER_PROCESS": "1",
-			"ACM_PG_DSN":          "postgres://command",
-			"ACM_EXPECTED_PG_DSN": "postgres://command",
+			"GO_WANT_AWM_COMMAND_DOTENV_HELPER_PROCESS": "1",
+			"AWM_PG_DSN":          "postgres://command",
+			"AWM_EXPECTED_PG_DSN": "postgres://command",
 		},
 	}
 
@@ -522,15 +522,15 @@ func TestRunVerifyCommandHelperProcess(t *testing.T) {
 	if os.Getenv("GO_WANT_VERIFY_HELPER_PROCESS") != "1" {
 		return
 	}
-	if got, want := os.Getenv("ACM_VERIFY_ENV_CHECK"), "expected-value"; got != want {
+	if got, want := os.Getenv("AWM_VERIFY_ENV_CHECK"), "expected-value"; got != want {
 		fmt.Fprintf(os.Stderr, "unexpected env: got %q want %q\n", got, want)
 		os.Exit(3)
 	}
-	if got, want := os.Getenv("ACM_RECEIPT_ID"), "receipt.abc123"; got != want {
+	if got, want := os.Getenv("AWM_RECEIPT_ID"), "receipt.abc123"; got != want {
 		fmt.Fprintf(os.Stderr, "unexpected receipt env: got %q want %q\n", got, want)
 		os.Exit(3)
 	}
-	if got, want := os.Getenv("ACM_PLAN_KEY"), "plan:receipt.abc123"; got != want {
+	if got, want := os.Getenv("AWM_PLAN_KEY"), "plan:receipt.abc123"; got != want {
 		fmt.Fprintf(os.Stderr, "unexpected plan env: got %q want %q\n", got, want)
 		os.Exit(3)
 	}
@@ -538,16 +538,16 @@ func TestRunVerifyCommandHelperProcess(t *testing.T) {
 	os.Exit(0)
 }
 
-func TestRunACMCommandDotEnvHelperProcess(t *testing.T) {
-	if os.Getenv("GO_WANT_ACM_COMMAND_DOTENV_HELPER_PROCESS") != "1" {
+func TestRunAWMCommandDotEnvHelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_AWM_COMMAND_DOTENV_HELPER_PROCESS") != "1" {
 		return
 	}
 
 	checks := map[string]string{
-		"ACM_PG_DSN":     os.Getenv("ACM_EXPECTED_PG_DSN"),
-		"ACM_RECEIPT_ID": os.Getenv("ACM_EXPECTED_RECEIPT_ID"),
-		"ACM_PLAN_KEY":   os.Getenv("ACM_EXPECTED_PLAN_KEY"),
-		"ACM_REVIEW_KEY": os.Getenv("ACM_EXPECTED_REVIEW_KEY"),
+		"AWM_PG_DSN":     os.Getenv("AWM_EXPECTED_PG_DSN"),
+		"AWM_RECEIPT_ID": os.Getenv("AWM_EXPECTED_RECEIPT_ID"),
+		"AWM_PLAN_KEY":   os.Getenv("AWM_EXPECTED_PLAN_KEY"),
+		"AWM_REVIEW_KEY": os.Getenv("AWM_EXPECTED_REVIEW_KEY"),
 	}
 	for key, want := range checks {
 		if want == "" {

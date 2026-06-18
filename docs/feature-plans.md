@@ -1,9 +1,9 @@
-# ACM Staged Plans
+# AWM Staged Plans
 
-Despite the filename, this document defines the staged planning contract for governed multi-step work in `agent-context-manager`, not only net-new features.
-ACM the product stays generic; this repo requires staged plans for governed multi-step work.
+Despite the filename, this document defines the staged planning contract for governed multi-step work in `agent-workflow-manager`, not only net-new features.
+AWM the product stays generic; this repo requires staged plans for governed multi-step work.
 
-ACM remains the system of record for active plans and task state. This document makes the expected structure explicit in the repo so spec maturity, refined specs, implementation outlines, orchestration boundaries, and atomic execution tasks are visible in version control instead of living only in work storage.
+AWM remains the system of record for active plans and task state. This document makes the expected structure explicit in the repo so spec maturity, refined specs, implementation outlines, orchestration boundaries, and atomic execution tasks are visible in version control instead of living only in work storage.
 
 ## When It Applies
 
@@ -59,7 +59,7 @@ Governed root plans must include these top-level tasks:
 
 The three `stage:*` tasks are grouping tasks. They stay top-level and do not set `parent_task_key`.
 Their task status should mirror the corresponding plan stage status.
-When ACM auto-closes a plan into a terminal status, it also reconciles those plan stage fields from the matching `stage:*` task statuses so completed plans do not retain stale stage metadata.
+When AWM auto-closes a plan into a terminal status, it also reconciles those plan stage fields from the matching `stage:*` task statuses so completed plans do not retain stale stage metadata.
 
 Add workflow-gate tasks such as `review:cross-llm` when the current work will need them, but the staged plan contract itself does not hardcode one review key.
 Keep gate tasks top-level. Do not place `verify:tests` or review gates under any `stage:*` task.
@@ -110,7 +110,7 @@ In practice that means:
 Root governance plan:
 
 ```bash
-acm work --project agent-context-manager --receipt-id <receipt-id> --mode merge \
+awm work --project agent-workflow-manager --receipt-id <receipt-id> --mode merge \
   --plan-json '{
     "title":"Review/verify boundary clarification",
     "kind":"governance",
@@ -124,15 +124,15 @@ acm work --project agent-context-manager --receipt-id <receipt-id> --mode merge 
     "in_scope":["command-boundary docs", "repo-local staged-plan rules", "validator enforcement"],
     "out_of_scope":["new product command", "bootstrap template rewrite"],
     "constraints":["Keep TDD and orchestration policy repo-local unless a product capability is intentionally generic", "Do not let docs drift from runnable repo behavior"],
-    "references":["README.md", "docs/getting-started.md", "docs/feature-plans.md", "scripts/acm-feature-plan-validate.py"]
+    "references":["README.md", "docs/getting-started.md", "docs/feature-plans.md", "scripts/awm-feature-plan-validate.py"]
   }' \
   --tasks-json '[
     {"key":"stage:spec-outline","summary":"Spec outline","status":"complete"},
     {"key":"spec:verify-review-boundary","summary":"Define the behavioral boundary between verify and review","status":"complete","parent_task_key":"stage:spec-outline","references":["README.md","docs/getting-started.md"],"acceptance_criteria":["The distinction states when verify is required versus when review is required","The scope of each command is explicit enough that another agent does not infer missing semantics"]},
     {"key":"stage:refined-spec","summary":"Refined spec","status":"complete"},
-    {"key":"refine:atomic-task-shape","summary":"Define the exact requirements for atomic leaf tasks","status":"complete","parent_task_key":"stage:refined-spec","references":["docs/feature-plans.md",".acm/acm-rules.yaml"],"acceptance_criteria":["Leaf-task requirements cover references, acceptance criteria, and bounded scope","The contract is strict enough for low-context delegation without inventing new task-schema fields"]},
+    {"key":"refine:atomic-task-shape","summary":"Define the exact requirements for atomic leaf tasks","status":"complete","parent_task_key":"stage:refined-spec","references":["docs/feature-plans.md",".awm/awm-rules.yaml"],"acceptance_criteria":["Leaf-task requirements cover references, acceptance criteria, and bounded scope","The contract is strict enough for low-context delegation without inventing new task-schema fields"]},
     {"key":"stage:implementation-plan","summary":"Implementation plan","status":"in_progress"},
-    {"key":"impl:validator-rules","summary":"Enforce the staged-plan contract in the repo-local validator","status":"pending","parent_task_key":"stage:implementation-plan","depends_on":["refine:atomic-task-shape"],"references":["scripts/acm-feature-plan-validate.py","scripts/acm_feature_plan_validate_test.go"],"acceptance_criteria":["Validator rejects governed plans that omit stages, stage tasks, leaf references, or leaf acceptance criteria","Tests cover at least one passing governed plan and one failing leaf-task case"]},
+    {"key":"impl:validator-rules","summary":"Enforce the staged-plan contract in the repo-local validator","status":"pending","parent_task_key":"stage:implementation-plan","depends_on":["refine:atomic-task-shape"],"references":["scripts/awm-feature-plan-validate.py","scripts/awm_feature_plan_validate_test.go"],"acceptance_criteria":["Validator rejects governed plans that omit stages, stage tasks, leaf references, or leaf acceptance criteria","Tests cover at least one passing governed plan and one failing leaf-task case"]},
     {"key":"impl:readme-boundary","summary":"Update the README command boundary guidance","status":"pending","parent_task_key":"stage:implementation-plan","depends_on":["spec:verify-review-boundary"],"references":["README.md"],"acceptance_criteria":["README explains verify versus review without ambiguity","The recommended closeout sequence is explicit"]},
     {"key":"impl:getting-started-boundary","summary":"Update the getting-started command boundary guidance","status":"pending","parent_task_key":"stage:implementation-plan","depends_on":["spec:verify-review-boundary"],"references":["docs/getting-started.md"],"acceptance_criteria":["Getting-started explains when to use verify versus review","The guide keeps product behavior distinct from this repo's maintainer policy"]},
     {"key":"impl:maintainer-orchestration-docs","summary":"Update maintainer docs for the orchestrator and delegated-leaf-task model","status":"pending","parent_task_key":"stage:implementation-plan","depends_on":["refine:atomic-task-shape"],"references":["AGENTS.md","docs/maintainer-reference.md"],"acceptance_criteria":["Maintainer docs explain that the root plan owner is the orchestrator","Maintainer docs require leaf tasks that low-context agents can execute directly"]},
@@ -142,20 +142,20 @@ acm work --project agent-context-manager --receipt-id <receipt-id> --mode merge 
 
 ## Verification
 
-Use `acm verify` with the active receipt or plan context so the repo-local validator can inspect the live plan:
+Use `awm verify` with the active receipt or plan context so the repo-local validator can inspect the live plan:
 
 ```bash
-acm verify --project agent-context-manager --receipt-id <receipt-id> --phase review --file-changed scripts/acm-feature-plan-validate.py
+awm verify --project agent-workflow-manager --receipt-id <receipt-id> --phase review --file-changed scripts/awm-feature-plan-validate.py
 ```
 
-That verify check executes `scripts/acm-feature-plan-validate.py` with the active receipt or plan context.
+That verify check executes `scripts/awm-feature-plan-validate.py` with the active receipt or plan context.
 
 For governed plans in this schema, it fails when required metadata, stage grouping, hierarchy links, `verify:tests`, leaf-task `references`, or leaf-task `acceptance_criteria` are missing. It also rejects materially planned work that still uses an unsupported or unspecified `kind`.
 
 ## Completion Gates
 
-This repo keeps staged-plan shape enforcement in `verify`, not `.acm/acm-workflows.yaml`.
+This repo keeps staged-plan shape enforcement in `verify`, not `.awm/awm-workflows.yaml`.
 
-- `.acm/acm-workflows.yaml` remains responsible for completion gates such as `verify:tests` and runnable review tasks.
+- `.awm/awm-workflows.yaml` remains responsible for completion gates such as `verify:tests` and runnable review tasks.
 - The staged-plan validator acts as an additional verify-time gate for planning discipline.
 - `review` still handles named workflow signoff gates; it is not a substitute for the staged planning contract.

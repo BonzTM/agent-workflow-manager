@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func (s *Service) syncTerminalWorkPlanStatus(ctx context.Context, projectID, receiptID string, plan core.WorkPlan, items []core.WorkItem) (core.WorkPlan, bool, *core.APIError) {

@@ -18,18 +18,18 @@ import (
 	"strings"
 	"time"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"gopkg.in/yaml.v3"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 const (
-	verifyTestsVersionV1           = "acm.tests.v1"
-	verifyTestsPrimarySourcePath   = ".acm/acm-tests.yaml"
-	verifyTestsSecondarySourcePath = "acm-tests.yaml"
+	verifyTestsVersionV1           = "awm.tests.v1"
+	verifyTestsPrimarySourcePath   = ".awm/awm-tests.yaml"
+	verifyTestsSecondarySourcePath = "awm-tests.yaml"
 	maxVerifyOutputExcerptChars    = 1600
 	maxVerifyWorkEvidenceEntries   = 128
 	maxVerifyDefinitions           = 512
@@ -41,13 +41,13 @@ var (
 	verifyTestIDPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,127}$`)
 	verifyEnvKeyPattern   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 	runtimeCommandEnvKeys = []string{
-		"ACM_PG_DSN",
-		"ACM_PROJECT_ID",
-		"ACM_PROJECT_ROOT",
-		"ACM_SQLITE_PATH",
+		"AWM_PG_DSN",
+		"AWM_PROJECT_ID",
+		"AWM_PROJECT_ROOT",
+		"AWM_SQLITE_PATH",
 		unboundedEnvVar,
-		"ACM_LOG_LEVEL",
-		"ACM_LOG_SINK",
+		"AWM_LOG_LEVEL",
+		"AWM_LOG_SINK",
 	}
 )
 
@@ -655,17 +655,17 @@ func verifyCommandEnvironment(selection verifySelectionContext) map[string]strin
 	}
 
 	extraEnv := map[string]string{
-		"ACM_VERIFY_TAGS_JSON":          verifyJSONListEnv(selection.Tags),
-		"ACM_VERIFY_FILES_CHANGED_JSON": verifyJSONListEnv(selection.FilesChanged),
+		"AWM_VERIFY_TAGS_JSON":          verifyJSONListEnv(selection.Tags),
+		"AWM_VERIFY_FILES_CHANGED_JSON": verifyJSONListEnv(selection.FilesChanged),
 	}
 	if receiptID != "" {
-		extraEnv["ACM_RECEIPT_ID"] = receiptID
+		extraEnv["AWM_RECEIPT_ID"] = receiptID
 	}
 	if planKey != "" {
-		extraEnv["ACM_PLAN_KEY"] = planKey
+		extraEnv["AWM_PLAN_KEY"] = planKey
 	}
 	if selection.Phase != "" {
-		extraEnv["ACM_VERIFY_PHASE"] = string(selection.Phase)
+		extraEnv["AWM_VERIFY_PHASE"] = string(selection.Phase)
 	}
 	return extraEnv
 }

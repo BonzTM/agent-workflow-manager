@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 func (s *Service) captureWorkingTreeBaseline(ctx context.Context, projectRoot string) ([]core.SyncPath, *core.APIError) {
@@ -133,7 +133,7 @@ func baselineIgnoredPath(raw string) bool {
 		return true
 	}
 	switch normalized {
-	case workspace.DotEnvFileName, ".acm/context.db", ".acm/context.db-shm", ".acm/context.db-wal":
+	case workspace.DotEnvFileName, ".awm/context.db", ".awm/context.db-shm", ".awm/context.db-wal":
 		return true
 	default:
 		return false
@@ -318,7 +318,7 @@ func resolveDoneFilesChanged(reliable bool, detected, supplied []string, noFileC
 	if reliable {
 		normalizedDetected := normalizeCompletionPaths(detected)
 		if noFileChanges && len(normalizedDetected) > 0 {
-			return nil, backendError(v1.ErrCodeInvalidInput, "no_file_changes cannot be used when ACM detected file changes", map[string]any{"files_changed": normalizedDetected})
+			return nil, backendError(v1.ErrCodeInvalidInput, "no_file_changes cannot be used when AWM detected file changes", map[string]any{"files_changed": normalizedDetected})
 		}
 		return normalizedDetected, nil
 	}

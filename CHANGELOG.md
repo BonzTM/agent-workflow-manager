@@ -6,24 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `migrateLegacyAcmSchema` pre-migration guard in both the Postgres (`internal/adapters/postgres/migrations.go`) and SQLite (`internal/adapters/sqlite/migrations.go`) adapters — upgrades a pre-rename `acm_*` database to the current `awm_*` naming in place on first run, before the migration ledger is consulted, so no migration is re-run and existing data is preserved. No-op on fresh databases and on databases already using `awm_*`.
+- `internal/adapters/sqlite/migrations_legacy_test.go` — covers the in-place legacy upgrade (data preserved, ledger rewritten) and the fresh-database no-op path.
+
+### Changed
+
+- **BREAKING — project renamed `agent-context-manager` (`acm`) → `agent-workflow-manager` (`awm`).** The name now reflects the tool's actual role as a governed-workflow control plane; the `agent-context-manager` name is retired here and reused by a separate context-manager project. The rename spans:
+  - CLI binaries `acm` / `acm-mcp` / `acm-web` → `awm` / `awm-mcp` / `awm-web`
+  - Go module path `github.com/bonztm/agent-context-manager` → `github.com/bonztm/agent-workflow-manager` (and all import paths)
+  - Config directory `.acm/` → `.awm/` and config files `acm-*.yaml` → `awm-*.yaml`
+  - Environment variable prefix `ACM_*` → `AWM_*`
+  - Database tables, indexes, and identifiers `acm_*` → `awm_*`, including the `acm_schema_migrations` ledger
+  - Bootstrap templates, Claude/Codex/OpenCode hooks, skills (`acm-broker` → `awm-broker`), slash commands, docs, and architecture diagrams
+
+  **Upgrade notes:** install the renamed `awm` / `awm-mcp` binaries (the old `acm*` binaries are gone), rename `ACM_*` environment variables to `AWM_*`, and move any project `.acm/` directory to `.awm/`. Existing databases upgrade in place automatically via the migration guard above on first run of the new binary.
+
+### Fixed
+
+### Refactored
+
+### Removed
+
 ## [1.2.1] - 2026-03-27
 
-Release distribution and documentation cleanup. Cross-platform binary builds for Linux, macOS, and Windows across amd64 and arm64. Release workflow automates GitHub Release asset uploads. Version string now injected via ldflags at build time. Stale `acm-mcp invoke` references cleaned up across docs and CLI help.
+Release distribution and documentation cleanup. Cross-platform binary builds for Linux, macOS, and Windows across amd64 and arm64. Release workflow automates GitHub Release asset uploads. Version string now injected via ldflags at build time. Stale `awm-mcp invoke` references cleaned up across docs and CLI help.
 
 ### Added
 
 - GitHub Actions release workflow (`.github/workflows/release.yml`) — builds cross-platform archives and uploads them to GitHub Releases on tag publish
-- `internal/buildinfo.version` linker variable — release workflow injects the git tag so `acm --version` reports the release version instead of a commit hash
+- `internal/buildinfo.version` linker variable — release workflow injects the git tag so `awm --version` reports the release version instead of a commit hash
 - `internal/buildinfo/buildinfo_test.go` — `TestVersion_UsesInjectedVersionOverCommitShort` verifying version takes precedence over commit short
 - Windows build targets (`windows/amd64`, `windows/arm64`) in both build and release workflows, with `.exe` extension and `.zip` packaging
 
 ### Changed
 
 - CI build workflow (`.github/workflows/go-build.yml`) — replaced single-platform build with matrix strategy across `linux/{amd64,arm64}`, `darwin/{amd64,arm64}`, `windows/{amd64,arm64}`; artifacts named per platform
-- `internal/adapters/cli/app.go` — CLI help text updated from stale `acm-mcp tools` reference to `acm-mcp --help` describing the JSON-RPC 2.0 MCP server
-- `docs/cli-reference.md` — replaced stale `acm-mcp invoke` reference with JSON-RPC 2.0 guidance
-- `skills/acm-broker/SKILL.md` — replaced per-tool `acm-mcp invoke` examples with JSON-RPC 2.0 protocol summary
-- `skills/acm-broker/references/templates.md` — all MCP example invocations converted from `acm-mcp invoke` to `tools/call` JSON-RPC piped commands
+- `internal/adapters/cli/app.go` — CLI help text updated from stale `awm-mcp tools` reference to `awm-mcp --help` describing the JSON-RPC 2.0 MCP server
+- `docs/cli-reference.md` — replaced stale `awm-mcp invoke` reference with JSON-RPC 2.0 guidance
+- `skills/awm-broker/SKILL.md` — replaced per-tool `awm-mcp invoke` examples with JSON-RPC 2.0 protocol summary
+- `skills/awm-broker/references/templates.md` — all MCP example invocations converted from `awm-mcp invoke` to `tools/call` JSON-RPC piped commands
 
 See [docs/release-notes/RELEASE_NOTES_1.2.1.md](docs/release-notes/RELEASE_NOTES_1.2.1.md) for the full release notes.
 
@@ -33,7 +56,7 @@ Architectural retrofit and code quality pass. MCP server migrates to JSON-RPC 2.
 
 ### Added
 
-- JSON-RPC 2.0 stdio MCP server — `acm-mcp` now implements the standard MCP protocol (`initialize`, `tools/list`, `tools/call`) over line-delimited JSON on stdin/stdout
+- JSON-RPC 2.0 stdio MCP server — `awm-mcp` now implements the standard MCP protocol (`initialize`, `tools/list`, `tools/call`) over line-delimited JSON on stdin/stdout
 - `internal/contracts/v1/errors.go` — centralized error code constants and error source constants
 - `Source` field on `ErrorPayload` and `core.APIError` — traces error origin for debugging
 - `core.NewErrorWithSource()` constructor and `internal/service/backend/errors.go` helper
@@ -42,19 +65,19 @@ Architectural retrofit and code quality pass. MCP server migrates to JSON-RPC 2.
 - `internal/contracts/v1/command_catalog_test.go` — catalog completeness test
 - `internal/contracts/v1/errors_test.go` — error code uniqueness and format tests
 - `internal/core/errors_test.go` — `APIError.ToPayload()` source propagation test
-- `cmd/acm/main_test.go`, `cmd/acm-mcp/main_test.go`, `cmd/acm-web/main_test.go` — entrypoint smoke tests
+- `cmd/awm/main_test.go`, `cmd/awm-mcp/main_test.go`, `cmd/awm-web/main_test.go` — entrypoint smoke tests
 - 2 new shared parity contract subtests (rule sync roundtrip, DoD JSON roundtrip) in `repositorycontract/repository_contract.go`
 - `docs/architecture.md`, `docs/cli-reference.md`, `docs/mcp-reference.md`, `docs/integration.md`
 
 ### Changed
 
-- **BREAKING**: `acm-mcp` is now a JSON-RPC 2.0 stdio server; `acm-mcp tools` and `acm-mcp invoke` subcommands removed
-- `cmd/acm/main.go` and `cmd/acm-mcp/main.go` — reduced to 11-line thin shells delegating to adapter `Run*` functions
-- CLI routing moved from `cmd/acm/` to `internal/adapters/cli/`; MCP dispatch moved to `internal/adapters/mcp/`
+- **BREAKING**: `awm-mcp` is now a JSON-RPC 2.0 stdio server; `awm-mcp tools` and `awm-mcp invoke` subcommands removed
+- `cmd/awm/main.go` and `cmd/awm-mcp/main.go` — reduced to 11-line thin shells delegating to adapter `Run*` functions
+- CLI routing moved from `cmd/awm/` to `internal/adapters/cli/`; MCP dispatch moved to `internal/adapters/mcp/`
 - `internal/adapters/mcp/invoke.go` — `ToolDef` updated to MCP format; `spec/v1/mcp.tools.v1.json` updated to match
 - Ad-hoc error code string literals replaced with `v1.ErrCode*` constants across validation, dispatch, and backend
 - `README.md` and `docs/getting-started.md` — updated with links to new reference docs
-- `skills/acm-broker/` — MCP example payloads and READMEs converted to JSON-RPC 2.0
+- `skills/awm-broker/` — MCP example payloads and READMEs converted to JSON-RPC 2.0
 
 ### Fixed
 
@@ -69,7 +92,7 @@ Architectural retrofit and code quality pass. MCP server migrates to JSON-RPC 2.
 
 ### Removed
 
-- `acm-mcp tools` and `acm-mcp invoke` subcommands — replaced by JSON-RPC methods
+- `awm-mcp tools` and `awm-mcp invoke` subcommands — replaced by JSON-RPC methods
 - `internal/service/backend/service_test.go` — split into 12 per-command test files
 - `internal/adapters/sqlite/repository_rules_test.go` and `repository_run_summary_test.go` — promoted to shared contract
 
@@ -83,7 +106,7 @@ Fix for `work` command not supporting clearing `parent_task_key` once set, plus 
 
 - `work` merge logic now supports clearing `parent_task_key` by explicitly sending an empty string; previously, empty values were silently ignored and the stored value persisted
 - `WorkTaskPayload.ParentTaskKey` changed from `string` to `*string` to distinguish "not provided" (nil, preserve existing) from "explicitly clear" (empty string)
-- Plan validator (`acm-feature-plan-validate.py`) now skips tasks with `status=superseded` during validation
+- Plan validator (`awm-feature-plan-validate.py`) now skips tasks with `status=superseded` during validation
 - Plan validator no longer errors on gate tasks (`verify:tests`, `review:*`) that have stale `parent_task_key` values
 
 ### Added
@@ -96,8 +119,8 @@ Fix for `work` command not supporting clearing `parent_task_key` once set, plus 
 
 ### Changed
 
-- `docs/examples/CLAUDE.md` — replaced duplicated ACM workflow loop with concise slash-command mapping table
-- Bootstrap template `acm-feature-plan-validate.py` — fully synced to current canonical version
+- `docs/examples/CLAUDE.md` — replaced duplicated AWM workflow loop with concise slash-command mapping table
+- Bootstrap template `awm-feature-plan-validate.py` — fully synced to current canonical version
 - `CLAUDE.md` — kept minimal as routing-only file (build commands now in `AGENTS.md`)
 
 See [docs/release-notes/RELEASE_NOTES_1.1.2.md](docs/release-notes/RELEASE_NOTES_1.1.2.md) for the full release notes.
@@ -115,12 +138,12 @@ Post-release cleanup: completes memory surface removal, improves Claude/Codex ho
 
 ### Changed
 
-- Claude hooks (`acm-receipt-guard.sh`, `acm-session-context.sh`, `acm-stop-guard.sh`) — improved error handling and robustness
+- Claude hooks (`awm-receipt-guard.sh`, `awm-session-context.sh`, `awm-stop-guard.sh`) — improved error handling and robustness
 - `AGENTS.md` and `CLAUDE.md` — updated for post-memory workflow; AMM integration notes added
-- Init templates (`starter-contract`, `detailed-planning-enforcement`) — updated `AGENTS.md`, `CLAUDE.md`, and `acm-rules.yaml` to reflect memory removal and hook improvements
+- Init templates (`starter-contract`, `detailed-planning-enforcement`) — updated `AGENTS.md`, `CLAUDE.md`, and `awm-rules.yaml` to reflect memory removal and hook improvements
 - Skill-pack docs (`SKILL.md`, Claude/Codex/OpenCode READMEs) — AMM migration notes added
-- `acm health` — `unknown_tags` check now only inspects pointer tags; stale memory tag references removed from canonical tags
-- `acm fetch` — cleaned up dead memory-key code paths
+- `awm health` — `unknown_tags` check now only inspects pointer tags; stale memory tag references removed from canonical tags
+- `awm fetch` — cleaned up dead memory-key code paths
 - `spec/v1/README.md` — updated tool count and surface descriptions
 - Web dashboard — removed Memories nav link from all pages; removed memory-related CSS and JS
 
@@ -129,7 +152,7 @@ Post-release cleanup: completes memory surface removal, improves Claude/Codex ho
 - `web/memories.html` — Memories page fully removed from web dashboard
 - `spec/v1/shared.schema.json` — remaining memory-era schema definitions removed
 - `spec/v1/cli.result.schema.json` — remaining memory result definitions removed
-- `skills/acm-broker/assets/requests/mcp_memory.json` and `memory.json` — request templates removed
+- `skills/awm-broker/assets/requests/mcp_memory.json` and `memory.json` — request templates removed
 - `canonical_tags.json` — `memory` tag removed from embedded tag dictionary
 
 See [docs/release-notes/RELEASE_NOTES_1.1.1.md](docs/release-notes/RELEASE_NOTES_1.1.1.md) for the full release notes.
@@ -140,7 +163,7 @@ Memory subsystem removed in favor of [Agent Memory Manager (AMM)](https://github
 
 ### Added
 
-- `docs/deprecation/memory-removal.md` — migration guidance for adopters moving from ACM memory to AMM
+- `docs/deprecation/memory-removal.md` — migration guidance for adopters moving from AWM memory to AMM
 
 ### Changed
 
@@ -148,12 +171,12 @@ Memory subsystem removed in favor of [Agent Memory Manager (AMM)](https://github
 - `health` reports 10 check categories (down from 11); `weak_memories` removed, `unknown_tags` inspects pointer tags only
 - `history` entity list is now `all|work|receipt|run` (memory entity removed)
 - MCP tool catalog exposes 12 tools (down from 13)
-- Claude command pack produces 7 slash commands (down from 8); `/acm-memory` removed
-- All skill-pack and documentation references to `acm memory` and "durable memory" removed
+- Claude command pack produces 7 slash commands (down from 8); `/awm-memory` removed
+- All skill-pack and documentation references to `awm memory` and "durable memory" removed
 
 ### Removed
 
-- `acm memory` command — CLI, MCP tool, HTTP API, command dispatch, and all contract types
+- `awm memory` command — CLI, MCP tool, HTTP API, command dispatch, and all contract types
 - `fetch mem:<id>` key lookups — memory keys return not-found
 - `/api/memories` HTTP routes and web dashboard Memories page
 - Storage adapter methods, query builders, and domain normalization for memory persistence
@@ -162,37 +185,37 @@ Memory subsystem removed in favor of [Agent Memory Manager (AMM)](https://github
 
 ### Migration
 
-- Database migration DDL preserved — existing `acm_memories` and `acm_memory_candidates` tables remain inert
+- Database migration DDL preserved — existing `awm_memories` and `awm_memory_candidates` tables remain inert
 - Direct upgrade from 1.0.0; no data migration required
-- Adopters using `acm memory` should adopt AMM before upgrading
+- Adopters using `awm memory` should adopt AMM before upgrading
 - See `docs/deprecation/memory-removal.md` for detailed guidance
 
 See [docs/release-notes/RELEASE_NOTES_1.1.0.md](docs/release-notes/RELEASE_NOTES_1.1.0.md) for the full release notes.
 
 ## [1.0.0] - 2026-03-15
 
-Initial public release of acm (agent-context-manager).
+Initial public release of awm (agent-workflow-manager).
 
 ### Added
 
 - Core agent workflow: `context`, `work`, `memory`, `verify`, `done`
 - Supporting surfaces: `fetch`, `review`, `history`
 - Human-facing setup: `init`, `sync`, `health`, `status`
-- Backend-only `export` surface via `acm run` or MCP
+- Backend-only `export` surface via `awm run` or MCP
 - Init templates: `starter-contract`, `detailed-planning-enforcement`, `verify-generic`, `verify-go`, `verify-ts`, `verify-python`, `verify-rust`, `codex-pack`, `opencode-pack`, `claude-command-pack`, `claude-hooks`, `git-hooks-precommit`
 - Agent integrations: Claude Code (slash commands), Codex (global skill), OpenCode (repo-local companion docs), MCP (13 tools)
 - Storage backends: SQLite (zero-config default) and Postgres (multi-writer)
-- Web dashboard (`acm-web`): Board, Memories, Status, Health pages with Docker support
-- Configuration: rules, tags, tests, workflows in `.acm/` YAML files
+- Web dashboard (`awm-web`): Board, Memories, Status, Health pages with Docker support
+- Configuration: rules, tags, tests, workflows in `.awm/` YAML files
 - Wire contract: `spec/v1/` with full JSON schema definitions and CLI/MCP parity
 - Documentation: README, getting-started guide, concepts, feature-plans, SQLite operations, logging standards, examples
 - Four adoption modes: plans-only, plans+memory, governed workflow, full brokered flow
 
 See [docs/release-notes/RELEASE_NOTES_1.0.0.md](docs/release-notes/RELEASE_NOTES_1.0.0.md) for the full release notes.
 
-[1.2.1]: https://github.com/BonzTM/agent-context-manager/releases/tag/1.2.1
-[1.2.0]: https://github.com/BonzTM/agent-context-manager/releases/tag/1.2.0
-[1.1.2]: https://github.com/BonzTM/agent-context-manager/releases/tag/1.1.2
-[1.1.1]: https://github.com/BonzTM/agent-context-manager/releases/tag/1.1.1
-[1.1.0]: https://github.com/BonzTM/agent-context-manager/releases/tag/1.1.0
-[1.0.0]: https://github.com/BonzTM/agent-context-manager/releases/tag/1.0.0
+[1.2.1]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.2.1
+[1.2.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.2.0
+[1.1.2]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.1.2
+[1.1.1]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.1.1
+[1.1.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.1.0
+[1.0.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.0.0

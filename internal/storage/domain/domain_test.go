@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestMergeIncomingWorkPlanTasksPreservesExistingMetadata(t *testing.T) {
@@ -16,7 +16,7 @@ func TestMergeIncomingWorkPlanTasksPreservesExistingMetadata(t *testing.T) {
 		DependsOn:          []string{"spec:merge"},
 		AcceptanceCriteria: []string{"acceptance survives merge"},
 		References:         []string{"docs/feature-plans.md"},
-		ExternalRefs:       []string{"jira:ACM-42"},
+		ExternalRefs:       []string{"jira:AWM-42"},
 		BlockedReason:      "waiting on review",
 		Evidence:           []string{"verifyrun:seed"},
 	}}
@@ -48,7 +48,7 @@ func TestMergeIncomingWorkPlanTasksPreservesExistingMetadata(t *testing.T) {
 	if !reflect.DeepEqual(task.References, []string{"docs/feature-plans.md"}) {
 		t.Fatalf("expected references to survive merge, got %+v", task.References)
 	}
-	if !reflect.DeepEqual(task.ExternalRefs, []string{"jira:ACM-42"}) {
+	if !reflect.DeepEqual(task.ExternalRefs, []string{"jira:AWM-42"}) {
 		t.Fatalf("expected external refs to survive merge, got %+v", task.ExternalRefs)
 	}
 	if task.BlockedReason != "" {

@@ -1,16 +1,16 @@
 # MCP Reference
 
-This document provides a detailed reference for the Model Context Protocol (MCP) interface of ACM.
+This document provides a detailed reference for the Model Context Protocol (MCP) interface of AWM.
 
 ## Overview
 
-The `acm-mcp` binary is a JSON-RPC 2.0 stdio server that implements the Model Context Protocol. It allows LLMs and runtimes to discover and call ACM tools for context management, task tracking, and workflow governance.
+The `awm-mcp` binary is a JSON-RPC 2.0 stdio server that implements the Model Context Protocol. It allows LLMs and runtimes to discover and call AWM tools for context management, task tracking, and workflow governance.
 
-For a detailed guide on how to wire ACM into your specific runtime, see the [Integration Guide](integration.md).
+For a detailed guide on how to wire AWM into your specific runtime, see the [Integration Guide](integration.md).
 
 ## Protocol
 
-ACM uses the standard MCP JSON-RPC 2.0 protocol over standard input and output (stdio). Communication is line-delimited JSON.
+AWM uses the standard MCP JSON-RPC 2.0 protocol over standard input and output (stdio). Communication is line-delimited JSON.
 
 ## Methods
 
@@ -39,14 +39,14 @@ Twelve tools are exposed through the MCP interface:
 | **Context** | `context`, `fetch`, `history` | Establish task context, hydrate file pointers, and recall history. |
 | **Execution** | `work`, `sync` | Manage task progress, subtasks, and sync local config. |
 | **Governance** | `verify`, `review`, `done` | Run automated tests, satisfy workflow gates, and close tasks. |
-| **Admin** | `health`, `status`, `init`, `export` | Manage the ACM environment and export task data. |
+| **Admin** | `health`, `status`, `init`, `export` | Manage the AWM environment and export task data. |
 
 ## Verification vs Review
 
 `verify` and `review` are intentionally different:
 
-- `verify` runs deterministic repo-defined executable checks from `.acm/acm-tests.yaml` and updates `verify:tests`.
-- `review` satisfies one named workflow gate from `.acm/acm-workflows.yaml`. In run mode, it executes that gate's `run` block and records review attempts for one review task such as `review:cross-llm`.
+- `verify` runs deterministic repo-defined executable checks from `.awm/awm-tests.yaml` and updates `verify:tests`.
+- `review` satisfies one named workflow gate from `.awm/awm-workflows.yaml`. In run mode, it executes that gate's `run` block and records review attempts for one review task such as `review:cross-llm`.
 
 | Question | Tool |
 |---|---|
@@ -64,15 +64,15 @@ The typical governed closeout sequence is:
 ## Error Handling
 
 ### JSON-RPC Errors
-ACM uses standard JSON-RPC 2.0 error codes:
+AWM uses standard JSON-RPC 2.0 error codes:
 - `-32700`: Parse error
 - `-32600`: Invalid Request
 - `-32601`: Method not found
 - `-32602`: Invalid params
 - `-32603`: Internal error
 
-### ACM Application Errors
-When a tool call fails but the protocol is correct, ACM returns a result with `isError: true` and a JSON string in the content field containing:
+### AWM Application Errors
+When a tool call fails but the protocol is correct, AWM returns a result with `isError: true` and a JSON string in the content field containing:
 - `status`: "error"
 - `message`: A descriptive error message
-- `code`: An ACM-specific error code (e.g., `not_found`, `validation_failed`, `precondition_failed`)
+- `code`: An AWM-specific error code (e.g., `not_found`, `validation_failed`, `precondition_failed`)

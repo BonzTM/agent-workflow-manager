@@ -1,0 +1,58 @@
+# Save this as .awm/awm-tests.yaml (preferred) or awm-tests.yaml in the project root.
+# Language-agnostic starter verification file with repo-local feature-plan validation.
+
+version: awm.tests.v1
+
+defaults:
+  cwd: .
+  timeout_sec: 300
+
+tests:
+  - id: smoke
+    summary: Confirm AWM can load repo-local setup and report current status
+    command:
+      argv: ["awm", "status", "--project-root", "."]
+    select:
+      always_run: true
+    expected:
+      exit_code: 0
+
+  - id: repo-diff-check
+    summary: Catch whitespace errors and unresolved merge markers in tracked changes
+    command:
+      argv: ["git", "diff", "--check"]
+    select:
+      phases: ["execute", "review"]
+      changed_paths_any: ["**"]
+    expected:
+      exit_code: 0
+
+  - id: repo-status
+    summary: Ensure git can still read the working tree after a change
+    command:
+      argv: ["git", "status", "--short", "--untracked-files=no"]
+    select:
+      phases: ["review"]
+      changed_paths_any: ["**"]
+    expected:
+      exit_code: 0
+
+  - id: feature-plan-help
+    summary: Ensure the repo-local feature-plan validator is runnable
+    command:
+      argv: ["python3", "scripts/awm-feature-plan-validate.py", "--help"]
+    select:
+      phases: ["execute", "review"]
+      changed_paths_any: ["AGENTS.md", "CLAUDE.md", ".awm/**", "README.md", "docs/**", "scripts/**"]
+    expected:
+      exit_code: 0
+
+  - id: feature-plan-validate
+    summary: Validate the repo-local feature plan schema for active feature work
+    command:
+      argv: ["python3", "scripts/awm-feature-plan-validate.py"]
+    select:
+      phases: ["execute", "review"]
+      changed_paths_any: ["**"]
+    expected:
+      exit_code: 0

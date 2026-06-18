@@ -1,0 +1,39 @@
+# Save this as .awm/awm-tests.yaml (preferred) or awm-tests.yaml in the project root.
+# Rust-oriented starter verification file for a new repo.
+# Keep the structure, then swap argv/selectors to match your workspace layout and lint policy.
+
+version: awm.tests.v1
+
+defaults:
+  cwd: .
+  timeout_sec: 300
+
+tests:
+  - id: smoke
+    summary: Run cargo tests on every verification pass
+    command:
+      argv: ["cargo", "test"]
+    select:
+      always_run: true
+    expected:
+      exit_code: 0
+
+  - id: cargo-check
+    summary: Ensure Rust targets still typecheck
+    command:
+      argv: ["cargo", "check", "--all-targets"]
+    select:
+      phases: ["execute", "review"]
+      changed_paths_any: ["src/**", "crates/**", "tests/**", "benches/**", "examples/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"]
+    expected:
+      exit_code: 0
+
+  - id: cargo-fmt
+    summary: Check Rust formatting before closing changes
+    command:
+      argv: ["cargo", "fmt", "--all", "--", "--check"]
+    select:
+      phases: ["review"]
+      changed_paths_any: ["src/**", "crates/**", "tests/**", "benches/**", "examples/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"]
+    expected:
+      exit_code: 0

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 func (s *Service) Health(ctx context.Context, payload v1.HealthPayload) (v1.HealthResult, *core.APIError) {
@@ -341,7 +341,7 @@ func collectInitCandidatePathsFromWalk(ctx context.Context, projectRoot string) 
 
 		if entry.IsDir() {
 			switch entry.Name() {
-			case ".git", ".acm":
+			case ".git", ".awm":
 				return filepath.SkipDir
 			}
 			return nil
@@ -473,7 +473,7 @@ func isManagedProjectPath(raw string) bool {
 		return true
 	}
 
-	return normalized == ".acm" || strings.HasPrefix(normalized, ".acm/")
+	return normalized == ".awm" || strings.HasPrefix(normalized, ".awm/")
 }
 
 func healthCheckInternalError(operation string, err error) *core.APIError {

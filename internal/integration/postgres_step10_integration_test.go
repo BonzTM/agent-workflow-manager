@@ -14,14 +14,14 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
-	backendsvc "github.com/bonztm/agent-context-manager/internal/service/backend"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
+	backendsvc "github.com/bonztm/agent-workflow-manager/internal/service/backend"
 )
 
 const (
-	integrationDSNEnvVar = "ACM_PG_DSN"
+	integrationDSNEnvVar = "AWM_PG_DSN"
 )
 
 func TestRuntimePostgresIntegration_Step10Evidence(t *testing.T) {
@@ -51,7 +51,7 @@ func TestRuntimePostgresIntegration_Step10Evidence(t *testing.T) {
 	pointers := []seedPointer{
 		{
 			Key:         "rule.step10.integration",
-			Path:        ".acm/acm-rules.yaml",
+			Path:        ".awm/awm-rules.yaml",
 			Label:       "Step 10 integration rule",
 			Description: "Postgres integration evidence must remain receipt scoped for runtime and done flows.",
 			Tags:        []string{"postgres", "integration", "runtime", "done", "enforcement-hard"},
@@ -122,7 +122,7 @@ func TestRuntimePostgresIntegration_Step10Evidence(t *testing.T) {
 	var persistedFiles []string
 	if err := pool.QueryRow(ctx, `
 SELECT status, outcome, files_changed
-FROM acm_runs
+FROM awm_runs
 WHERE run_id = $1
 `, reportResult.RunID).Scan(&persistedStatus, &persistedOutcome, &persistedFiles); err != nil {
 		t.Fatalf("query persisted run summary: %v", err)
@@ -142,14 +142,14 @@ func assertMigrationsApplied(t *testing.T, ctx context.Context, pool *pgxpool.Po
 	t.Helper()
 
 	var relName string
-	if err := pool.QueryRow(ctx, `SELECT COALESCE(to_regclass('public.acm_schema_migrations')::text, '')`).Scan(&relName); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT COALESCE(to_regclass('public.awm_schema_migrations')::text, '')`).Scan(&relName); err != nil {
 		t.Fatalf("query schema migration relation: %v", err)
 	}
-	if relName != "acm_schema_migrations" {
-		t.Fatalf("expected acm_schema_migrations relation, got %q", relName)
+	if relName != "awm_schema_migrations" {
+		t.Fatalf("expected awm_schema_migrations relation, got %q", relName)
 	}
 
-	rows, err := pool.Query(ctx, `SELECT migration_name FROM acm_schema_migrations ORDER BY migration_name`)
+	rows, err := pool.Query(ctx, `SELECT migration_name FROM awm_schema_migrations ORDER BY migration_name`)
 	if err != nil {
 		t.Fatalf("query migration records: %v", err)
 	}
@@ -168,19 +168,19 @@ func assertMigrationsApplied(t *testing.T, ctx context.Context, pool *pgxpool.Po
 	}
 
 	want := []string{
-		"0001_acm_foundation.sql",
-		"0002_acm_propose_memory.sql",
-		"0003_acm_sync.sql",
-		"0004_acm_work_items.sql",
-		"0005_acm_work_plans.sql",
-		"0006_acm_work_plan_hierarchy.sql",
-		"0007_acm_verification_runs.sql",
-		"0008_acm_run_history_indexes.sql",
-		"0010_acm_review_attempts.sql",
-		"0011_acm_receipt_scope_pointer_paths.sql",
-		"0012_acm_initial_scope_and_baselines.sql",
-		"0013_acm_complete_status.sql",
-		"0014_acm_superseded_status.sql",
+		"0001_awm_foundation.sql",
+		"0002_awm_propose_memory.sql",
+		"0003_awm_sync.sql",
+		"0004_awm_work_items.sql",
+		"0005_awm_work_plans.sql",
+		"0006_awm_work_plan_hierarchy.sql",
+		"0007_awm_verification_runs.sql",
+		"0008_awm_run_history_indexes.sql",
+		"0010_awm_review_attempts.sql",
+		"0011_awm_receipt_scope_pointer_paths.sql",
+		"0012_awm_initial_scope_and_baselines.sql",
+		"0013_awm_complete_status.sql",
+		"0014_awm_superseded_status.sql",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected migration record set: got %v want %v", got, want)
@@ -199,7 +199,7 @@ func seedPointerRow(t *testing.T, ctx context.Context, pool *pgxpool.Pool, proje
 	t.Helper()
 
 	if _, err := pool.Exec(ctx, `
-INSERT INTO acm_pointers (
+INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
 	path,
@@ -231,7 +231,7 @@ func upsertReceiptScope(t *testing.T, ctx context.Context, pool *pgxpool.Pool, r
 	t.Helper()
 
 	if _, err := pool.Exec(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -283,7 +283,7 @@ func lookupPointerPathsByKey(t *testing.T, ctx context.Context, pool *pgxpool.Po
 
 	rows, err := pool.Query(ctx, `
 SELECT path
-FROM acm_pointers
+FROM awm_pointers
 WHERE project_id = $1
 	AND pointer_key = ANY($2)
 ORDER BY path ASC

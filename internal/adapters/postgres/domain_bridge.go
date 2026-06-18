@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	"github.com/bonztm/agent-context-manager/internal/core"
-	storagedomain "github.com/bonztm/agent-context-manager/internal/storage/domain"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
 const (

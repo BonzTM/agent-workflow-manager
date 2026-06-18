@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'dir=\"$PWD\"; while [ \"$dir\" != \"/\" ] && [ ! -d \"$dir/.codex/hooks\" ]; do dir=$(dirname \"$dir\"); done; if [ ! -x \"$dir/.codex/hooks/acm-session-context.sh\" ]; then exit 0; fi; exec \"$dir/.codex/hooks/acm-session-context.sh\"'",
-            "statusMessage": "injecting ACM session context"
+            "command": "bash -lc 'dir=\"$PWD\"; while [ \"$dir\" != \"/\" ] && [ ! -d \"$dir/.codex/hooks\" ]; do dir=$(dirname \"$dir\"); done; if [ ! -x \"$dir/.codex/hooks/awm-session-context.sh\" ]; then exit 0; fi; exec \"$dir/.codex/hooks/awm-session-context.sh\"'",
+            "statusMessage": "injecting AWM session context"
           }
         ]
       }
@@ -17,8 +17,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'dir=\"$PWD\"; while [ \"$dir\" != \"/\" ] && [ ! -d \"$dir/.codex/hooks\" ]; do dir=$(dirname \"$dir\"); done; if [ ! -x \"$dir/.codex/hooks/acm-prompt-guard.sh\" ]; then exit 0; fi; exec \"$dir/.codex/hooks/acm-prompt-guard.sh\"'",
-            "statusMessage": "checking ACM prompt flow"
+            "command": "bash -lc 'dir=\"$PWD\"; while [ \"$dir\" != \"/\" ] && [ ! -d \"$dir/.codex/hooks\" ]; do dir=$(dirname \"$dir\"); done; if [ ! -x \"$dir/.codex/hooks/awm-prompt-guard.sh\" ]; then exit 0; fi; exec \"$dir/.codex/hooks/awm-prompt-guard.sh\"'",
+            "statusMessage": "checking AWM prompt flow"
           }
         ]
       }
@@ -28,8 +28,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'dir=\"$PWD\"; while [ \"$dir\" != \"/\" ] && [ ! -d \"$dir/.codex/hooks\" ]; do dir=$(dirname \"$dir\"); done; if [ ! -x \"$dir/.codex/hooks/acm-stop-guard.sh\" ]; then exit 0; fi; exec \"$dir/.codex/hooks/acm-stop-guard.sh\"'",
-            "statusMessage": "checking ACM closeout reminder"
+            "command": "bash -lc 'dir=\"$PWD\"; while [ \"$dir\" != \"/\" ] && [ ! -d \"$dir/.codex/hooks\" ]; do dir=$(dirname \"$dir\"); done; if [ ! -x \"$dir/.codex/hooks/awm-stop-guard.sh\" ]; then exit 0; fi; exec \"$dir/.codex/hooks/awm-stop-guard.sh\"'",
+            "statusMessage": "checking AWM closeout reminder"
           }
         ]
       }

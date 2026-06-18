@@ -8,18 +8,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 const (
 	DefaultProjectRoot              = "."
-	DefaultInitCandidatesPath       = ".acm/init_candidates.json"
-	canonicalRulesPrimarySourcePath = ".acm/acm-rules.yaml"
-	canonicalRulesSecondaryPath     = "acm-rules.yaml"
-	verifyTestsPrimarySourcePath    = ".acm/acm-tests.yaml"
-	verifyTestsSecondarySourcePath  = "acm-tests.yaml"
-	workflowPrimarySourcePath       = ".acm/acm-workflows.yaml"
-	workflowSecondarySourcePath     = "acm-workflows.yaml"
+	DefaultInitCandidatesPath       = ".awm/init_candidates.json"
+	canonicalRulesPrimarySourcePath = ".awm/awm-rules.yaml"
+	canonicalRulesSecondaryPath     = "awm-rules.yaml"
+	verifyTestsPrimarySourcePath    = ".awm/awm-tests.yaml"
+	verifyTestsSecondarySourcePath  = "awm-tests.yaml"
+	workflowPrimarySourcePath       = ".awm/awm-workflows.yaml"
+	workflowSecondarySourcePath     = "awm-workflows.yaml"
 )
 
 func NormalizeProjectRoot(projectRoot string) string {
@@ -35,7 +35,7 @@ func NormalizeProjectRoot(projectRoot string) string {
 }
 
 func EnsureProjectScaffold(projectRoot, rulesFile string) error {
-	if err := os.MkdirAll(filepath.Join(projectRoot, ".acm"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(projectRoot, ".awm"), 0o755); err != nil {
 		return err
 	}
 	if err := ensureRuntimeFiles(projectRoot); err != nil {
@@ -132,15 +132,15 @@ func ensureEnvExample(projectRoot string) error {
 	}
 
 	entries := []string{
-		"# ACM runtime configuration",
+		"# AWM runtime configuration",
 		"# Copy this file to .env to override local defaults.",
-		"ACM_PROJECT_ID=myproject",
-		"ACM_PROJECT_ROOT=/path/to/repo",
-		"ACM_SQLITE_PATH=.acm/context.db",
-		"ACM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable",
-		"ACM_UNBOUNDED=false",
-		"ACM_LOG_LEVEL=info",
-		"ACM_LOG_SINK=stderr",
+		"AWM_PROJECT_ID=myproject",
+		"AWM_PROJECT_ROOT=/path/to/repo",
+		"AWM_SQLITE_PATH=.awm/context.db",
+		"AWM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable",
+		"AWM_UNBOUNDED=false",
+		"AWM_LOG_LEVEL=info",
+		"AWM_LOG_SINK=stderr",
 	}
 
 	if len(existingKeys) == 0 && len(raw) == 0 {
@@ -179,7 +179,7 @@ func ensureEnvExample(projectRoot string) error {
 		}
 	}
 	if len(raw) > 0 {
-		if _, err := file.WriteString("\n# ACM runtime configuration\n"); err != nil {
+		if _, err := file.WriteString("\n# AWM runtime configuration\n"); err != nil {
 			return err
 		}
 	}

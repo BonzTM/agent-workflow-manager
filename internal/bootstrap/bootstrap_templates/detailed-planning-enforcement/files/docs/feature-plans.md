@@ -1,18 +1,18 @@
-# ACM Feature Plans
+# AWM Feature Plans
 
-This file defines the richer feature planning contract that this repo layers on top of ACM's built-in plan and task schema.
+This file defines the richer feature planning contract that this repo layers on top of AWM's built-in plan and task schema.
 
-ACM remains the system of record for live plans and task state. This document makes the expected structure explicit in version control so spec maturity, refined specs, implementation outlines, and atomic tasks are visible outside work storage.
+AWM remains the system of record for live plans and task state. This document makes the expected structure explicit in version control so spec maturity, refined specs, implementation outlines, and atomic tasks are visible outside work storage.
 
 ## When It Applies
 
 Use this contract for net-new feature work and large capability expansions.
 
-Do not force it onto small bugfixes, narrow maintenance tasks, review-only work, or workflow-governance changes. Those can keep using thinner ACM plans.
+Do not force it onto small bugfixes, narrow maintenance tasks, review-only work, or workflow-governance changes. Those can keep using thinner AWM plans.
 
 ## Root Feature Plan
 
-Create one root ACM plan with:
+Create one root AWM plan with:
 
 - `kind=feature`
 - `objective`
@@ -73,7 +73,7 @@ The root feature plan holds the whole feature contract. Child stream plans hold 
 Root feature plan:
 
 ```bash
-acm work --project <project-id> --receipt-id <feature-receipt-id> --mode merge   --plan-json '{
+awm work --project <project-id> --receipt-id <feature-receipt-id> --mode merge   --plan-json '{
     "title":"History search export surface",
     "kind":"feature",
     "objective":"Add a first-class export surface for work, receipt, and run history without weakening current scope guarantees.",
@@ -86,7 +86,7 @@ acm work --project <project-id> --receipt-id <feature-receipt-id> --mode merge  
     "in_scope":["CLI export command", "MCP parity", "history run summaries"],
     "out_of_scope":["new storage backend", "UI dashboard"],
     "constraints":["Keep existing history-discovery payloads backward compatible"],
-    "references":["README.md", "internal/service/backend/history.go", "cmd/acm/routes.go"]
+    "references":["README.md", "internal/service/backend/history.go", "cmd/awm/routes.go"]
   }'   --tasks-json '[
     {"key":"stage:spec-outline","summary":"Spec outline","status":"complete"},
     {"key":"spec:export-capabilities","summary":"Define required export capabilities","status":"complete","parent_task_key":"stage:spec-outline","acceptance_criteria":["Capabilities cover CLI, MCP, and done impact"]},
@@ -102,7 +102,7 @@ acm work --project <project-id> --receipt-id <feature-receipt-id> --mode merge  
 Child stream plan:
 
 ```bash
-acm work --project <project-id> --receipt-id <stream-receipt-id> --mode merge   --plan-json '{
+awm work --project <project-id> --receipt-id <stream-receipt-id> --mode merge   --plan-json '{
     "title":"History search export surface - MCP stream",
     "kind":"feature_stream",
     "parent_plan_key":"plan:<feature-receipt-id>",
@@ -110,7 +110,7 @@ acm work --project <project-id> --receipt-id <stream-receipt-id> --mode merge   
     "status":"in_progress",
     "in_scope":["MCP tool definition", "MCP invoke coverage"],
     "out_of_scope":["CLI command help"],
-    "references":["cmd/acm-mcp/main.go", "internal/adapters/mcp"]
+    "references":["cmd/awm-mcp/main.go", "internal/adapters/mcp"]
   }'   --tasks-json '[
     {"key":"impl:mcp-tool","summary":"Expose the MCP export tool","status":"in_progress","acceptance_criteria":["Tool schema and invoke wiring are implemented"]},
     {"key":"impl:mcp-tests","summary":"Add MCP contract coverage","status":"pending","depends_on":["impl:mcp-tool"],"acceptance_criteria":["MCP invoke tests cover the export payload and response"]},
@@ -120,20 +120,20 @@ acm work --project <project-id> --receipt-id <stream-receipt-id> --mode merge   
 
 ## Verification
 
-Use `acm verify` with the active receipt or plan context so the repo-local validator can inspect the live plan:
+Use `awm verify` with the active receipt or plan context so the repo-local validator can inspect the live plan:
 
 ```bash
-acm verify --project <project-id> --receipt-id <receipt-id> --phase review --file-changed src/main.ts
+awm verify --project <project-id> --receipt-id <receipt-id> --phase review --file-changed src/main.ts
 ```
 
-That verify check executes `scripts/acm-feature-plan-validate.py` with the active receipt or plan context.
+That verify check executes `scripts/awm-feature-plan-validate.py` with the active receipt or plan context.
 
 For plans in this feature schema, it fails when required metadata, stage grouping, hierarchy links, `verify:tests`, or leaf-task acceptance criteria are missing. For non-feature plans, or receipt contexts that do not materialize a concrete plan, the script exits cleanly and the gate is not selected as a blocker.
 
 ## Completion Gates
 
-Keep feature-plan shape enforcement in `verify`, not `.acm/acm-workflows.yaml`.
+Keep feature-plan shape enforcement in `verify`, not `.awm/awm-workflows.yaml`.
 
-- `.acm/acm-workflows.yaml` remains responsible for completion gates such as `verify:tests` and runnable review tasks.
+- `.awm/awm-workflows.yaml` remains responsible for completion gates such as `verify:tests` and runnable review tasks.
 - The feature-plan validator acts as an additional verify-time gate for richer planning discipline.
 - If a future workflow needs a feature-specific final gate, add it carefully: workflow selectors do not currently distinguish thin plans from `kind=feature` plans by themselves.

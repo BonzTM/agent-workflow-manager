@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestSQLiteMigrations_BackfillReceiptScopeInitialScopePaths(t *testing.T) {
@@ -25,7 +25,7 @@ func TestSQLiteMigrations_BackfillReceiptScopeInitialScopePaths(t *testing.T) {
 	})
 
 	if _, err := db.ExecContext(ctx, `
-CREATE TABLE IF NOT EXISTS acm_schema_migrations (
+CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 	migration_name TEXT PRIMARY KEY,
 	applied_at INTEGER NOT NULL DEFAULT (unixepoch())
 )`); err != nil {
@@ -33,21 +33,21 @@ CREATE TABLE IF NOT EXISTS acm_schema_migrations (
 	}
 
 	for _, migration := range migrations {
-		if migration.Name == "0011_acm_receipt_scope_pointer_paths.sql" {
+		if migration.Name == "0011_awm_receipt_scope_pointer_paths.sql" {
 			break
 		}
 		if _, err := db.ExecContext(ctx, migration.SQL); err != nil {
 			t.Fatalf("apply pre-0011 migration %s: %v", migration.Name, err)
 		}
 		if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_schema_migrations (migration_name) VALUES (?)
+INSERT INTO awm_schema_migrations (migration_name) VALUES (?)
 `, migration.Name); err != nil {
 			t.Fatalf("record pre-0011 migration %s: %v", migration.Name, err)
 		}
 	}
 
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_pointers (
+INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
 	path,
@@ -63,7 +63,7 @@ INSERT INTO acm_pointers (
 		t.Fatalf("seed pointer: %v", err)
 	}
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -115,7 +115,7 @@ func TestSQLiteMigrations_BackfillInitialScopePathsAndDiscoveredPaths(t *testing
 	})
 
 	if _, err := db.ExecContext(ctx, `
-CREATE TABLE IF NOT EXISTS acm_schema_migrations (
+CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 	migration_name TEXT PRIMARY KEY,
 	applied_at INTEGER NOT NULL DEFAULT (unixepoch())
 )`); err != nil {
@@ -123,21 +123,21 @@ CREATE TABLE IF NOT EXISTS acm_schema_migrations (
 	}
 
 	for _, migration := range migrations {
-		if migration.Name == "0012_acm_initial_scope_and_baselines.sql" {
+		if migration.Name == "0012_awm_initial_scope_and_baselines.sql" {
 			break
 		}
 		if _, err := db.ExecContext(ctx, migration.SQL); err != nil {
 			t.Fatalf("apply pre-0012 migration %s: %v", migration.Name, err)
 		}
 		if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_schema_migrations (migration_name) VALUES (?)
+INSERT INTO awm_schema_migrations (migration_name) VALUES (?)
 `, migration.Name); err != nil {
 			t.Fatalf("record pre-0012 migration %s: %v", migration.Name, err)
 		}
 	}
 
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -154,7 +154,7 @@ INSERT INTO acm_receipts (
 	}
 
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_work_plans (
+INSERT INTO awm_work_plans (
 	project_id,
 	plan_key,
 	receipt_id,

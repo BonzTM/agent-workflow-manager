@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agent-context-manager.dev/spec/v1/cli.result.schema.json",
-  "title": "acm CLI v1 result envelope",
+  "$id": "https://agent-workflow-manager.dev/spec/v1/cli.result.schema.json",
+  "title": "awm CLI v1 result envelope",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,7 +13,7 @@
   ],
   "properties": {
     "version": {
-      "const": "acm.v1"
+      "const": "awm.v1"
     },
     "command": {
       "$ref": "shared.schema.json#/$defs/commandName"

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
 )
 
 type decoratorFakeService struct {

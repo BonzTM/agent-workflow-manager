@@ -15,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
-	storagedomain "github.com/bonztm/agent-context-manager/internal/storage/domain"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
 type Repository struct {
@@ -157,7 +157,7 @@ func (r *Repository) ListPointerInventory(ctx context.Context, projectID string)
 SELECT
 	path,
 	BOOL_OR(is_stale) AS is_stale
-FROM acm_pointers
+FROM awm_pointers
 WHERE project_id = $1
 GROUP BY path
 ORDER BY path ASC
@@ -209,7 +209,7 @@ func (r *Repository) UpsertPointerStubs(ctx context.Context, projectID string, s
 	for _, stub := range normalized {
 		isRule := strings.EqualFold(stub.Kind, "rule")
 		tag, execErr := tx.Exec(ctx, `
-INSERT INTO acm_pointers (
+INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
 	path,
@@ -517,7 +517,7 @@ func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpse
 	normalizedTasks := storagedomain.MergeIncomingWorkPlanTasks(current.Tasks, input.Tasks, mode)
 	if mode == core.WorkPlanModeReplace {
 		tag, err := tx.Exec(ctx, `
-DELETE FROM acm_work_plan_tasks
+DELETE FROM awm_work_plan_tasks
 WHERE project_id = $1
 	AND plan_key = $2
 `, projectID, planKey)
@@ -529,7 +529,7 @@ WHERE project_id = $1
 
 	for _, task := range normalizedTasks {
 		tag, err := tx.Exec(ctx, `
-INSERT INTO acm_work_plan_tasks (
+INSERT INTO awm_work_plan_tasks (
 	project_id,
 	plan_key,
 	task_key,
@@ -574,7 +574,7 @@ ON CONFLICT(project_id, plan_key, task_key) DO UPDATE SET
 		}
 		derivedStatus := derivePlanStatus(tasks)
 		if _, err := tx.Exec(ctx, `
-UPDATE acm_work_plans
+UPDATE awm_work_plans
 SET status = $3, updated_at = NOW()
 WHERE project_id = $1
 	AND plan_key = $2
@@ -619,7 +619,7 @@ func (r *Repository) LookupWorkPlan(ctx context.Context, input core.WorkPlanLook
 	if planKey == "" {
 		err := r.pool.QueryRow(ctx, `
 SELECT plan_key
-FROM acm_work_plans
+FROM awm_work_plans
 WHERE project_id = $1
 	AND receipt_id = $2
 ORDER BY updated_at DESC, plan_key ASC
@@ -688,8 +688,8 @@ SELECT
 	COUNT(*) FILTER (WHERE t.status = 'blocked')::bigint AS task_count_blocked,
 	COUNT(*) FILTER (WHERE t.status = 'complete')::bigint AS task_count_completed,
 	p.updated_at
-FROM acm_work_plans p
-LEFT JOIN acm_work_plan_tasks t
+FROM awm_work_plans p
+LEFT JOIN awm_work_plan_tasks t
 	ON t.project_id = p.project_id
 	AND t.plan_key = p.plan_key
 WHERE p.project_id = $1
@@ -722,7 +722,7 @@ WHERE p.project_id = $1
 	OR LOWER(COALESCE(p.parent_plan_key, '')) LIKE $%d ESCAPE '\'
 	OR EXISTS (
 		SELECT 1
-		FROM acm_work_plan_tasks wt
+		FROM awm_work_plan_tasks wt
 		WHERE wt.project_id = p.project_id
 			AND wt.plan_key = p.plan_key
 			AND (
@@ -870,10 +870,10 @@ SELECT
 	COALESCE(run.request_id, '') AS latest_request_id,
 	COALESCE(run.status, '') AS latest_status,
 	COALESCE(run.created_at, r.created_at) AS updated_at
-FROM acm_receipts r
+FROM awm_receipts r
 LEFT JOIN LATERAL (
 	SELECT run_id, request_id, status, created_at
-	FROM acm_runs
+	FROM awm_runs
 	WHERE project_id = r.project_id
 		AND receipt_id = r.receipt_id
 	ORDER BY created_at DESC, run_id DESC
@@ -891,7 +891,7 @@ WHERE r.project_id = $1
 	OR LOWER(COALESCE(r.phase, '')) LIKE $%d ESCAPE '\'
 	OR EXISTS (
 		SELECT 1
-		FROM acm_runs rr
+		FROM awm_runs rr
 		WHERE rr.project_id = r.project_id
 			AND rr.receipt_id = r.receipt_id
 			AND (
@@ -986,8 +986,8 @@ SELECT
 	run.files_changed,
 	run.outcome,
 	run.created_at
-FROM acm_runs run
-LEFT JOIN acm_receipts r
+FROM awm_runs run
+LEFT JOIN awm_receipts r
 	ON r.project_id = run.project_id
 	AND r.receipt_id = run.receipt_id
 WHERE run.project_id = $1
@@ -1085,8 +1085,8 @@ SELECT
 	run.files_changed,
 	run.outcome,
 	run.created_at
-FROM acm_runs run
-LEFT JOIN acm_receipts r
+FROM awm_runs run
+LEFT JOIN awm_receipts r
 	ON r.project_id = run.project_id
 	AND r.receipt_id = run.receipt_id
 WHERE run.project_id = $1
@@ -1127,7 +1127,7 @@ func listActiveWorkPlanTaskKeys(ctx context.Context, q pgxRowsQuerier, projectID
 SELECT
 	plan_key,
 	task_key
-FROM acm_work_plan_tasks
+FROM awm_work_plan_tasks
 WHERE project_id = $1
 	AND plan_key = ANY($2)
 	AND status NOT IN ('complete', 'superseded')
@@ -1222,7 +1222,7 @@ func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunRe
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -1248,7 +1248,7 @@ SET
 
 	var runID int64
 	err = tx.QueryRow(ctx, `
-INSERT INTO acm_runs (
+INSERT INTO awm_runs (
 	project_id,
 	request_id,
 	receipt_id,
@@ -1289,7 +1289,7 @@ func (r *Repository) UpsertReceiptScope(ctx context.Context, input core.ReceiptS
 	}
 
 	_, err = r.pool.Exec(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -1332,7 +1332,7 @@ func (r *Repository) SaveReviewAttempt(ctx context.Context, input core.ReviewAtt
 
 	var attemptID int64
 	err = r.pool.QueryRow(ctx, `
-INSERT INTO acm_review_attempts (
+INSERT INTO awm_review_attempts (
 	project_id,
 	receipt_id,
 	plan_key,
@@ -1397,7 +1397,7 @@ SELECT
 	stdout_excerpt,
 	stderr_excerpt,
 	created_at
-FROM acm_review_attempts
+FROM awm_review_attempts
 WHERE project_id = $1
   AND receipt_id = $2
   AND review_key = $3
@@ -1475,7 +1475,7 @@ func (r *Repository) SaveVerificationBatch(ctx context.Context, input core.Verif
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, `
-INSERT INTO acm_verification_batches (
+INSERT INTO awm_verification_batches (
 	batch_run_id,
 	project_id,
 	receipt_id,
@@ -1494,7 +1494,7 @@ INSERT INTO acm_verification_batches (
 
 	for _, result := range normalized.Results {
 		_, err := tx.Exec(ctx, `
-INSERT INTO acm_verification_results (
+INSERT INTO awm_verification_results (
 	batch_run_id,
 	project_id,
 	test_id,
@@ -1701,7 +1701,7 @@ func upsertWorkPlanRowTx(ctx context.Context, tx pgx.Tx, plan core.WorkPlan) err
 		receiptValue = strings.TrimSpace(plan.ReceiptID)
 	}
 	_, err := tx.Exec(ctx, `
-INSERT INTO acm_work_plans (
+INSERT INTO awm_work_plans (
 	project_id,
 	plan_key,
 	receipt_id,
@@ -1767,7 +1767,7 @@ SELECT
 	references_list,
 	external_refs,
 	updated_at
-FROM acm_work_plans
+FROM awm_work_plans
 WHERE project_id = $1
 	AND plan_key = $2
 `, projectID, planKey)
@@ -1832,7 +1832,7 @@ SELECT
 	outcome,
 	evidence,
 	updated_at
-FROM acm_work_plan_tasks
+FROM awm_work_plan_tasks
 WHERE project_id = $1
 	AND plan_key = $2
 ORDER BY task_key ASC
@@ -1890,7 +1890,7 @@ SELECT
 	references_list,
 	external_refs,
 	updated_at
-FROM acm_work_plans
+FROM awm_work_plans
 WHERE project_id = $1
 	AND plan_key = $2
 `, projectID, planKey)
@@ -1960,7 +1960,7 @@ SELECT
 	outcome,
 	evidence,
 	updated_at
-FROM acm_work_plan_tasks
+FROM awm_work_plan_tasks
 WHERE project_id = $1
 	AND plan_key = $2
 ORDER BY task_key ASC

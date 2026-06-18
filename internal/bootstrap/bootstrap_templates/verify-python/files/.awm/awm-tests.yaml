@@ -1,0 +1,39 @@
+# Save this as .awm/awm-tests.yaml (preferred) or awm-tests.yaml in the project root.
+# Python-oriented starter verification file for a new repo.
+# Keep the structure, then swap argv/selectors to match your environment manager and test commands.
+
+version: awm.tests.v1
+
+defaults:
+  cwd: .
+  timeout_sec: 300
+
+tests:
+  - id: smoke
+    summary: Run the default pytest suite on every verification pass
+    command:
+      argv: ["python", "-m", "pytest", "-q"]
+    select:
+      always_run: true
+    expected:
+      exit_code: 0
+
+  - id: python-unit
+    summary: Run Python tests when application code changes
+    command:
+      argv: ["python", "-m", "pytest"]
+    select:
+      phases: ["execute", "review"]
+      changed_paths_any: ["src/**", "python/**", "app/**", "lib/**", "tests/**", "test/**", "pyproject.toml", "requirements*.txt", "poetry.lock", "uv.lock"]
+    expected:
+      exit_code: 0
+
+  - id: python-compile
+    summary: Compile Python sources to catch syntax errors before closing changes
+    command:
+      argv: ["python", "-m", "compileall", "."]
+    select:
+      phases: ["review"]
+      changed_paths_any: ["src/**", "python/**", "app/**", "lib/**", "tests/**", "test/**", "pyproject.toml", "requirements*.txt", "poetry.lock", "uv.lock"]
+    expected:
+      exit_code: 0

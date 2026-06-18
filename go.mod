@@ -1,4 +1,4 @@
-module github.com/bonztm/agent-context-manager
+module github.com/bonztm/agent-workflow-manager
 
 go 1.26
 

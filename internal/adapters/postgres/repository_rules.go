@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func (r *Repository) SyncRulePointers(ctx context.Context, input core.RulePointerSyncInput) (core.RulePointerSyncResult, error) {
@@ -30,7 +30,7 @@ func (r *Repository) SyncRulePointers(ctx context.Context, input core.RulePointe
 	result := core.RulePointerSyncResult{}
 	for _, pointer := range normalized.Pointers {
 		tag, execErr := tx.Exec(ctx, `
-INSERT INTO acm_pointers (
+INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
 	path,
@@ -93,7 +93,7 @@ ON CONFLICT (project_id, pointer_key) DO UPDATE SET
 
 	if len(activeKeys) == 0 {
 		tag, execErr := tx.Exec(ctx, `
-DELETE FROM acm_pointers
+DELETE FROM awm_pointers
 WHERE project_id = $1
 	AND path = $2
 	AND is_rule = TRUE
@@ -104,7 +104,7 @@ WHERE project_id = $1
 		result.MarkedStale = int(tag.RowsAffected())
 	} else {
 		tag, execErr := tx.Exec(ctx, `
-DELETE FROM acm_pointers
+DELETE FROM awm_pointers
 WHERE project_id = $1
 	AND path = $2
 	AND is_rule = TRUE

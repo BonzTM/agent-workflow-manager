@@ -1,14 +1,14 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: verify-rust
-summary: Upgrade blank ACM test scaffolds to a Rust-oriented starter verify profile.
+summary: Upgrade blank AWM test scaffolds to a Rust-oriented starter verify profile.
 operations:
   - type: replace_if_pristine
-    target: .acm/acm-tests.yaml
-    source: files/.acm/acm-tests.yaml
+    target: .awm/awm-tests.yaml
+    source: files/.awm/awm-tests.yaml
     pristine:
       - blank_tests_v1
   - type: replace_if_pristine
-    target: acm-tests.yaml
-    source: files/.acm/acm-tests.yaml
+    target: awm-tests.yaml
+    source: files/.awm/awm-tests.yaml
     pristine:
       - blank_tests_v1

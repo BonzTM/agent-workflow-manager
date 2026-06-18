@@ -1,0 +1,3 @@
+interface:
+  display_name: "OpenCode Companion"
+  short_description: "Use repo-local AWM companion docs plus awm CLI/MCP for context, durable work, verification/review gates, and completion reporting"

@@ -16,14 +16,14 @@ func TestSQLiteMigrations_EnforcePointerLinkForeignKeys(t *testing.T) {
 	defer func() { _ = repo.Close() }()
 
 	if _, err := repo.db.ExecContext(ctx, `
-INSERT INTO acm_pointers (project_id, pointer_key, path, anchor, kind, label, description, tags_json, is_rule, is_stale)
+INSERT INTO awm_pointers (project_id, pointer_key, path, anchor, kind, label, description, tags_json, is_rule, is_stale)
 VALUES (?, ?, ?, '', 'code', ?, ?, '[]', 0, 0)
 `, "project.alpha", "code:from", "internal/from.go", "From", "from pointer"); err != nil {
 		t.Fatalf("insert source pointer: %v", err)
 	}
 
 	_, err = repo.db.ExecContext(ctx, `
-INSERT INTO acm_pointer_links (project_id, from_key, to_key)
+INSERT INTO awm_pointer_links (project_id, from_key, to_key)
 VALUES (?, ?, ?)
 `, "project.alpha", "code:from", "code:missing")
 	if err == nil {
@@ -65,14 +65,14 @@ func TestSQLiteDSNPragmas_ApplyToSecondConnection(t *testing.T) {
 	}
 
 	if _, err := conn1.ExecContext(ctx, `
-INSERT INTO acm_pointers (project_id, pointer_key, path, anchor, kind, label, description, tags_json, is_rule, is_stale)
+INSERT INTO awm_pointers (project_id, pointer_key, path, anchor, kind, label, description, tags_json, is_rule, is_stale)
 VALUES (?, ?, ?, '', 'code', ?, ?, '[]', 0, 0)
 `, "project.alpha", "code:from", "internal/from.go", "From", "from pointer"); err != nil {
 		t.Fatalf("insert source pointer: %v", err)
 	}
 
 	_, err = conn2.ExecContext(ctx, `
-INSERT INTO acm_pointer_links (project_id, from_key, to_key)
+INSERT INTO awm_pointer_links (project_id, from_key, to_key)
 VALUES (?, ?, ?)
 `, "project.alpha", "code:from", "code:missing")
 	if err == nil {

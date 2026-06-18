@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -447,7 +447,7 @@ func TestDone_PlanKeyOnlyUsesDerivedReceiptIDAndDiscoveredPaths(t *testing.T) {
 	}
 }
 
-func TestDone_StrictModeAcceptsManagedAcmFiles(t *testing.T) {
+func TestDone_StrictModeAcceptsManagedAwmFiles(t *testing.T) {
 	repo := &fakeRepository{
 		scopeResults: []core.ReceiptScope{{
 			ProjectID:         "project.alpha",
@@ -468,20 +468,20 @@ func TestDone_StrictModeAcceptsManagedAcmFiles(t *testing.T) {
 		ProjectID: "project.alpha",
 		ReceiptID: "receipt.abc123",
 		FilesChanged: []string{
-			".acm/acm-rules.yaml",
-			".acm/acm-tags.yaml",
-			".acm/acm-tests.yaml",
-			".acm/acm-workflows.yaml",
+			".awm/awm-rules.yaml",
+			".awm/awm-tags.yaml",
+			".awm/awm-tests.yaml",
+			".awm/awm-workflows.yaml",
 			".gitignore",
 		},
-		Outcome:   "updated ACM-managed onboarding files",
+		Outcome:   "updated AWM-managed onboarding files",
 		ScopeMode: v1.ScopeModeStrict,
 	})
 	if apiErr != nil {
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 	if !result.Accepted {
-		t.Fatalf("expected strict-mode acceptance for ACM-managed files: %+v", result)
+		t.Fatalf("expected strict-mode acceptance for AWM-managed files: %+v", result)
 	}
 	if len(result.Violations) != 0 {
 		t.Fatalf("expected no scope violations, got %+v", result.Violations)
@@ -707,10 +707,10 @@ func TestDone_NoWorkItemsStrictRejectsMissingVerify(t *testing.T) {
 
 func TestDone_BlankWorkflowDefinitionsFallBackToDefaultVerifyGate(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte("version: acm.workflows.v1\ncompletion:\n  required_tasks: []\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte("version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n"), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -748,11 +748,11 @@ func TestDone_BlankWorkflowDefinitionsFallBackToDefaultVerifyGate(t *testing.T) 
 
 func TestDone_StrictModeRejectsMissingConfiguredWorkflowGate(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n      select:\n        changed_paths_any: [\"internal/**\"]\n    - key: review:cross-llm\n      select:\n        phases: [\"execute\", \"review\"]\n        changed_paths_any: [\"internal/**\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n      select:\n        changed_paths_any: [\"internal/**\"]\n    - key: review:cross-llm\n      select:\n        phases: [\"execute\", \"review\"]\n        changed_paths_any: [\"internal/**\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -793,11 +793,11 @@ func TestDone_StrictModeRejectsMissingConfiguredWorkflowGate(t *testing.T) {
 
 func TestDone_ConfiguredWorkflowSelectorsCanNarrowRequiredGates(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        changed_paths_any: [\"internal/**\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        changed_paths_any: [\"internal/**\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -839,11 +839,11 @@ func TestDone_ConfiguredWorkflowSelectorsCanNarrowRequiredGates(t *testing.T) {
 
 func TestDone_InvalidWorkflowDefinitionsReturnUserInputError(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n        bad_field: true\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n        bad_field: true\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -954,11 +954,11 @@ func TestDone_ExplicitNoFileChangesStrictAcceptsWithoutDefaultVerifyGate(t *test
 
 func TestDone_ExplicitNoFileChangesStillEnforcesMatchingWorkflowGate(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        always_run: true\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        always_run: true\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 
@@ -1267,8 +1267,8 @@ func TestDone_StrictModeAcceptsDirectoryScopedChildFile(t *testing.T) {
 
 func TestDone_StrictModeBlocksCompletedRunnableReviewWithoutPassingExecution(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "internal"), 0o755); err != nil {
 		t.Fatalf("mkdir internal: %v", err)
@@ -1276,8 +1276,8 @@ func TestDone_StrictModeBlocksCompletedRunnableReviewWithoutPassingExecution(t *
 	if err := os.WriteFile(filepath.Join(root, "internal", "review.txt"), []byte("draft\n"), 0o644); err != nil {
 		t.Fatalf("write review file: %v", err)
 	}
-	workflowsYAML := "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        phases: [\"review\"]\n        changed_paths_any: [\"internal/**\"]\n      run:\n        argv: [\"scripts/acm-cross-review.sh\"]\n"
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
+	workflowsYAML := "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n      select:\n        phases: [\"review\"]\n        changed_paths_any: [\"internal/**\"]\n      run:\n        argv: [\"scripts/awm-cross-review.sh\"]\n"
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), []byte(workflowsYAML), 0o644); err != nil {
 		t.Fatalf("write workflows file: %v", err)
 	}
 

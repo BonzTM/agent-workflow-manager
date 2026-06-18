@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agent-context-manager.dev/spec/v1/shared.schema.json",
-  "title": "acm v1 shared schema",
+  "$id": "https://agent-workflow-manager.dev/spec/v1/shared.schema.json",
+  "title": "awm v1 shared schema",
   "type": "object",
   "$defs": {
     "requestId": {

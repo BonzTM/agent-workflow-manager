@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DefaultSQLiteRelativePath = ".acm/context.db"
+	DefaultSQLiteRelativePath = ".awm/context.db"
 	DotEnvFileName            = ".env"
 	DotEnvExampleFileName     = ".env.example"
 )

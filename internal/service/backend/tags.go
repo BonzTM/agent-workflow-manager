@@ -10,14 +10,14 @@ import (
 	"sort"
 	"strings"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"gopkg.in/yaml.v3"
 )
 
 const (
 	maxTaskCanonicalTags         = 6
-	canonicalTagsVersionV1       = "acm.tags.v1"
-	canonicalTagsDefaultFilePath = ".acm/acm-tags.yaml"
+	canonicalTagsVersionV1       = "awm.tags.v1"
+	canonicalTagsDefaultFilePath = ".awm/awm-tags.yaml"
 	maxInitSuggestedTags         = 16
 	minInitTagFileCount          = 2
 )

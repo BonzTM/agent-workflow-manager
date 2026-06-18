@@ -13,13 +13,13 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 const (
-	canonicalRulesVersionV1             = "acm.rules.v1"
-	canonicalRulesetPrimarySourcePath   = ".acm/acm-rules.yaml"
-	canonicalRulesetSecondarySourcePath = "acm-rules.yaml"
+	canonicalRulesVersionV1             = "awm.rules.v1"
+	canonicalRulesetPrimarySourcePath   = ".awm/awm-rules.yaml"
+	canonicalRulesetSecondarySourcePath = "awm-rules.yaml"
 
 	ruleTagCanonical       = "canonical-rule"
 	ruleTagEnforcementHard = "enforcement-hard"

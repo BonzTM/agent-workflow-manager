@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	v1 "github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	v1 "github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 
-	adapthttp "github.com/bonztm/agent-context-manager/internal/adapters/http"
+	adapthttp "github.com/bonztm/agent-workflow-manager/internal/adapters/http"
 )
 
 // mockService implements core.Service. Only HistorySearch, Export, and Status

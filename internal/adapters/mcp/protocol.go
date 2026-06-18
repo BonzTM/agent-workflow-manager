@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/buildinfo"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/buildinfo"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
 )
 
 const (
 	mcpProtocolVersion = "2025-03-26"
-	mcpServerName      = "acm-mcp"
+	mcpServerName      = "awm-mcp"
 	mcpToolsCallID     = "mcp.tools/call"
 )
 

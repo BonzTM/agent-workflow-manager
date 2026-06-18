@@ -9,21 +9,21 @@ Claude companion for a repo whose primary contract is `AGENTS.md`.
 
 ## Claude Workflow
 
-See [.acm/acm-work-loop.md](.acm/acm-work-loop.md) for the full command reference. Claude slash-command equivalents:
+See [.awm/awm-work-loop.md](.awm/awm-work-loop.md) for the full command reference. Claude slash-command equivalents:
 
-| ACM command | Claude slash command |
+| AWM command | Claude slash command |
 |---|---|
-| `acm context` | `/acm-context` |
-| `acm work` | `/acm-work` |
-| `acm verify` | `/acm-verify` |
-| `acm review --run` | `/acm-review` |
-| `acm done` | `/acm-done` |
+| `awm context` | `/awm-context` |
+| `awm work` | `/awm-work` |
+| `awm verify` | `/awm-verify` |
+| `awm review --run` | `/awm-review` |
+| `awm done` | `/awm-done` |
 
-Direct CLI (`acm sync`, `acm health`, `acm history`, `acm status`, `acm fetch`) has no slash-command wrappers — call those directly.
+Direct CLI (`awm sync`, `awm health`, `awm history`, `awm status`, `awm fetch`) has no slash-command wrappers — call those directly.
 
 ## Notes
 
-- If the receipt looks stale or too narrow, re-run `/acm-context` with a better task description.
-- If governed scope expands, declare new files through `/acm-work` before `/acm-review` or `/acm-done`.
-- Do not claim success when `/acm-verify` failed or was skipped for code changes.
+- If the receipt looks stale or too narrow, re-run `/awm-context` with a better task description.
+- If governed scope expands, declare new files through `/awm-work` before `/awm-review` or `/awm-done`.
+- Do not claim success when `/awm-verify` failed or was skipped for code changes.
 - When blocked on a missing decision, surface it instead of improvising.

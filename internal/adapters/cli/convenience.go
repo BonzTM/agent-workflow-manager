@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 )
 
 type serviceFactory func(context.Context, logging.Logger) (core.Service, runtime.CleanupFunc, error)
@@ -59,7 +59,7 @@ func runConvenienceWithDeps(
 	runAdapter adapterRunner,
 ) int {
 	logger = logging.Normalize(logger)
-	logger.Info(ctx, logging.EventACMRun, "stage", "start", "subcommand", subcommand)
+	logger.Info(ctx, logging.EventAWMRun, "stage", "start", "subcommand", subcommand)
 
 	if out == nil {
 		out = os.Stdout
@@ -77,24 +77,24 @@ func runConvenienceWithDeps(
 	requestSpec, err := buildConvenienceRequest(subcommand, args, now)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			logger.Info(ctx, logging.EventACMRun, "stage", "finish", "subcommand", subcommand, "exit_code", 0)
+			logger.Info(ctx, logging.EventAWMRun, "stage", "finish", "subcommand", subcommand, "exit_code", 0)
 			return 0
 		}
-		logger.Error(ctx, logging.EventACMRun, "stage", "parse_flags", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeInvalidFlags)
+		logger.Error(ctx, logging.EventAWMRun, "stage", "parse_flags", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeInvalidFlags)
 		fmt.Fprintf(os.Stderr, "failed to parse %s flags: %v\n", subcommand, err)
 		return 2
 	}
 
 	request, err := json.Marshal(requestSpec.Envelope)
 	if err != nil {
-		logger.Error(ctx, logging.EventACMRun, "stage", "marshal", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeInternalError)
+		logger.Error(ctx, logging.EventAWMRun, "stage", "marshal", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeInternalError)
 		fmt.Fprintf(os.Stderr, "failed to build request: %v\n", err)
 		return 1
 	}
 
 	svc, closeService, err := newService(ctx, logger)
 	if err != nil {
-		logger.Error(ctx, logging.EventACMRun, "stage", "service_init", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeServiceInitFailed)
+		logger.Error(ctx, logging.EventAWMRun, "stage", "service_init", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeServiceInitFailed)
 		fmt.Fprintf(os.Stderr, "failed to initialize service: %v\n", err)
 		return 1
 	}
@@ -110,23 +110,23 @@ func runConvenienceWithDeps(
 	if requestSpec.RawOutput != nil {
 		if code != 0 {
 			_, _ = io.Copy(out, &rawBuffer)
-			logger.Info(ctx, logging.EventACMRun, "stage", "finish", "subcommand", subcommand, "exit_code", code)
+			logger.Info(ctx, logging.EventAWMRun, "stage", "finish", "subcommand", subcommand, "exit_code", code)
 			return code
 		}
 
 		content, err := extractExportContent(rawBuffer.Bytes())
 		if err != nil {
-			logger.Error(ctx, logging.EventACMRun, "stage", "raw_output_parse", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeInternalError)
+			logger.Error(ctx, logging.EventAWMRun, "stage", "raw_output_parse", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeInternalError)
 			fmt.Fprintf(os.Stderr, "failed to parse export output: %v\n", err)
 			return 1
 		}
 		if err := emitRawExportContent(out, content, *requestSpec.RawOutput); err != nil {
-			logger.Error(ctx, logging.EventACMRun, "stage", "raw_output_write", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeWriteFailed)
+			logger.Error(ctx, logging.EventAWMRun, "stage", "raw_output_write", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeWriteFailed)
 			fmt.Fprintf(os.Stderr, "failed to write export output: %v\n", err)
 			return 1
 		}
 	}
-	logger.Info(ctx, logging.EventACMRun, "stage", "finish", "subcommand", subcommand, "exit_code", code)
+	logger.Info(ctx, logging.EventAWMRun, "stage", "finish", "subcommand", subcommand, "exit_code", code)
 	return code
 }
 
@@ -157,8 +157,8 @@ func buildContextEnvelope(args []string, now func() time.Time) (v1.CommandEnvelo
 func buildContextRequest(args []string, now func() time.Time) (convenienceBuildResult, error) {
 	return buildContextCommandRequest(
 		"context",
-		"acm context [--project <id>] [--task-text <text>|--task-file <path>] [--tags-file <path>] [--scope-path <path>]... [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
-		"acm context --task-text \"Add sync checks\" --phase execute",
+		"awm context [--project <id>] [--task-text <text>|--task-file <path>] [--tags-file <path>] [--scope-path <path>]... [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"awm context --task-text \"Add sync checks\" --phase execute",
 		v1.CommandContext,
 		args,
 		now,
@@ -258,8 +258,8 @@ func buildFetchEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope
 func buildFetchRequest(args []string, now func() time.Time) (convenienceBuildResult, error) {
 	fs := newCommandFlagSet(
 		"fetch",
-		"acm fetch [--project <id>] [--key <pointer>]... [--keys-file <path>] [--keys-json <json>] [--receipt-id <id>] [--expect <key=version>]... [--expected-versions-file <path>] [--expected-versions-json <json>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
-		"acm fetch --key plan:req-12345678 --expect plan:req-12345678=v3",
+		"awm fetch [--project <id>] [--key <pointer>]... [--keys-file <path>] [--keys-json <json>] [--receipt-id <id>] [--expect <key=version>]... [--expected-versions-file <path>] [--expected-versions-json <json>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"awm fetch --key plan:req-12345678 --expect plan:req-12345678=v3",
 	)
 	projectID, requestID := addProjectAndRequestFlags(fs)
 	receiptID := fs.String("receipt-id", "", "receipt ID to fetch via shorthand")
@@ -366,8 +366,8 @@ func buildHistorySearchEnvelope(subcommand string, args []string, now func() tim
 }
 
 func buildHistorySearchRequest(subcommand string, args []string, now func() time.Time) (convenienceBuildResult, error) {
-	usageLine := "acm history [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded[=true|false]] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]"
-	example := "acm history --entity work --scope current --query \"MCP parity\""
+	usageLine := "awm history [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded[=true|false]] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]"
+	example := "awm history --entity work --scope current --query \"MCP parity\""
 	defaultEntity := v1.HistoryEntityAll
 
 	fs := newCommandFlagSet(subcommand, usageLine, example)
@@ -465,8 +465,8 @@ func buildStatusEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 func buildStatusRequest(args []string, now func() time.Time) (convenienceBuildResult, error) {
 	return buildStatusRequestForCommand(
 		"status",
-		"acm status [--project <id>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--tests-file <path>] [--workflows-file <path>] [--task-text <text>|--task-file <path>] [--phase <plan|execute|review>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
-		"acm status --task-text \"add review gate\" --phase execute",
+		"awm status [--project <id>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--tests-file <path>] [--workflows-file <path>] [--task-text <text>|--task-file <path>] [--phase <plan|execute|review>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"awm status --task-text \"add review gate\" --phase execute",
 		args,
 		now,
 	)
@@ -560,8 +560,8 @@ func buildStatusRequestForCommand(commandName, usageLine, example string, args [
 func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
 	fs := newCommandFlagSet(
 		"work",
-		"acm work [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>]",
-		"acm work --receipt-id req-12345678 --tasks-json '[{\"key\":\"verify:tests\",\"summary\":\"Run tests\",\"status\":\"pending\"}]'",
+		"awm work [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>]",
+		"awm work --receipt-id req-12345678 --tasks-json '[{\"key\":\"verify:tests\",\"summary\":\"Run tests\",\"status\":\"pending\"}]'",
 	)
 	projectID, requestID := addProjectAndRequestFlags(fs)
 	planKey := fs.String("plan-key", "", "plan key")
@@ -636,8 +636,8 @@ func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 func buildDoneEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
 	return buildDoneCommandEnvelope(
 		"done",
-		"acm done [--project <id>] [--receipt-id <id>|--plan-key <key>] [--outcome <text>|--outcome-file <path>] [--file-changed <path>]... [--files-changed-file <path>] [--files-changed-json <json>] [--no-file-changes[=true|false]] [--scope-mode <mode>] [--tags-file <path>]",
-		"acm done --project myproject --plan-key plan:req-12345678 --file-changed cmd/acm/main.go --outcome \"Done\"",
+		"awm done [--project <id>] [--receipt-id <id>|--plan-key <key>] [--outcome <text>|--outcome-file <path>] [--file-changed <path>]... [--files-changed-file <path>] [--files-changed-json <json>] [--no-file-changes[=true|false]] [--scope-mode <mode>] [--tags-file <path>]",
+		"awm done --project myproject --plan-key plan:req-12345678 --file-changed cmd/awm/main.go --outcome \"Done\"",
 		v1.CommandDone,
 		args,
 		now,
@@ -727,8 +727,8 @@ func buildDoneCommandEnvelope(subcommand, usage, example string, command v1.Comm
 func buildReviewEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
 	fs := newCommandFlagSet(
 		"review",
-		"acm review [--project <id>] [--receipt-id <id>|--plan-key <key>] [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>]",
-		"acm review --receipt-id req-12345678 --run",
+		"awm review [--project <id>] [--receipt-id <id>|--plan-key <key>] [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>]",
+		"awm review --receipt-id req-12345678 --run",
 	)
 	projectID, requestID := addProjectAndRequestFlags(fs)
 	receiptID := fs.String("receipt-id", "", "receipt ID")
@@ -817,8 +817,8 @@ func buildReviewEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 func buildSyncEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
 	fs := newCommandFlagSet(
 		"sync",
-		"acm sync [--project <id>] [--mode changed|full|working_tree] [--git-range <range>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--insert-new-candidates[=true|false]]",
-		"acm sync --mode changed --git-range HEAD~1..HEAD",
+		"awm sync [--project <id>] [--mode changed|full|working_tree] [--git-range <range>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--insert-new-candidates[=true|false]]",
+		"awm sync --mode changed --git-range HEAD~1..HEAD",
 	)
 	projectID, requestID := addProjectAndRequestFlags(fs)
 	mode := fs.String("mode", "", "sync mode: changed|full|working_tree")
@@ -849,11 +849,11 @@ func buildSyncEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 func buildHealthEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
 	fs := newCommandFlagSet(
 		"health",
-		"acm health [--project <id>] [--include-details[=true|false]] [--max-findings-per-check <n>] | [--fix <name>]... [--dry-run[=true|false]] [--apply[=true|false]] [--project-root <path>] [--rules-file <path>] [--tags-file <path>]",
-		"acm health --include-details --max-findings-per-check 50",
-		"acm health --fix sync_ruleset",
-		"acm health --fix all --dry-run",
-		"acm health --fix sync_ruleset --dry-run",
+		"awm health [--project <id>] [--include-details[=true|false]] [--max-findings-per-check <n>] | [--fix <name>]... [--dry-run[=true|false]] [--apply[=true|false]] [--project-root <path>] [--rules-file <path>] [--tags-file <path>]",
+		"awm health --include-details --max-findings-per-check 50",
+		"awm health --fix sync_ruleset",
+		"awm health --fix all --dry-run",
+		"awm health --fix sync_ruleset --dry-run",
 	)
 	projectID, requestID := addProjectAndRequestFlags(fs)
 	includeDetails := optionalBoolFlag{}
@@ -873,8 +873,8 @@ func buildHealthEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 func buildVerifyEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
 	fs := newCommandFlagSet(
 		"verify",
-		"acm verify [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run]",
-		"acm verify --phase review --file-changed internal/service/backend/service.go --dry-run",
+		"awm verify [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run]",
+		"awm verify --phase review --file-changed internal/service/backend/service.go --dry-run",
 	)
 	projectID, requestID := addProjectAndRequestFlags(fs)
 	receiptID := fs.String("receipt-id", "", "receipt ID")
@@ -931,8 +931,8 @@ func buildVerifyEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 func buildInitEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
 	return buildInitCommandEnvelope(
 		"init",
-		"acm init [--project <id>] [--project-root <path>] [--apply-template <id>]... [--rules-file <path>] [--tags-file <path>] [--persist-candidates[=true|false]] [--respect-gitignore[=true|false]] [--output-candidates-path <path>]",
-		"acm init --project-root . --apply-template starter-contract --apply-template verify-generic",
+		"awm init [--project <id>] [--project-root <path>] [--apply-template <id>]... [--rules-file <path>] [--tags-file <path>] [--persist-candidates[=true|false]] [--respect-gitignore[=true|false]] [--output-candidates-path <path>]",
+		"awm init --project-root . --apply-template starter-contract --apply-template verify-generic",
 		v1.CommandInit,
 		args,
 		now,
@@ -1144,7 +1144,7 @@ func newRequestID(command v1.Command, now func() time.Time) string {
 func addProjectAndRequestFlags(fs *flag.FlagSet) (*string, *string) {
 	projectID := new(string)
 	requestID := new(string)
-	fs.StringVar(projectID, "project", "", "project identifier (defaults to ACM_PROJECT_ID or inferred repo root name)")
+	fs.StringVar(projectID, "project", "", "project identifier (defaults to AWM_PROJECT_ID or inferred repo root name)")
 	fs.StringVar(requestID, "request-id", "", "request identifier (defaults to generated value)")
 	return projectID, requestID
 }

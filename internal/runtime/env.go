@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 type runtimeEnv struct {

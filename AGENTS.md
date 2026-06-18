@@ -1,4 +1,4 @@
-# AGENTS.md - agent-context-manager Contributor Contract
+# AGENTS.md - agent-workflow-manager Contributor Contract
 
 This is the authoritative contract for work in this repository.
 Read this file first, then use the linked docs when you need deeper reference material.
@@ -7,35 +7,35 @@ Read this file first, then use the linked docs when you need deeper reference ma
 
 1. Read this file for repo rules and change routing.
 2. See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and PR workflow.
-3. If your agent runtime provides ACM, see [.acm/AGENTS-ACM.md](.acm/AGENTS-ACM.md) for the enhanced workflow.  If you are unaware or unsure of what ACM is, do not read the file.
+3. If your agent runtime provides AWM, see [.awm/AGENTS-AWM.md](.awm/AGENTS-AWM.md) for the enhanced workflow.  If you are unaware or unsure of what AWM is, do not read the file.
 4. If using Claude, also read [CLAUDE.md](CLAUDE.md).
 
 ## Repo-Wide Invariants
 
 - Schema lockstep: `internal/contracts/v1` and `spec/v1` move with the corresponding tests.
-- CLI/MCP parity: `cmd/acm`, `cmd/acm-mcp`, the command catalog, generated tool metadata, and related tests stay aligned.
+- CLI/MCP parity: `cmd/awm`, `cmd/awm-mcp`, the command catalog, generated tool metadata, and related tests stay aligned.
 - Storage parity: SQLite and Postgres adapters, migrations, and parity-sensitive coverage stay aligned unless a difference is explicitly intentional and documented.
 - Onboarding invariants: `init` must produce a usable first-run state from a clean repo.
-- Docs sync: user-facing install, help, onboarding, or tool-surface changes update `README.md`, `docs/getting-started.md`, `docs/examples/*`, and `skills/acm-broker/**` together.
+- Docs sync: user-facing install, help, onboarding, or tool-surface changes update `README.md`, `docs/getting-started.md`, `docs/examples/*`, and `skills/awm-broker/**` together.
 
 ## Maintainer Routing
 
 | If you are changing... | Start here | Also keep in sync | Verify or confirm with |
 |---|---|---|---|
-| Command payloads, results, or semantics | `internal/contracts/v1/`, `internal/service/backend/` | `spec/v1/`, `internal/commands/dispatch.go`, `cmd/acm/`, `cmd/acm-mcp/`, tests | [docs/maintainer-map.md](docs/maintainer-map.md) |
-| CLI flags, help text, or routing | `cmd/acm/convenience.go`, `cmd/acm/routes.go` | `internal/contracts/v1/command_catalog.go`, `cmd/acm/*_test.go`, docs | [docs/maintainer-map.md](docs/maintainer-map.md) |
+| Command payloads, results, or semantics | `internal/contracts/v1/`, `internal/service/backend/` | `spec/v1/`, `internal/commands/dispatch.go`, `cmd/awm/`, `cmd/awm-mcp/`, tests | [docs/maintainer-map.md](docs/maintainer-map.md) |
+| CLI flags, help text, or routing | `cmd/awm/convenience.go`, `cmd/awm/routes.go` | `internal/contracts/v1/command_catalog.go`, `cmd/awm/*_test.go`, docs | [docs/maintainer-map.md](docs/maintainer-map.md) |
 | Storage, migrations, or plan persistence | `internal/core/repository.go`, `internal/adapters/sqlite/`, `internal/adapters/postgres/` | repository contract tests, parity tests, integration tests | [docs/maintainer-map.md](docs/maintainer-map.md) |
-| Review, verify, done, or workflow gates | `.acm/acm-workflows.yaml`, `internal/service/backend/{review,verify,completion,work}.go` | repo-local scripts, docs, examples, skill-pack assets | [docs/maintainer-map.md](docs/maintainer-map.md) |
-| Init, sync, health, onboarding, or templates | `internal/bootstrap/`, `README.md`, `docs/getting-started.md` | `docs/examples/*`, template files, `skills/acm-broker/**` | [docs/maintainer-map.md](docs/maintainer-map.md) |
-| Feature-planning contract | `docs/feature-plans.md`, `.acm/acm-tests.yaml`, `scripts/acm-feature-plan-validate.py` | maintainer docs, examples, workflow guidance | [docs/maintainer-map.md](docs/maintainer-map.md) |
+| Review, verify, done, or workflow gates | `.awm/awm-workflows.yaml`, `internal/service/backend/{review,verify,completion,work}.go` | repo-local scripts, docs, examples, skill-pack assets | [docs/maintainer-map.md](docs/maintainer-map.md) |
+| Init, sync, health, onboarding, or templates | `internal/bootstrap/`, `README.md`, `docs/getting-started.md` | `docs/examples/*`, template files, `skills/awm-broker/**` | [docs/maintainer-map.md](docs/maintainer-map.md) |
+| Feature-planning contract | `docs/feature-plans.md`, `.awm/awm-tests.yaml`, `scripts/awm-feature-plan-validate.py` | maintainer docs, examples, workflow guidance | [docs/maintainer-map.md](docs/maintainer-map.md) |
 
 ## Build And Verify
 
 ```bash
 # Build all binaries
-go build -o dist/acm ./cmd/acm
-go build -o dist/acm-mcp ./cmd/acm-mcp
-go build -o dist/acm-web ./cmd/acm-web
+go build -o dist/awm ./cmd/awm
+go build -o dist/awm-mcp ./cmd/awm-mcp
+go build -o dist/awm-web ./cmd/awm-web
 
 # Run the full test suite
 go test ./...
@@ -53,10 +53,10 @@ gofmt -s -l .
 go vet ./...
 ```
 
-Postgres integration tests require `ACM_PG_DSN`:
+Postgres integration tests require `AWM_PG_DSN`:
 
 ```bash
-ACM_PG_DSN="postgres://..." go test ./internal/integration/...
+AWM_PG_DSN="postgres://..." go test ./internal/integration/...
 ```
 
 ## Working Norms
@@ -73,14 +73,14 @@ ACM_PG_DSN="postgres://..." go test ./internal/integration/...
 
 Do not:
 
-- **Add a command without updating the catalog.** Every command needs entries in `internal/contracts/v1/command_catalog.go`, `internal/contracts/v1/types.go`, `internal/contracts/v1/validate.go`, `internal/commands/dispatch.go`, `cmd/acm/routes.go`, and `cmd/acm/convenience.go`. Missing any one causes parity or routing failures.
+- **Add a command without updating the catalog.** Every command needs entries in `internal/contracts/v1/command_catalog.go`, `internal/contracts/v1/types.go`, `internal/contracts/v1/validate.go`, `internal/commands/dispatch.go`, `cmd/awm/routes.go`, and `cmd/awm/convenience.go`. Missing any one causes parity or routing failures.
 - **Add a SQLite migration without a matching Postgres migration** (or vice versa). Both adapters under `internal/adapters/` must move together with equivalent semantics.
 - **Put business logic in an adapter.** Adapters (`internal/adapters/`) translate between external protocols and `internal/core/` interfaces. Decision logic belongs in `internal/service/backend/`.
 - **Change a payload type without updating `spec/v1/` schemas.** The `schema_files_test` will catch drift, but catching it at PR time wastes a review cycle.
 - **Modify MCP tool wiring manually.** MCP tool definitions auto-generate from the command catalog. Update the catalog, not the MCP layer.
-- **Edit `.acm/*.yaml` files without refreshing state.** If you change rules, tags, tests, or workflow config, the runtime must be synced before those changes take effect.
+- **Edit `.awm/*.yaml` files without refreshing state.** If you change rules, tags, tests, or workflow config, the runtime must be synced before those changes take effect.
 - **Create catch-all tasks** like `misc`, `polish`, `remaining`, or `cleanup`. Each task should describe one bounded deliverable.
-- **Use `go run ./cmd/acm` in production or CI.** Build and install the binary. `go run` is only for testing source-build behavior.
+- **Use `go run ./cmd/awm` in production or CI.** Build and install the binary. `go run` is only for testing source-build behavior.
 - **Add dependencies without justification.** Stdlib first. Document why an existing dependency or the stdlib is insufficient before adding a new one.
 - **Log errors at every layer.** Log once at the boundary that can act on the error. Return wrapped errors through intermediate layers.
 

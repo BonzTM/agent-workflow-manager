@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
@@ -63,7 +63,7 @@ func TestInit_DefaultEphemeralAndDeterministicEnumeration(t *testing.T) {
 	if len(repo.upsertStubCalls) != 1 || len(repo.upsertStubCalls[0]) != 2 {
 		t.Fatalf("expected 2 stub upserts, got %+v", repo.upsertStubCalls)
 	}
-	defaultPersistPath := filepath.Join(root, ".acm", "init_candidates.json")
+	defaultPersistPath := filepath.Join(root, ".awm", "init_candidates.json")
 	if _, err := os.Stat(defaultPersistPath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected no persisted candidates file by default, stat err=%v", err)
 	}
@@ -84,7 +84,7 @@ func TestInit_DefaultEphemeralAndDeterministicEnumeration(t *testing.T) {
 	}
 }
 
-func TestInit_PersistCandidatesWritesDefaultAcmPath(t *testing.T) {
+func TestInit_PersistCandidatesWritesDefaultAwmPath(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "dir"), 0o755); err != nil {
 		t.Fatalf("mkdir dir: %v", err)
@@ -119,7 +119,7 @@ func TestInit_PersistCandidatesWritesDefaultAcmPath(t *testing.T) {
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	outputPath := filepath.Join(root, ".acm", "init_candidates.json")
+	outputPath := filepath.Join(root, ".awm", "init_candidates.json")
 	if !result.CandidatesPersisted {
 		t.Fatalf("expected candidates_persisted=true")
 	}
@@ -214,35 +214,35 @@ func TestInit_SeedsCanonicalScaffoldFiles(t *testing.T) {
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	rulesRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-rules.yaml"))
+	rulesRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-rules.yaml"))
 	if err != nil {
 		t.Fatalf("read scaffolded rules file: %v", err)
 	}
-	if string(rulesRaw) != "version: acm.rules.v1\nrules: []\n" {
+	if string(rulesRaw) != "version: awm.rules.v1\nrules: []\n" {
 		t.Fatalf("unexpected scaffolded rules contents: %q", string(rulesRaw))
 	}
 
-	tagsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tags.yaml"))
+	tagsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tags.yaml"))
 	if err != nil {
 		t.Fatalf("read scaffolded tags file: %v", err)
 	}
-	if string(tagsRaw) != "version: acm.tags.v1\ncanonical_tags: {}\n" {
+	if string(tagsRaw) != "version: awm.tags.v1\ncanonical_tags: {}\n" {
 		t.Fatalf("unexpected scaffolded tags contents: %q", string(tagsRaw))
 	}
 
-	testsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tests.yaml"))
+	testsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tests.yaml"))
 	if err != nil {
 		t.Fatalf("read scaffolded tests file: %v", err)
 	}
-	if string(testsRaw) != "version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n" {
+	if string(testsRaw) != "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n" {
 		t.Fatalf("unexpected scaffolded tests contents: %q", string(testsRaw))
 	}
 
-	workflowsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-workflows.yaml"))
+	workflowsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-workflows.yaml"))
 	if err != nil {
 		t.Fatalf("read scaffolded workflows file: %v", err)
 	}
-	if string(workflowsRaw) != "version: acm.workflows.v1\ncompletion:\n  required_tasks: []\n" {
+	if string(workflowsRaw) != "version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n" {
 		t.Fatalf("unexpected scaffolded workflows contents: %q", string(workflowsRaw))
 	}
 
@@ -250,7 +250,7 @@ func TestInit_SeedsCanonicalScaffoldFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read scaffolded env example: %v", err)
 	}
-	wantEnvExample := "# ACM runtime configuration\n# Copy this file to .env to override local defaults.\nACM_PROJECT_ID=myproject\nACM_PROJECT_ROOT=/path/to/repo\nACM_SQLITE_PATH=.acm/context.db\nACM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nACM_UNBOUNDED=false\nACM_LOG_LEVEL=info\nACM_LOG_SINK=stderr\n"
+	wantEnvExample := "# AWM runtime configuration\n# Copy this file to .env to override local defaults.\nAWM_PROJECT_ID=myproject\nAWM_PROJECT_ROOT=/path/to/repo\nAWM_SQLITE_PATH=.awm/context.db\nAWM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nAWM_UNBOUNDED=false\nAWM_LOG_LEVEL=info\nAWM_LOG_SINK=stderr\n"
 	if string(envExampleRaw) != wantEnvExample {
 		t.Fatalf("unexpected scaffolded env example contents: %q", string(envExampleRaw))
 	}
@@ -259,31 +259,31 @@ func TestInit_SeedsCanonicalScaffoldFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read scaffolded gitignore: %v", err)
 	}
-	if string(gitignoreRaw) != ".acm/context.db\n.acm/context.db-shm\n.acm/context.db-wal\n" {
+	if string(gitignoreRaw) != ".awm/context.db\n.awm/context.db-shm\n.awm/context.db-wal\n" {
 		t.Fatalf("unexpected scaffolded gitignore contents: %q", string(gitignoreRaw))
 	}
 }
 
 func TestInit_ExcludesManagedFilesFromInitialCandidateIndex(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	files := map[string]string{
 		"README.md":               "# hello\n",
 		".env":                    "SECRET=value\n",
-		".env.example":            "ACM_SQLITE_PATH=.acm/context.db\n",
-		".gitignore":              ".acm/context.db\n",
-		"acm-rules.yaml":          "version: acm.rules.v1\nrules: []\n",
-		"acm-tests.yaml":          "version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 60\ntests: []\n",
-		"acm-workflows.yaml":      "version: acm.workflows.v1\ncompletion:\n  required_tasks: []\n",
-		".acm/context.db":         "sqlite",
-		".acm/context.db-wal":     "wal",
-		".acm/context.db-shm":     "shm",
-		".acm/acm-rules.yaml":     "version: acm.rules.v1\nrules: []\n",
-		".acm/acm-tags.yaml":      "version: acm.tags.v1\ncanonical_tags: {}\n",
-		".acm/acm-tests.yaml":     "version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n",
-		".acm/acm-workflows.yaml": "version: acm.workflows.v1\ncompletion:\n  required_tasks: []\n",
+		".env.example":            "AWM_SQLITE_PATH=.awm/context.db\n",
+		".gitignore":              ".awm/context.db\n",
+		"awm-rules.yaml":          "version: awm.rules.v1\nrules: []\n",
+		"awm-tests.yaml":          "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 60\ntests: []\n",
+		"awm-workflows.yaml":      "version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n",
+		".awm/context.db":         "sqlite",
+		".awm/context.db-wal":     "wal",
+		".awm/context.db-shm":     "shm",
+		".awm/awm-rules.yaml":     "version: awm.rules.v1\nrules: []\n",
+		".awm/awm-tags.yaml":      "version: awm.tags.v1\ncanonical_tags: {}\n",
+		".awm/awm-tests.yaml":     "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n",
+		".awm/awm-workflows.yaml": "version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n",
 	}
 	for rel, contents := range files {
 		full := filepath.Join(root, filepath.FromSlash(rel))
@@ -349,7 +349,7 @@ func TestInit_SeedsSuggestedCanonicalTagsWhenRepoSignalsThem(t *testing.T) {
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	tagsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tags.yaml"))
+	tagsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tags.yaml"))
 	if err != nil {
 		t.Fatalf("read scaffolded tags file: %v", err)
 	}
@@ -368,8 +368,8 @@ func TestInit_SeedsSuggestedCanonicalTagsWhenRepoSignalsThem(t *testing.T) {
 
 func TestInit_PopulatesExistingBlankCanonicalTagsFileWithSuggestions(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "internal", "receipt"), 0o755); err != nil {
 		t.Fatalf("mkdir receipt dir: %v", err)
@@ -380,7 +380,7 @@ func TestInit_PopulatesExistingBlankCanonicalTagsFileWithSuggestions(t *testing.
 	if err := os.WriteFile(filepath.Join(root, "internal", "receipt", "report_receipt.go"), []byte("package receipt"), 0o644); err != nil {
 		t.Fatalf("write report_receipt.go: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tags.yaml"), []byte("version: acm.tags.v1\ncanonical_tags: {}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tags.yaml"), []byte("version: awm.tags.v1\ncanonical_tags: {}\n"), 0o644); err != nil {
 		t.Fatalf("write blank tags file: %v", err)
 	}
 
@@ -400,7 +400,7 @@ func TestInit_PopulatesExistingBlankCanonicalTagsFileWithSuggestions(t *testing.
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	tagsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tags.yaml"))
+	tagsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tags.yaml"))
 	if err != nil {
 		t.Fatalf("read scaffolded tags file: %v", err)
 	}
@@ -416,33 +416,33 @@ func TestInit_PopulatesExistingBlankCanonicalTagsFileWithSuggestions(t *testing.
 
 func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a"), 0o644); err != nil {
 		t.Fatalf("write a.txt: %v", err)
 	}
-	rulesContent := []byte("version: acm.rules.v1\nrules:\n  - summary: Keep tests green\n")
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-rules.yaml"), rulesContent, 0o644); err != nil {
+	rulesContent := []byte("version: awm.rules.v1\nrules:\n  - summary: Keep tests green\n")
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-rules.yaml"), rulesContent, 0o644); err != nil {
 		t.Fatalf("write existing rules file: %v", err)
 	}
-	tagsContent := []byte("version: acm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n")
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tags.yaml"), tagsContent, 0o644); err != nil {
+	tagsContent := []byte("version: awm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n")
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tags.yaml"), tagsContent, 0o644); err != nil {
 		t.Fatalf("write existing tags file: %v", err)
 	}
-	testsContent := []byte("version: acm.tests.v1\ndefaults:\n  cwd: tools\n  timeout_sec: 120\ntests:\n  - id: smoke\n    summary: Run smoke tests\n    command:\n      argv: [\"go\", \"test\", \"./...\"]\n")
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tests.yaml"), testsContent, 0o644); err != nil {
+	testsContent := []byte("version: awm.tests.v1\ndefaults:\n  cwd: tools\n  timeout_sec: 120\ntests:\n  - id: smoke\n    summary: Run smoke tests\n    command:\n      argv: [\"go\", \"test\", \"./...\"]\n")
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tests.yaml"), testsContent, 0o644); err != nil {
 		t.Fatalf("write existing tests file: %v", err)
 	}
-	workflowsContent := []byte("version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n")
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-workflows.yaml"), workflowsContent, 0o644); err != nil {
+	workflowsContent := []byte("version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n")
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-workflows.yaml"), workflowsContent, 0o644); err != nil {
 		t.Fatalf("write existing workflows file: %v", err)
 	}
-	envExampleContent := []byte("ACM_SQLITE_PATH=.acm/existing.db\n")
+	envExampleContent := []byte("AWM_SQLITE_PATH=.awm/existing.db\n")
 	if err := os.WriteFile(filepath.Join(root, ".env.example"), envExampleContent, 0o644); err != nil {
 		t.Fatalf("write existing env example: %v", err)
 	}
-	gitignoreContent := []byte("node_modules/\n.acm/context.db\n")
+	gitignoreContent := []byte("node_modules/\n.awm/context.db\n")
 	if err := os.WriteFile(filepath.Join(root, ".gitignore"), gitignoreContent, 0o644); err != nil {
 		t.Fatalf("write existing gitignore: %v", err)
 	}
@@ -463,7 +463,7 @@ func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	rulesRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-rules.yaml"))
+	rulesRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-rules.yaml"))
 	if err != nil {
 		t.Fatalf("read rules file: %v", err)
 	}
@@ -471,7 +471,7 @@ func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 		t.Fatalf("rules file was overwritten: got %q want %q", string(rulesRaw), string(rulesContent))
 	}
 
-	tagsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tags.yaml"))
+	tagsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tags.yaml"))
 	if err != nil {
 		t.Fatalf("read tags file: %v", err)
 	}
@@ -479,7 +479,7 @@ func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 		t.Fatalf("tags file was overwritten: got %q want %q", string(tagsRaw), string(tagsContent))
 	}
 
-	testsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tests.yaml"))
+	testsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tests.yaml"))
 	if err != nil {
 		t.Fatalf("read tests file: %v", err)
 	}
@@ -487,7 +487,7 @@ func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 		t.Fatalf("tests file was overwritten: got %q want %q", string(testsRaw), string(testsContent))
 	}
 
-	workflowsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-workflows.yaml"))
+	workflowsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-workflows.yaml"))
 	if err != nil {
 		t.Fatalf("read workflows file: %v", err)
 	}
@@ -499,7 +499,7 @@ func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read env example: %v", err)
 	}
-	wantEnvExample := "ACM_SQLITE_PATH=.acm/existing.db\n\n# ACM runtime configuration\nACM_PROJECT_ID=myproject\nACM_PROJECT_ROOT=/path/to/repo\nACM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nACM_UNBOUNDED=false\nACM_LOG_LEVEL=info\nACM_LOG_SINK=stderr\n"
+	wantEnvExample := "AWM_SQLITE_PATH=.awm/existing.db\n\n# AWM runtime configuration\nAWM_PROJECT_ID=myproject\nAWM_PROJECT_ROOT=/path/to/repo\nAWM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nAWM_UNBOUNDED=false\nAWM_LOG_LEVEL=info\nAWM_LOG_SINK=stderr\n"
 	if string(envExampleRaw) != wantEnvExample {
 		t.Fatalf("unexpected env example contents: got %q want %q", string(envExampleRaw), wantEnvExample)
 	}
@@ -508,7 +508,7 @@ func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read gitignore: %v", err)
 	}
-	wantGitIgnore := "node_modules/\n.acm/context.db\n.acm/context.db-shm\n.acm/context.db-wal\n"
+	wantGitIgnore := "node_modules/\n.awm/context.db\n.awm/context.db-shm\n.awm/context.db-wal\n"
 	if string(gitignoreRaw) != wantGitIgnore {
 		t.Fatalf("unexpected gitignore contents: got %q want %q", string(gitignoreRaw), wantGitIgnore)
 	}
@@ -519,8 +519,8 @@ func TestInit_DoesNotSeedPrimaryTestsFileWhenRootTestsFileExists(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a"), 0o644); err != nil {
 		t.Fatalf("write a.txt: %v", err)
 	}
-	rootTestsContent := []byte("version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 60\ntests:\n  - id: root-smoke\n    summary: Root tests file\n    command:\n      argv: [\"true\"]\n")
-	if err := os.WriteFile(filepath.Join(root, "acm-tests.yaml"), rootTestsContent, 0o644); err != nil {
+	rootTestsContent := []byte("version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 60\ntests:\n  - id: root-smoke\n    summary: Root tests file\n    command:\n      argv: [\"true\"]\n")
+	if err := os.WriteFile(filepath.Join(root, "awm-tests.yaml"), rootTestsContent, 0o644); err != nil {
 		t.Fatalf("write root tests file: %v", err)
 	}
 
@@ -540,11 +540,11 @@ func TestInit_DoesNotSeedPrimaryTestsFileWhenRootTestsFileExists(t *testing.T) {
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, ".acm", "acm-tests.yaml")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(root, ".awm", "awm-tests.yaml")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected no primary scaffold when root tests file exists, stat err=%v", err)
 	}
 
-	gotRootTestsContent, err := os.ReadFile(filepath.Join(root, "acm-tests.yaml"))
+	gotRootTestsContent, err := os.ReadFile(filepath.Join(root, "awm-tests.yaml"))
 	if err != nil {
 		t.Fatalf("read root tests file: %v", err)
 	}
@@ -558,8 +558,8 @@ func TestInit_DoesNotSeedPrimaryWorkflowsFileWhenRootWorkflowsFileExists(t *test
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a"), 0o644); err != nil {
 		t.Fatalf("write a.txt: %v", err)
 	}
-	rootWorkflowsContent := []byte("version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n")
-	if err := os.WriteFile(filepath.Join(root, "acm-workflows.yaml"), rootWorkflowsContent, 0o644); err != nil {
+	rootWorkflowsContent := []byte("version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: review:cross-llm\n")
+	if err := os.WriteFile(filepath.Join(root, "awm-workflows.yaml"), rootWorkflowsContent, 0o644); err != nil {
 		t.Fatalf("write root workflows file: %v", err)
 	}
 
@@ -579,11 +579,11 @@ func TestInit_DoesNotSeedPrimaryWorkflowsFileWhenRootWorkflowsFileExists(t *test
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, ".acm", "acm-workflows.yaml")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(root, ".awm", "awm-workflows.yaml")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected no primary scaffold when root workflows file exists, stat err=%v", err)
 	}
 
-	gotRootWorkflowsContent, err := os.ReadFile(filepath.Join(root, "acm-workflows.yaml"))
+	gotRootWorkflowsContent, err := os.ReadFile(filepath.Join(root, "awm-workflows.yaml"))
 	if err != nil {
 		t.Fatalf("read root workflows file: %v", err)
 	}
@@ -633,10 +633,10 @@ func TestInit_ApplyStarterContractSeedsContractsAndIndexesThem(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected starter-contract template result, got %+v", result.TemplateResults)
 	}
-	if wantCreated := []string{".acm/acm-work-loop.md", "AGENTS.md", "CLAUDE.md"}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
+	if wantCreated := []string{".awm/awm-work-loop.md", "AGENTS.md", "CLAUDE.md"}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
 		t.Fatalf("unexpected created paths: got %v want %v", templateResult.Created, wantCreated)
 	}
-	if wantUpdated := []string{".acm/acm-rules.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
+	if wantUpdated := []string{".awm/awm-rules.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
 		t.Fatalf("unexpected updated paths: got %v want %v", templateResult.Updated, wantUpdated)
 	}
 
@@ -648,7 +648,7 @@ func TestInit_ApplyStarterContractSeedsContractsAndIndexesThem(t *testing.T) {
 		t.Fatalf("AGENTS.md is empty after starter-contract scaffold")
 	}
 
-	rulesRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-rules.yaml"))
+	rulesRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-rules.yaml"))
 	if err != nil {
 		t.Fatalf("read scaffolded rules: %v", err)
 	}
@@ -684,10 +684,10 @@ func TestInit_ApplyDetailedPlanningEnforcementSeedsFeaturePlanningScaffold(t *te
 	if !ok {
 		t.Fatalf("expected detailed-planning-enforcement template result, got %+v", result.TemplateResults)
 	}
-	if wantCreated := []string{"docs/feature-plans.md", "scripts/acm-feature-plan-validate.py"}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
+	if wantCreated := []string{"docs/feature-plans.md", "scripts/awm-feature-plan-validate.py"}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
 		t.Fatalf("unexpected created paths: got %v want %v", templateResult.Created, wantCreated)
 	}
-	if wantUpdated := []string{".acm/acm-rules.yaml", ".acm/acm-tests.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
+	if wantUpdated := []string{".awm/awm-rules.yaml", ".awm/awm-tests.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
 		t.Fatalf("unexpected updated paths: got %v want %v", templateResult.Updated, wantUpdated)
 	}
 	if len(repo.upsertStubCalls) != 1 {
@@ -697,13 +697,13 @@ func TestInit_ApplyDetailedPlanningEnforcementSeedsFeaturePlanningScaffold(t *te
 	for _, stub := range repo.upsertStubCalls[0] {
 		gotPaths = append(gotPaths, stub.Path)
 	}
-	for _, required := range []string{"README.md", "docs/feature-plans.md", "scripts/acm-feature-plan-validate.py"} {
+	for _, required := range []string{"README.md", "docs/feature-plans.md", "scripts/awm-feature-plan-validate.py"} {
 		if !containsString(gotPaths, required) {
 			t.Fatalf("expected indexed template path %q in %v", required, gotPaths)
 		}
 	}
 
-	rulesRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-rules.yaml"))
+	rulesRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-rules.yaml"))
 	if err != nil {
 		t.Fatalf("read rules scaffold: %v", err)
 	}
@@ -711,7 +711,7 @@ func TestInit_ApplyDetailedPlanningEnforcementSeedsFeaturePlanningScaffold(t *te
 		t.Fatalf("expected feature plan rule scaffold, got %q", string(rulesRaw))
 	}
 
-	testsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tests.yaml"))
+	testsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tests.yaml"))
 	if err != nil {
 		t.Fatalf("read tests scaffold: %v", err)
 	}
@@ -727,7 +727,7 @@ func TestInit_ApplyDetailedPlanningEnforcementSeedsFeaturePlanningScaffold(t *te
 		t.Fatalf("expected feature stream guidance, got %q", string(planDocRaw))
 	}
 
-	validatorInfo, err := os.Stat(filepath.Join(root, "scripts", "acm-feature-plan-validate.py"))
+	validatorInfo, err := os.Stat(filepath.Join(root, "scripts", "awm-feature-plan-validate.py"))
 	if err != nil {
 		t.Fatalf("stat feature plan validator: %v", err)
 	}
@@ -773,17 +773,17 @@ func TestInit_DetailedPlanningEnforcementUpgradesPristineStarterScaffolds(t *tes
 	if !ok {
 		t.Fatalf("expected detailed-planning-enforcement template result, got %+v", result.TemplateResults)
 	}
-	if wantCreated := []string{"docs/feature-plans.md", "scripts/acm-feature-plan-validate.py"}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
+	if wantCreated := []string{"docs/feature-plans.md", "scripts/awm-feature-plan-validate.py"}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
 		t.Fatalf("unexpected created paths: got %v want %v", templateResult.Created, wantCreated)
 	}
-	if wantUpdated := []string{".acm/acm-rules.yaml", ".acm/acm-tests.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
+	if wantUpdated := []string{".awm/awm-rules.yaml", ".awm/awm-tests.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
 		t.Fatalf("unexpected updated paths: got %v want %v", templateResult.Updated, wantUpdated)
 	}
 	if templateResult.SkippedConflicts != nil {
 		t.Fatalf("expected no template conflicts, got %+v", templateResult.SkippedConflicts)
 	}
 
-	testsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tests.yaml"))
+	testsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tests.yaml"))
 	if err != nil {
 		t.Fatalf("read tests scaffold: %v", err)
 	}
@@ -805,7 +805,7 @@ func TestInit_ApplyVerifyProfilesReplacePristineTestsScaffold(t *testing.T) {
 			templateID: "verify-generic",
 			snippets: []string{
 				`id: smoke`,
-				`argv: ["acm", "status", "--project-root", "."]`,
+				`argv: ["awm", "status", "--project-root", "."]`,
 				`id: repo-diff-check`,
 			},
 		},
@@ -867,11 +867,11 @@ func TestInit_ApplyVerifyProfilesReplacePristineTestsScaffold(t *testing.T) {
 			if !ok {
 				t.Fatalf("expected %s template result, got %+v", tc.templateID, result.TemplateResults)
 			}
-			if wantUpdated := []string{".acm/acm-tests.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
+			if wantUpdated := []string{".awm/awm-tests.yaml"}; !reflect.DeepEqual(templateResult.Updated, wantUpdated) {
 				t.Fatalf("unexpected updated paths: got %v want %v", templateResult.Updated, wantUpdated)
 			}
 
-			testsRaw, err := os.ReadFile(filepath.Join(root, ".acm", "acm-tests.yaml"))
+			testsRaw, err := os.ReadFile(filepath.Join(root, ".awm", "awm-tests.yaml"))
 			if err != nil {
 				t.Fatalf("read tests scaffold: %v", err)
 			}
@@ -924,15 +924,15 @@ func TestInit_ReapplyStarterContractTemplateIsNoOp(t *testing.T) {
 	if templateResult.Created != nil || templateResult.Updated != nil {
 		t.Fatalf("expected no created or updated paths on rerun, got %+v", templateResult)
 	}
-	if wantUnchanged := []string{".acm/acm-rules.yaml", ".acm/acm-work-loop.md", "AGENTS.md", "CLAUDE.md"}; !reflect.DeepEqual(templateResult.Unchanged, wantUnchanged) {
+	if wantUnchanged := []string{".awm/awm-rules.yaml", ".awm/awm-work-loop.md", "AGENTS.md", "CLAUDE.md"}; !reflect.DeepEqual(templateResult.Unchanged, wantUnchanged) {
 		t.Fatalf("unexpected unchanged paths: got %v want %v", templateResult.Unchanged, wantUnchanged)
 	}
 }
 
 func TestInit_TemplateConflictDoesNotOverwriteEditedFiles(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("# hello\n"), 0o644); err != nil {
 		t.Fatalf("write README: %v", err)
@@ -940,7 +940,7 @@ func TestInit_TemplateConflictDoesNotOverwriteEditedFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("# custom\n"), 0o644); err != nil {
 		t.Fatalf("write AGENTS.md: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-rules.yaml"), []byte(bootstrapkit.BlankRulesContents), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-rules.yaml"), []byte(bootstrapkit.BlankRulesContents), 0o644); err != nil {
 		t.Fatalf("write pristine rules: %v", err)
 	}
 
@@ -1020,9 +1020,9 @@ func TestInit_ApplyClaudeCommandPackIndexesCreatedFiles(t *testing.T) {
 		gotPaths = append(gotPaths, stub.Path)
 	}
 	for _, required := range []string{
-		".claude/acm-broker/README.md",
-		".claude/commands/acm-context.md",
-		".claude/commands/acm-review.md",
+		".claude/awm-broker/README.md",
+		".claude/commands/awm-context.md",
+		".claude/commands/awm-review.md",
 	} {
 		if !containsString(gotPaths, required) {
 			t.Fatalf("expected indexed template path %q in %v", required, gotPaths)
@@ -1069,8 +1069,8 @@ func TestInit_ApplyOpenCodePackIndexesCreatedFiles(t *testing.T) {
 		gotPaths = append(gotPaths, stub.Path)
 	}
 	for _, required := range []string{
-		".opencode/acm-broker/README.md",
-		".opencode/acm-broker/AGENTS.example.md",
+		".opencode/awm-broker/README.md",
+		".opencode/awm-broker/AGENTS.example.md",
 	} {
 		if !containsString(gotPaths, required) {
 			t.Fatalf("expected indexed template path %q in %v", required, gotPaths)
@@ -1111,10 +1111,10 @@ func TestInit_CodexHooksSeedsRepoLocalHooksIdempotently(t *testing.T) {
 	if wantCreated := []string{
 		".codex/config.toml",
 		".codex/hooks.json",
-		".codex/hooks/acm-common.sh",
-		".codex/hooks/acm-prompt-guard.sh",
-		".codex/hooks/acm-session-context.sh",
-		".codex/hooks/acm-stop-guard.sh",
+		".codex/hooks/awm-common.sh",
+		".codex/hooks/awm-prompt-guard.sh",
+		".codex/hooks/awm-session-context.sh",
+		".codex/hooks/awm-stop-guard.sh",
 	}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
 		t.Fatalf("unexpected created paths: got %v want %v", templateResult.Created, wantCreated)
 	}
@@ -1126,10 +1126,10 @@ func TestInit_CodexHooksSeedsRepoLocalHooksIdempotently(t *testing.T) {
 	for _, required := range []string{
 		".codex/config.toml",
 		".codex/hooks.json",
-		".codex/hooks/acm-common.sh",
-		".codex/hooks/acm-prompt-guard.sh",
-		".codex/hooks/acm-session-context.sh",
-		".codex/hooks/acm-stop-guard.sh",
+		".codex/hooks/awm-common.sh",
+		".codex/hooks/awm-prompt-guard.sh",
+		".codex/hooks/awm-session-context.sh",
+		".codex/hooks/awm-stop-guard.sh",
 	} {
 		if !containsString(gotPaths, required) {
 			t.Fatalf("expected indexed template path %q in %v", required, gotPaths)
@@ -1155,10 +1155,10 @@ func TestInit_CodexHooksSeedsRepoLocalHooksIdempotently(t *testing.T) {
 	if wantUnchanged := []string{
 		".codex/config.toml",
 		".codex/hooks.json",
-		".codex/hooks/acm-common.sh",
-		".codex/hooks/acm-prompt-guard.sh",
-		".codex/hooks/acm-session-context.sh",
-		".codex/hooks/acm-stop-guard.sh",
+		".codex/hooks/awm-common.sh",
+		".codex/hooks/awm-prompt-guard.sh",
+		".codex/hooks/awm-session-context.sh",
+		".codex/hooks/awm-stop-guard.sh",
 	}; !reflect.DeepEqual(againResult.Unchanged, wantUnchanged) {
 		t.Fatalf("unexpected unchanged paths on rerun: got %v want %v", againResult.Unchanged, wantUnchanged)
 	}
@@ -1199,11 +1199,11 @@ func TestInit_ClaudeHooksMergesSettingsJSONIdempotently(t *testing.T) {
 		t.Fatalf("expected claude-hooks result, got %+v", result.TemplateResults)
 	}
 	if wantCreated := []string{
-		".claude/hooks/acm-edit-state.sh",
-		".claude/hooks/acm-receipt-guard.sh",
-		".claude/hooks/acm-receipt-mark.sh",
-		".claude/hooks/acm-session-context.sh",
-		".claude/hooks/acm-stop-guard.sh",
+		".claude/hooks/awm-edit-state.sh",
+		".claude/hooks/awm-receipt-guard.sh",
+		".claude/hooks/awm-receipt-mark.sh",
+		".claude/hooks/awm-session-context.sh",
+		".claude/hooks/awm-stop-guard.sh",
 	}; !reflect.DeepEqual(templateResult.Created, wantCreated) {
 		t.Fatalf("unexpected created paths: got %v want %v", templateResult.Created, wantCreated)
 	}
@@ -1251,11 +1251,11 @@ func TestInit_ClaudeHooksMergesSettingsJSONIdempotently(t *testing.T) {
 		t.Fatalf("expected no created or updated paths on rerun, got %+v", againResult)
 	}
 	if wantUnchanged := []string{
-		".claude/hooks/acm-edit-state.sh",
-		".claude/hooks/acm-receipt-guard.sh",
-		".claude/hooks/acm-receipt-mark.sh",
-		".claude/hooks/acm-session-context.sh",
-		".claude/hooks/acm-stop-guard.sh",
+		".claude/hooks/awm-edit-state.sh",
+		".claude/hooks/awm-receipt-guard.sh",
+		".claude/hooks/awm-receipt-mark.sh",
+		".claude/hooks/awm-session-context.sh",
+		".claude/hooks/awm-stop-guard.sh",
 		".claude/settings.json",
 	}; !reflect.DeepEqual(againResult.Unchanged, wantUnchanged) {
 		t.Fatalf("unexpected unchanged paths on rerun: got %v want %v", againResult.Unchanged, wantUnchanged)
@@ -1313,7 +1313,7 @@ func TestInit_UnknownTemplateReturnsInvalidInput(t *testing.T) {
 	if apiErr.Code != "INVALID_INPUT" {
 		t.Fatalf("unexpected error code: %s", apiErr.Code)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".acm")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(root, ".awm")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected no init side effects on invalid template, stat err=%v", err)
 	}
 }

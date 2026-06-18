@@ -1,0 +1,10 @@
+{
+  "version": "awm.v1",
+  "command": "context",
+  "request_id": "req-context-001",
+  "payload": {
+    "project_id": "customer-portal",
+    "task_text": "fix the profile settings save race so stale responses cannot overwrite newer edits",
+    "phase": "execute"
+  }
+}

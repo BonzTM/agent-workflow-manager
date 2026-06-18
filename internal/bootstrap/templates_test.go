@@ -25,8 +25,8 @@ func TestEmbeddedTemplateManifestsUseInitTemplateVersion(t *testing.T) {
 			if err != nil {
 				t.Fatalf("read manifest %s: %v", manifestPath, err)
 			}
-			if !strings.Contains(string(raw), "version: acm.init-template.v1") {
-				t.Fatalf("manifest %s must use acm.init-template.v1", manifestPath)
+			if !strings.Contains(string(raw), "version: awm.init-template.v1") {
+				t.Fatalf("manifest %s must use awm.init-template.v1", manifestPath)
 			}
 		})
 	}
@@ -40,7 +40,7 @@ func TestCodexHooksTemplateEnablesExperimentalFeature(t *testing.T) {
 		t.Fatalf("read embedded Codex hooks config: %v", err)
 	}
 	content := string(raw)
-	for _, snippet := range []string{"[features]", "codex_hooks = true"} {
+	for _, snippet := range []string{"[features]", "hooks = true"} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("Codex hooks config is missing snippet %q", snippet)
 		}
@@ -60,23 +60,22 @@ func TestCodexHooksTemplateSeedsOnlyCurrentLifecycleEvents(t *testing.T) {
 		t.Fatalf("read embedded Codex hooks manifest: %v", err)
 	}
 	content := string(raw)
-	for _, snippet := range []string{"SessionStart", "UserPromptSubmit", "Stop", "acm-session-context.sh", "acm-prompt-guard.sh", "acm-stop-guard.sh", "statusMessage"} {
+	for _, snippet := range []string{"SessionStart", "UserPromptSubmit", "Stop", "awm-session-context.sh", "awm-prompt-guard.sh", "awm-stop-guard.sh", "statusMessage"} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("Codex hooks manifest is missing snippet %q", snippet)
 		}
 	}
-	for _, forbidden := range []string{"SessionStop", "PreToolUse", "PostToolUse", "acm-receipt-mark.sh", "acm-edit-state.sh"} {
+	for _, forbidden := range []string{"SessionStop", "PreToolUse", "PostToolUse", "awm-receipt-mark.sh", "awm-edit-state.sh"} {
 		if strings.Contains(content, forbidden) {
 			t.Fatalf("Codex hooks manifest must not imply unsupported snippet %q", forbidden)
 		}
 	}
 }
 
-
 func TestClaudeHooksReceiptMarkHookCoversContextJSONFlow(t *testing.T) {
 	t.Parallel()
 
-	raw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-hooks/files/.claude/hooks/acm-receipt-mark.sh")
+	raw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-hooks/files/.claude/hooks/awm-receipt-mark.sh")
 	if err != nil {
 		t.Fatalf("read receipt mark hook: %v", err)
 	}
@@ -85,15 +84,15 @@ func TestClaudeHooksReceiptMarkHookCoversContextJSONFlow(t *testing.T) {
 		"is_task_context_command",
 		"--task-(text|file)",
 		"(-h|--help)",
-		"acm[[:space:]]+run",
-		"extract_acm_input_path",
+		"awm[[:space:]]+run",
+		"extract_awm_input_path",
 		"request_declares_command",
 		`request_declares_command "$INPUT_PATH" "context"`,
 		`request_declares_command "$INPUT_PATH" "work"`,
 		`request_declares_command "$INPUT_PATH" "verify"`,
 		`request_declares_command "$INPUT_PATH" "done"`,
-		"acm-mcp[[:space:]]+invoke",
-		"acm[[:space:]]+done",
+		"awm-mcp[[:space:]]+invoke",
+		"awm[[:space:]]+done",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(content, snippet) {
@@ -120,9 +119,9 @@ func TestClaudeHooksSettingsIncludeProcessHooks(t *testing.T) {
 		`"UserPromptSubmit"`,
 		`"Stop"`,
 		"Edit|MultiEdit|Write|NotebookEdit",
-		"acm-session-context.sh",
-		"acm-edit-state.sh",
-		"acm-stop-guard.sh",
+		"awm-session-context.sh",
+		"awm-edit-state.sh",
+		"awm-stop-guard.sh",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(content, snippet) {
@@ -135,26 +134,26 @@ func TestClaudeProcessHooksTrackWorkflowState(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string][]string{
-		"bootstrap_templates/claude-hooks/files/.claude/hooks/acm-receipt-guard.sh": {
+		"bootstrap_templates/claude-hooks/files/.claude/hooks/awm-receipt-guard.sh": {
 			"files.txt",
-			"/acm-work",
+			"/awm-work",
 			"multi-file",
 		},
-		"bootstrap_templates/claude-hooks/files/.claude/hooks/acm-edit-state.sh": {
+		"bootstrap_templates/claude-hooks/files/.claude/hooks/awm-edit-state.sh": {
 			"files.txt",
 			`"${STATE_DIR}/verified"`,
 			`"${STATE_DIR}/reported"`,
 		},
-		"bootstrap_templates/claude-hooks/files/.claude/hooks/acm-session-context.sh": {
+		"bootstrap_templates/claude-hooks/files/.claude/hooks/awm-session-context.sh": {
 			"AGENTS.md",
-			"/acm-context",
-			"/acm-done",
+			"/awm-context",
+			"/awm-done",
 		},
-		"bootstrap_templates/claude-hooks/files/.claude/hooks/acm-stop-guard.sh": {
+		"bootstrap_templates/claude-hooks/files/.claude/hooks/awm-stop-guard.sh": {
 			`"Stop"`,
 			`decision: "block"`,
-			"/acm-verify",
-			"/acm-done",
+			"/awm-verify",
+			"/awm-done",
 		},
 	}
 
@@ -169,7 +168,7 @@ func TestClaudeProcessHooksTrackWorkflowState(t *testing.T) {
 				t.Fatalf("hook asset %s is missing snippet %q", path, snippet)
 			}
 		}
-		for _, forbidden := range []string{"/acm-get", "/acm-report"} {
+		for _, forbidden := range []string{"/awm-get", "/awm-report"} {
 			if strings.Contains(content, forbidden) {
 				t.Fatalf("hook asset %s must not retain legacy command snippet %q", path, forbidden)
 			}
@@ -194,7 +193,7 @@ func TestGitHooksPrecommitTemplateIncludesDeletedFiles(t *testing.T) {
 		t.Fatalf("read pre-commit hook: %v", err)
 	}
 	content := string(raw)
-	if !strings.Contains(content, "--diff-filter=ACMRTD") {
+	if !strings.Contains(content, "--diff-filter=AWMRTD") {
 		t.Fatalf("pre-commit hook must include staged deletions in the verify diff filter")
 	}
 }
@@ -204,8 +203,8 @@ func TestStarterAndDetailedContractsCarryMaintenanceAndDiscoveredScopeGuidance(t
 
 	cases := map[string][]string{
 		"bootstrap_templates/starter-contract/files/AGENTS.md": {
-			"acm sync --mode working_tree --insert-new-candidates",
-			"acm health --include-details",
+			"awm sync --mode working_tree --insert-new-candidates",
+			"awm health --include-details",
 			"work.plan.discovered_paths",
 		},
 	}
@@ -228,8 +227,8 @@ func TestStarterAndDetailedRulesetsDescribeEffectiveScopeAndBaselineDone(t *test
 	t.Parallel()
 
 	cases := []string{
-		"bootstrap_templates/starter-contract/files/.acm/acm-rules.yaml",
-		"bootstrap_templates/detailed-planning-enforcement/files/.acm/acm-rules.yaml",
+		"bootstrap_templates/starter-contract/files/.awm/awm-rules.yaml",
+		"bootstrap_templates/detailed-planning-enforcement/files/.awm/awm-rules.yaml",
 	}
 
 	for _, path := range cases {
@@ -249,15 +248,15 @@ func TestStarterAndDetailedRulesetsDescribeEffectiveScopeAndBaselineDone(t *test
 func TestExampleRulesetCarriesDiscoveredScopeAndMaintenanceGuidance(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile(filepath.Clean("../../docs/examples/acm-rules.yaml"))
+	raw, err := os.ReadFile(filepath.Clean("../../docs/examples/awm-rules.yaml"))
 	if err != nil {
 		t.Fatalf("read example ruleset: %v", err)
 	}
 	content := string(raw)
 	for _, snippet := range []string{
 		"work.plan.discovered_paths",
-		"acm sync --mode working_tree --insert-new-candidates",
-		"acm health --include-details",
+		"awm sync --mode working_tree --insert-new-candidates",
+		"awm health --include-details",
 		"receipt baseline",
 		"effectively no-file",
 	} {
@@ -270,7 +269,7 @@ func TestExampleRulesetCarriesDiscoveredScopeAndMaintenanceGuidance(t *testing.T
 func TestSkillReferencesAndWorkFixturesCoverDiscoveredScopeAndMaintenanceLoop(t *testing.T) {
 	t.Parallel()
 
-	referencePath := filepath.Clean("../../skills/acm-broker/references/templates.md")
+	referencePath := filepath.Clean("../../skills/awm-broker/references/templates.md")
 	referenceRaw, err := os.ReadFile(referencePath)
 	if err != nil {
 		t.Fatalf("read skill reference: %v", err)
@@ -278,8 +277,8 @@ func TestSkillReferencesAndWorkFixturesCoverDiscoveredScopeAndMaintenanceLoop(t 
 	referenceContent := string(referenceRaw)
 	for _, snippet := range []string{
 		"plan.discovered_paths",
-		"acm sync --mode working_tree --insert-new-candidates",
-		"acm health --include-details",
+		"awm sync --mode working_tree --insert-new-candidates",
+		"awm health --include-details",
 	} {
 		if !strings.Contains(referenceContent, snippet) {
 			t.Fatalf("skill reference is missing snippet %q", snippet)
@@ -287,8 +286,8 @@ func TestSkillReferencesAndWorkFixturesCoverDiscoveredScopeAndMaintenanceLoop(t 
 	}
 
 	for _, path := range []string{
-		"../../skills/acm-broker/assets/requests/work.json",
-		"../../skills/acm-broker/assets/requests/mcp_work.json",
+		"../../skills/awm-broker/assets/requests/work.json",
+		"../../skills/awm-broker/assets/requests/mcp_work.json",
 	} {
 		raw, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
@@ -303,7 +302,7 @@ func TestSkillReferencesAndWorkFixturesCoverDiscoveredScopeAndMaintenanceLoop(t 
 func TestClaudeDoneAndVerifyPromptsMatchBaselineErgonomics(t *testing.T) {
 	t.Parallel()
 
-	doneRaw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-command-pack/files/.claude/commands/acm-done.md")
+	doneRaw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-command-pack/files/.claude/commands/awm-done.md")
 	if err != nil {
 		t.Fatalf("read embedded done command: %v", err)
 	}
@@ -319,7 +318,7 @@ func TestClaudeDoneAndVerifyPromptsMatchBaselineErgonomics(t *testing.T) {
 		}
 	}
 
-	verifyRaw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-command-pack/files/.claude/commands/acm-verify.md")
+	verifyRaw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-command-pack/files/.claude/commands/awm-verify.md")
 	if err != nil {
 		t.Fatalf("read embedded verify command: %v", err)
 	}
@@ -334,15 +333,15 @@ func TestClaudeDoneAndVerifyPromptsMatchBaselineErgonomics(t *testing.T) {
 func TestClaudeBrokerCompanionCoversMaintenanceAndDiscoveredScope(t *testing.T) {
 	t.Parallel()
 
-	raw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-command-pack/files/.claude/acm-broker/CLAUDE.md")
+	raw, err := initTemplateFS.ReadFile("bootstrap_templates/claude-command-pack/files/.claude/awm-broker/CLAUDE.md")
 	if err != nil {
 		t.Fatalf("read embedded Claude companion: %v", err)
 	}
 	content := string(raw)
 	for _, snippet := range []string{
 		"plan.discovered_paths",
-		"acm sync --mode working_tree --insert-new-candidates",
-		"acm health --include-details",
+		"awm sync --mode working_tree --insert-new-candidates",
+		"awm health --include-details",
 		"receipt baseline",
 		"effectively no-file",
 	} {
@@ -355,27 +354,27 @@ func TestClaudeBrokerCompanionCoversMaintenanceAndDiscoveredScope(t *testing.T) 
 func TestCodexCompanionCoversPrimaryWorkflowWithoutFakeClaudeParity(t *testing.T) {
 	t.Parallel()
 
-	raw, err := initTemplateFS.ReadFile("bootstrap_templates/codex-pack/files/.codex/acm-broker/README.md")
+	raw, err := initTemplateFS.ReadFile("bootstrap_templates/codex-pack/files/.codex/awm-broker/README.md")
 	if err != nil {
 		t.Fatalf("read embedded Codex companion: %v", err)
 	}
 	content := string(raw)
 	for _, snippet := range []string{
-		"acm init --apply-template codex-pack",
-		"acm init --apply-template codex-hooks",
+		"awm init --apply-template codex-pack",
+		"awm init --apply-template codex-hooks",
 		"work.plan.discovered_paths",
-		"acm sync --mode working_tree --insert-new-candidates",
-		"acm health --include-details",
-		"`acm context`",
-		"`acm work`",
-		"`acm verify`",
-		"`acm done`",
+		"awm sync --mode working_tree --insert-new-candidates",
+		"awm health --include-details",
+		"`awm context`",
+		"`awm work`",
+		"`awm verify`",
+		"`awm done`",
 	} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("Codex companion is missing snippet %q", snippet)
 		}
 	}
-	for _, forbidden := range []string{"/acm-context", "SessionStart", "claude-hooks"} {
+	for _, forbidden := range []string{"/awm-context", "SessionStart", "claude-hooks"} {
 		if strings.Contains(content, forbidden) {
 			t.Fatalf("Codex companion must not imply Claude-only surface snippet %q", forbidden)
 		}
@@ -385,16 +384,16 @@ func TestCodexCompanionCoversPrimaryWorkflowWithoutFakeClaudeParity(t *testing.T
 func TestCodexCompanionExampleTreatsCodexAsPrimaryOperator(t *testing.T) {
 	t.Parallel()
 
-	raw, err := initTemplateFS.ReadFile("bootstrap_templates/codex-pack/files/.codex/acm-broker/AGENTS.example.md")
+	raw, err := initTemplateFS.ReadFile("bootstrap_templates/codex-pack/files/.codex/awm-broker/AGENTS.example.md")
 	if err != nil {
 		t.Fatalf("read embedded Codex AGENTS example: %v", err)
 	}
 	content := string(raw)
 	for _, snippet := range []string{
-		"Codex is a primary ACM operator",
-		"acm context",
-		"acm verify",
-		"acm done",
+		"Codex is a primary AWM operator",
+		"awm context",
+		"awm verify",
+		"awm done",
 		"work.plan.discovered_paths",
 	} {
 		if !strings.Contains(content, snippet) {
@@ -406,27 +405,27 @@ func TestCodexCompanionExampleTreatsCodexAsPrimaryOperator(t *testing.T) {
 func TestOpenCodeCompanionCoversPrimaryWorkflowWithoutInventedGlobalHooks(t *testing.T) {
 	t.Parallel()
 
-	raw, err := initTemplateFS.ReadFile("bootstrap_templates/opencode-pack/files/.opencode/acm-broker/README.md")
+	raw, err := initTemplateFS.ReadFile("bootstrap_templates/opencode-pack/files/.opencode/awm-broker/README.md")
 	if err != nil {
 		t.Fatalf("read embedded OpenCode companion: %v", err)
 	}
 	content := string(raw)
 	for _, snippet := range []string{
-		"acm init --apply-template opencode-pack",
+		"awm init --apply-template opencode-pack",
 		"work.plan.discovered_paths",
-		"acm sync --mode working_tree --insert-new-candidates",
-		"acm health --include-details",
-		"`acm context`",
-		"`acm work`",
-		"`acm verify`",
-		"`acm done`",
+		"awm sync --mode working_tree --insert-new-candidates",
+		"awm health --include-details",
+		"`awm context`",
+		"`awm work`",
+		"`awm verify`",
+		"`awm done`",
 		"documentation only",
 	} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("OpenCode companion is missing snippet %q", snippet)
 		}
 	}
-	for _, forbidden := range []string{"/acm-context", "SessionStart", "~/.opencode/skills"} {
+	for _, forbidden := range []string{"/awm-context", "SessionStart", "~/.opencode/skills"} {
 		if strings.Contains(content, forbidden) {
 			t.Fatalf("OpenCode companion must not imply unsupported integration snippet %q", forbidden)
 		}
@@ -436,18 +435,18 @@ func TestOpenCodeCompanionCoversPrimaryWorkflowWithoutInventedGlobalHooks(t *tes
 func TestOpenCodeCompanionExampleTreatsOpenCodeAsPrimaryOperator(t *testing.T) {
 	t.Parallel()
 
-	raw, err := initTemplateFS.ReadFile("bootstrap_templates/opencode-pack/files/.opencode/acm-broker/AGENTS.example.md")
+	raw, err := initTemplateFS.ReadFile("bootstrap_templates/opencode-pack/files/.opencode/awm-broker/AGENTS.example.md")
 	if err != nil {
 		t.Fatalf("read embedded OpenCode AGENTS example: %v", err)
 	}
 	content := string(raw)
 	for _, snippet := range []string{
-		"OpenCode is a primary ACM operator",
-		"acm context",
-		"acm verify",
-		"acm done",
+		"OpenCode is a primary AWM operator",
+		"awm context",
+		"awm verify",
+		"awm done",
 		"work.plan.discovered_paths",
-		".opencode/acm-broker/",
+		".opencode/awm-broker/",
 	} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("OpenCode AGENTS example is missing snippet %q", snippet)
@@ -458,7 +457,7 @@ func TestOpenCodeCompanionExampleTreatsOpenCodeAsPrimaryOperator(t *testing.T) {
 func TestDetailedPlanningTemplateValidatorSkipsUnmaterializedReceiptPlans(t *testing.T) {
 	t.Parallel()
 
-	raw, err := initTemplateFS.ReadFile("bootstrap_templates/detailed-planning-enforcement/files/scripts/acm-feature-plan-validate.py")
+	raw, err := initTemplateFS.ReadFile("bootstrap_templates/detailed-planning-enforcement/files/scripts/awm-feature-plan-validate.py")
 	if err != nil {
 		t.Fatalf("read embedded validator: %v", err)
 	}
@@ -489,7 +488,7 @@ func TestInitTemplateDocsListCodexPack(t *testing.T) {
 		t.Fatalf("read init-template docs: %v", err)
 	}
 	content := string(raw)
-	for _, snippet := range []string{"`codex-pack`", ".codex/acm-broker/README.md", ".codex/acm-broker/AGENTS.example.md"} {
+	for _, snippet := range []string{"`codex-pack`", ".codex/awm-broker/README.md", ".codex/awm-broker/AGENTS.example.md"} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("init-template docs are missing snippet %q", snippet)
 		}
@@ -504,7 +503,7 @@ func TestInitTemplateDocsListCodexHooks(t *testing.T) {
 		t.Fatalf("read init-template docs: %v", err)
 	}
 	content := string(raw)
-	for _, snippet := range []string{"`codex-hooks`", ".codex/config.toml", ".codex/hooks.json", ".codex/hooks/acm-prompt-guard.sh"} {
+	for _, snippet := range []string{"`codex-hooks`", ".codex/config.toml", ".codex/hooks.json", ".codex/hooks/awm-prompt-guard.sh"} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("init-template docs are missing snippet %q", snippet)
 		}
@@ -519,7 +518,7 @@ func TestInitTemplateDocsListOpenCodePack(t *testing.T) {
 		t.Fatalf("read init-template docs: %v", err)
 	}
 	content := string(raw)
-	for _, snippet := range []string{"`opencode-pack`", ".opencode/acm-broker/README.md", ".opencode/acm-broker/AGENTS.example.md"} {
+	for _, snippet := range []string{"`opencode-pack`", ".opencode/awm-broker/README.md", ".opencode/awm-broker/AGENTS.example.md"} {
 		if !strings.Contains(content, snippet) {
 			t.Fatalf("init-template docs are missing snippet %q", snippet)
 		}

@@ -22,7 +22,7 @@ func TestSQLiteMigrations_ConvertCompletedStatusesToComplete(t *testing.T) {
 	})
 
 	if _, err := db.ExecContext(ctx, `
-CREATE TABLE IF NOT EXISTS acm_schema_migrations (
+CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 	migration_name TEXT PRIMARY KEY,
 	applied_at INTEGER NOT NULL DEFAULT (unixepoch())
 )`); err != nil {
@@ -30,26 +30,26 @@ CREATE TABLE IF NOT EXISTS acm_schema_migrations (
 	}
 
 	for _, name := range []string{
-		"0001_acm_foundation.sql",
-		"0002_acm_propose_memory.sql",
-		"0003_acm_sync.sql",
-		"0004_acm_work_items.sql",
-		"0005_acm_work_plans.sql",
-		"0006_acm_work_plan_hierarchy.sql",
-		"0007_acm_verification_runs.sql",
-		"0008_acm_sqlite_parity.sql",
-		"0009_acm_run_history_indexes.sql",
-		"0010_acm_review_attempts.sql",
-		"0011_acm_receipt_scope_pointer_paths.sql",
-		"0012_acm_initial_scope_and_baselines.sql",
+		"0001_awm_foundation.sql",
+		"0002_awm_propose_memory.sql",
+		"0003_awm_sync.sql",
+		"0004_awm_work_items.sql",
+		"0005_awm_work_plans.sql",
+		"0006_awm_work_plan_hierarchy.sql",
+		"0007_awm_verification_runs.sql",
+		"0008_awm_sqlite_parity.sql",
+		"0009_awm_run_history_indexes.sql",
+		"0010_awm_review_attempts.sql",
+		"0011_awm_receipt_scope_pointer_paths.sql",
+		"0012_awm_initial_scope_and_baselines.sql",
 	} {
-		if _, err := db.ExecContext(ctx, `INSERT INTO acm_schema_migrations (migration_name) VALUES (?)`, name); err != nil {
+		if _, err := db.ExecContext(ctx, `INSERT INTO awm_schema_migrations (migration_name) VALUES (?)`, name); err != nil {
 			t.Fatalf("record pre-0013 migration %s: %v", name, err)
 		}
 	}
 
 	if _, err := db.ExecContext(ctx, `
-CREATE TABLE acm_receipts (
+CREATE TABLE awm_receipts (
 	receipt_id TEXT PRIMARY KEY,
 	project_id TEXT NOT NULL,
 	task_text TEXT NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE acm_receipts (
 	}
 
 	if _, err := db.ExecContext(ctx, `
-CREATE TABLE acm_work_items (
+CREATE TABLE awm_work_items (
 	work_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id TEXT NOT NULL,
 	receipt_id TEXT NOT NULL,
@@ -77,13 +77,13 @@ CREATE TABLE acm_work_items (
 	created_at INTEGER NOT NULL DEFAULT (unixepoch()),
 	updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
 	UNIQUE (project_id, receipt_id, item_key),
-	FOREIGN KEY (receipt_id) REFERENCES acm_receipts (receipt_id) ON DELETE CASCADE
+	FOREIGN KEY (receipt_id) REFERENCES awm_receipts (receipt_id) ON DELETE CASCADE
 )`); err != nil {
 		t.Fatalf("create legacy work items table: %v", err)
 	}
 
 	if _, err := db.ExecContext(ctx, `
-CREATE TABLE acm_work_plans (
+CREATE TABLE awm_work_plans (
 	plan_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id TEXT NOT NULL,
 	plan_key TEXT NOT NULL,
@@ -110,7 +110,7 @@ CREATE TABLE acm_work_plans (
 	}
 
 	if _, err := db.ExecContext(ctx, `
-CREATE TABLE acm_work_plan_tasks (
+CREATE TABLE awm_work_plan_tasks (
 	task_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id TEXT NOT NULL,
 	plan_key TEXT NOT NULL,
@@ -128,13 +128,13 @@ CREATE TABLE acm_work_plan_tasks (
 	parent_task_key TEXT NOT NULL DEFAULT '',
 	external_refs_json TEXT NOT NULL DEFAULT '[]',
 	UNIQUE (project_id, plan_key, task_key),
-	FOREIGN KEY (project_id, plan_key) REFERENCES acm_work_plans (project_id, plan_key) ON DELETE CASCADE
+	FOREIGN KEY (project_id, plan_key) REFERENCES awm_work_plans (project_id, plan_key) ON DELETE CASCADE
 )`); err != nil {
 		t.Fatalf("create legacy work plan tasks table: %v", err)
 	}
 
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -154,7 +154,7 @@ INSERT INTO acm_receipts (
 	}
 
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_work_items (
+INSERT INTO awm_work_items (
 	project_id,
 	receipt_id,
 	item_key,
@@ -167,7 +167,7 @@ INSERT INTO acm_work_items (
 	}
 
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_work_plans (
+INSERT INTO awm_work_plans (
 	project_id,
 	plan_key,
 	receipt_id,
@@ -193,7 +193,7 @@ INSERT INTO acm_work_plans (
 	}
 
 	if _, err := db.ExecContext(ctx, `
-INSERT INTO acm_work_plan_tasks (
+INSERT INTO awm_work_plan_tasks (
 	project_id,
 	plan_key,
 	task_key,
@@ -228,7 +228,7 @@ INSERT INTO acm_work_plan_tasks (
 	var workItemStatus string
 	if err := repo.db.QueryRowContext(ctx, `
 SELECT status
-FROM acm_work_items
+FROM awm_work_items
 WHERE project_id = ? AND receipt_id = ? AND item_key = ?
 `, "project.alpha", "receipt.complete", "verify:tests").Scan(&workItemStatus); err != nil {
 		t.Fatalf("query migrated work item status: %v", err)
@@ -245,7 +245,7 @@ WHERE project_id = ? AND receipt_id = ? AND item_key = ?
 	)
 	if err := repo.db.QueryRowContext(ctx, `
 SELECT status, stage_spec_outline, stage_refined_spec, stage_implementation_plan
-FROM acm_work_plans
+FROM awm_work_plans
 WHERE project_id = ? AND plan_key = ?
 `, "project.alpha", "plan:receipt.complete").Scan(&planStatus, &stageSpec, &stageRef, &stageImpl); err != nil {
 		t.Fatalf("query migrated work plan status: %v", err)
@@ -257,7 +257,7 @@ WHERE project_id = ? AND plan_key = ?
 	var taskStatus string
 	if err := repo.db.QueryRowContext(ctx, `
 SELECT status
-FROM acm_work_plan_tasks
+FROM awm_work_plan_tasks
 WHERE project_id = ? AND plan_key = ? AND task_key = ?
 `, "project.alpha", "plan:receipt.complete", "verify:tests").Scan(&taskStatus); err != nil {
 		t.Fatalf("query migrated work plan task status: %v", err)
@@ -267,7 +267,7 @@ WHERE project_id = ? AND plan_key = ? AND task_key = ?
 	}
 
 	if _, err := repo.db.ExecContext(ctx, `
-INSERT INTO acm_work_items (
+INSERT INTO awm_work_items (
 	project_id,
 	receipt_id,
 	item_key,
@@ -280,7 +280,7 @@ INSERT INTO acm_work_items (
 	}
 
 	if _, err := repo.db.ExecContext(ctx, `
-UPDATE acm_work_plans
+UPDATE awm_work_plans
 SET status = 'superseded', stage_implementation_plan = 'superseded'
 WHERE project_id = ? AND plan_key = ?
 `, "project.alpha", "plan:receipt.complete"); err != nil {
@@ -288,7 +288,7 @@ WHERE project_id = ? AND plan_key = ?
 	}
 
 	if _, err := repo.db.ExecContext(ctx, `
-UPDATE acm_work_plan_tasks
+UPDATE awm_work_plan_tasks
 SET status = 'superseded'
 WHERE project_id = ? AND plan_key = ? AND task_key = ?
 `, "project.alpha", "plan:receipt.complete", "verify:tests"); err != nil {

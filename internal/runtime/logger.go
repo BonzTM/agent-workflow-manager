@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
 )
 
-const LogLevelEnvVar = "ACM_LOG_LEVEL"
-const LogSinkEnvVar = "ACM_LOG_SINK"
+const LogLevelEnvVar = "AWM_LOG_LEVEL"
+const LogSinkEnvVar = "AWM_LOG_SINK"
 
 type loggerSink string
 

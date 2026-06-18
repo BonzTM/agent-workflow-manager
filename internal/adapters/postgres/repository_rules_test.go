@@ -4,13 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestNormalizeRulePointerSyncInput_DedupesAndDefaults(t *testing.T) {
 	normalized, err := normalizeRulePointerSyncInput(core.RulePointerSyncInput{
 		ProjectID:  " project.alpha ",
-		SourcePath: " .acm/acm-rules.yaml ",
+		SourcePath: " .awm/awm-rules.yaml ",
 		Pointers: []core.RulePointer{
 			{
 				RuleID:      "rule.keep",
@@ -20,7 +20,7 @@ func TestNormalizeRulePointerSyncInput_DedupesAndDefaults(t *testing.T) {
 				Tags:        []string{"ops", "ops"},
 			},
 			{
-				PointerKey:  "project.alpha:.acm/acm-rules.yaml#rule.keep",
+				PointerKey:  "project.alpha:.awm/awm-rules.yaml#rule.keep",
 				RuleID:      "rule.keep",
 				Summary:     "Keep summary updated",
 				Content:     "Keep content updated",
@@ -36,7 +36,7 @@ func TestNormalizeRulePointerSyncInput_DedupesAndDefaults(t *testing.T) {
 	if normalized.ProjectID != "project.alpha" {
 		t.Fatalf("unexpected project_id: %q", normalized.ProjectID)
 	}
-	if normalized.SourcePath != ".acm/acm-rules.yaml" {
+	if normalized.SourcePath != ".awm/awm-rules.yaml" {
 		t.Fatalf("unexpected source_path: %q", normalized.SourcePath)
 	}
 	if len(normalized.Pointers) != 1 {
@@ -44,7 +44,7 @@ func TestNormalizeRulePointerSyncInput_DedupesAndDefaults(t *testing.T) {
 	}
 
 	pointer := normalized.Pointers[0]
-	if pointer.PointerKey != "project.alpha:.acm/acm-rules.yaml#rule.keep" {
+	if pointer.PointerKey != "project.alpha:.awm/awm-rules.yaml#rule.keep" {
 		t.Fatalf("unexpected pointer key: %q", pointer.PointerKey)
 	}
 	if pointer.Content != "Keep content updated" {
@@ -60,7 +60,7 @@ func TestNormalizeRulePointerSyncInput_DedupesAndDefaults(t *testing.T) {
 }
 
 func TestNormalizeRulePointerSyncInput_RequiresProjectAndSourcePath(t *testing.T) {
-	if _, err := normalizeRulePointerSyncInput(core.RulePointerSyncInput{SourcePath: ".acm/acm-rules.yaml"}); err == nil {
+	if _, err := normalizeRulePointerSyncInput(core.RulePointerSyncInput{SourcePath: ".awm/awm-rules.yaml"}); err == nil {
 		t.Fatal("expected project_id validation error")
 	}
 	if _, err := normalizeRulePointerSyncInput(core.RulePointerSyncInput{ProjectID: "project.alpha"}); err == nil {

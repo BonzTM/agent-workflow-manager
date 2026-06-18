@@ -16,8 +16,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
-	storagedomain "github.com/bonztm/agent-context-manager/internal/storage/domain"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
 const (
@@ -130,7 +130,7 @@ SELECT
 	is_stale,
 	stale_at,
 	updated_at
-FROM acm_pointers
+FROM awm_pointers
 WHERE project_id = ?
 `, projectID)
 	if err != nil {
@@ -205,7 +205,7 @@ func (r *Repository) ListPointerInventory(ctx context.Context, projectID string)
 SELECT
 	path,
 	MAX(is_stale) AS is_stale
-FROM acm_pointers
+FROM awm_pointers
 WHERE project_id = ?
 GROUP BY path
 ORDER BY path ASC
@@ -267,7 +267,7 @@ func (r *Repository) UpsertPointerStubs(ctx context.Context, projectID string, s
 
 		isRule := boolToInt(strings.EqualFold(stub.Kind, "rule"))
 		tag, execErr := tx.ExecContext(ctx, `
-INSERT INTO acm_pointers (
+INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
 	path,
@@ -343,7 +343,7 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		ctx,
 		`
 SELECT task_text, phase, resolved_tags_json, pointer_keys_json, memory_ids_json, initial_scope_paths_json, baseline_captured, baseline_paths_json
-FROM acm_receipts
+FROM awm_receipts
 WHERE project_id = ?
 	AND receipt_id = ?
 `,
@@ -416,10 +416,10 @@ SELECT
 	COALESCE(run.run_id, 0) AS run_id,
 	COALESCE(run.status, '') AS run_status,
 	COALESCE(run.created_at, r.created_at) AS updated_at
-FROM acm_receipts r
+FROM awm_receipts r
 LEFT JOIN (
 	SELECT run_id, status, created_at
-	FROM acm_runs
+	FROM awm_runs
 	WHERE project_id = ?
 		AND receipt_id = ?
 	ORDER BY created_at DESC, run_id DESC
@@ -487,7 +487,7 @@ SELECT
 	is_rule,
 	is_stale,
 	updated_at
-FROM acm_pointers
+FROM awm_pointers
 WHERE project_id = ?
 	AND pointer_key = ?
 	AND is_stale = 0
@@ -560,7 +560,7 @@ func (r *Repository) UpsertWorkItems(ctx context.Context, input core.WorkItemsUp
 	updated := 0
 	for _, item := range items {
 		tag, execErr := tx.ExecContext(ctx, `
-INSERT INTO acm_work_items (
+INSERT INTO awm_work_items (
 	project_id,
 	receipt_id,
 	item_key,
@@ -605,7 +605,7 @@ func (r *Repository) ListWorkItems(ctx context.Context, input core.FetchLookupQu
 
 	rows, err := r.db.QueryContext(ctx, `
 SELECT item_key, status, updated_at
-FROM acm_work_items
+FROM awm_work_items
 WHERE project_id = ?
 	AND receipt_id = ?
 ORDER BY item_key ASC
@@ -684,7 +684,7 @@ func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpse
 	normalizedTasks := storagedomain.MergeIncomingWorkPlanTasks(current.Tasks, input.Tasks, mode)
 	if mode == core.WorkPlanModeReplace {
 		tag, err := tx.ExecContext(ctx, `
-DELETE FROM acm_work_plan_tasks
+DELETE FROM awm_work_plan_tasks
 WHERE project_id = ?
 	AND plan_key = ?
 `, projectID, planKey)
@@ -721,7 +721,7 @@ WHERE project_id = ?
 		}
 
 		tag, err := tx.ExecContext(ctx, `
-INSERT INTO acm_work_plan_tasks (
+INSERT INTO awm_work_plan_tasks (
 	project_id,
 	plan_key,
 	task_key,
@@ -770,7 +770,7 @@ ON CONFLICT(project_id, plan_key, task_key) DO UPDATE SET
 		}
 		derivedStatus := derivePlanStatus(tasks)
 		if _, err := tx.ExecContext(ctx, `
-UPDATE acm_work_plans
+UPDATE awm_work_plans
 SET status = ?, updated_at = unixepoch()
 WHERE project_id = ?
 	AND plan_key = ?
@@ -814,7 +814,7 @@ func (r *Repository) LookupWorkPlan(ctx context.Context, input core.WorkPlanLook
 	if planKey == "" {
 		err := r.db.QueryRowContext(ctx, `
 SELECT plan_key
-FROM acm_work_plans
+FROM awm_work_plans
 WHERE project_id = ?
 	AND receipt_id = ?
 ORDER BY updated_at DESC, plan_key ASC
@@ -879,8 +879,8 @@ SELECT
 	SUM(CASE WHEN t.status = 'blocked' THEN 1 ELSE 0 END) AS task_count_blocked,
 	SUM(CASE WHEN t.status = 'complete' THEN 1 ELSE 0 END) AS task_count_completed,
 	p.updated_at
-FROM acm_work_plans p
-LEFT JOIN acm_work_plan_tasks t
+FROM awm_work_plans p
+LEFT JOIN awm_work_plan_tasks t
 	ON t.project_id = p.project_id
 	AND t.plan_key = p.plan_key
 WHERE p.project_id = ?
@@ -911,7 +911,7 @@ WHERE p.project_id = ?
 	OR LOWER(COALESCE(p.parent_plan_key, '')) LIKE ? ESCAPE '\'
 	OR EXISTS (
 		SELECT 1
-		FROM acm_work_plan_tasks wt
+		FROM awm_work_plan_tasks wt
 		WHERE wt.project_id = p.project_id
 			AND wt.plan_key = p.plan_key
 			AND (
@@ -1054,11 +1054,11 @@ SELECT
 	COALESCE(run.request_id, '') AS latest_request_id,
 	COALESCE(run.status, '') AS latest_status,
 	COALESCE(run.created_at, r.created_at) AS updated_at
-FROM acm_receipts r
+FROM awm_receipts r
 LEFT JOIN (
 	SELECT project_id, receipt_id, request_id, status, created_at,
 		ROW_NUMBER() OVER (PARTITION BY project_id, receipt_id ORDER BY created_at DESC, run_id DESC) AS rn
-	FROM acm_runs
+	FROM awm_runs
 ) run
 	ON run.project_id = r.project_id
 	AND run.receipt_id = r.receipt_id
@@ -1074,7 +1074,7 @@ WHERE r.project_id = ?
 	OR LOWER(COALESCE(r.phase, '')) LIKE ? ESCAPE '\'
 	OR EXISTS (
 		SELECT 1
-		FROM acm_runs rr
+		FROM awm_runs rr
 		WHERE rr.project_id = r.project_id
 			AND rr.receipt_id = r.receipt_id
 			AND (
@@ -1168,8 +1168,8 @@ SELECT
 	run.files_changed_json,
 	run.outcome,
 	run.created_at
-FROM acm_runs run
-LEFT JOIN acm_receipts r
+FROM awm_runs run
+LEFT JOIN awm_receipts r
 	ON r.project_id = run.project_id
 	AND r.receipt_id = run.receipt_id
 WHERE run.project_id = ?
@@ -1278,8 +1278,8 @@ SELECT
 	run.files_changed_json,
 	run.outcome,
 	run.created_at
-FROM acm_runs run
-LEFT JOIN acm_receipts r
+FROM awm_runs run
+LEFT JOIN awm_receipts r
 	ON r.project_id = run.project_id
 	AND r.receipt_id = run.receipt_id
 WHERE run.project_id = ?
@@ -1325,7 +1325,7 @@ func listActiveWorkPlanTaskKeys(ctx context.Context, q sqlRowsQuerier, projectID
 SELECT
 	plan_key,
 	task_key
-FROM acm_work_plan_tasks
+FROM awm_work_plan_tasks
 WHERE project_id = ?
 	AND plan_key IN (` + placeholders(len(planKeys)) + `)
 	AND status NOT IN ('complete', 'superseded')
@@ -1445,7 +1445,7 @@ func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunRe
 	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -1480,7 +1480,7 @@ SET
 	}
 
 	insertRunResult, err := tx.ExecContext(ctx, `
-INSERT INTO acm_runs (
+INSERT INTO awm_runs (
 	project_id,
 	request_id,
 	receipt_id,
@@ -1548,7 +1548,7 @@ func (r *Repository) UpsertReceiptScope(ctx context.Context, input core.ReceiptS
 	}
 
 	_, err = r.db.ExecContext(ctx, `
-INSERT INTO acm_receipts (
+INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
 	task_text,
@@ -1607,7 +1607,7 @@ func (r *Repository) SaveReviewAttempt(ctx context.Context, input core.ReviewAtt
 	}
 
 	result, err := r.db.ExecContext(ctx, `
-INSERT INTO acm_review_attempts (
+INSERT INTO awm_review_attempts (
 	project_id,
 	receipt_id,
 	plan_key,
@@ -1692,7 +1692,7 @@ SELECT
 	stdout_excerpt,
 	stderr_excerpt,
 	created_at
-FROM acm_review_attempts
+FROM awm_review_attempts
 WHERE project_id = ?
   AND receipt_id = ?
   AND review_key = ?
@@ -1788,7 +1788,7 @@ func (r *Repository) SaveVerificationBatch(ctx context.Context, input core.Verif
 	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(ctx, `
-INSERT INTO acm_verification_batches (
+INSERT INTO awm_verification_batches (
 	batch_run_id,
 	project_id,
 	receipt_id,
@@ -1826,7 +1826,7 @@ INSERT INTO acm_verification_batches (
 			return fmt.Errorf("encode verification result selection reasons %s: %w", result.TestID, err)
 		}
 		_, err = tx.ExecContext(ctx, `
-INSERT INTO acm_verification_results (
+INSERT INTO awm_verification_results (
 	batch_run_id,
 	project_id,
 	test_id,
@@ -1906,7 +1906,7 @@ func (r *Repository) ApplySync(ctx context.Context, input core.SyncApplyInput) (
 	out := core.SyncApplyResult{}
 	if len(deletedPaths) > 0 {
 		query := `
-UPDATE acm_pointers
+UPDATE awm_pointers
 SET
 	is_stale = 1,
 	stale_at = unixepoch(),
@@ -1938,7 +1938,7 @@ WHERE project_id = ?
 		)
 		if len(presentPaths) == 0 {
 			query = `
-UPDATE acm_pointers
+UPDATE awm_pointers
 SET
 	is_stale = 1,
 	stale_at = unixepoch(),
@@ -1949,7 +1949,7 @@ WHERE project_id = ?
 			args = []any{normalized.ProjectID}
 		} else {
 			query = `
-UPDATE acm_pointers
+UPDATE awm_pointers
 SET
 	is_stale = 1,
 	stale_at = unixepoch(),
@@ -1977,7 +1977,7 @@ WHERE project_id = ?
 
 	for _, row := range presentRows {
 		tag, err := tx.ExecContext(ctx, `
-UPDATE acm_pointers
+UPDATE awm_pointers
 SET
 	content_hash = ?,
 	is_stale = 0,
@@ -2005,7 +2005,7 @@ WHERE project_id = ?
 	if normalized.InsertNewCandidates {
 		for _, row := range presentRows {
 			tag, err := tx.ExecContext(ctx, `
-INSERT OR IGNORE INTO acm_pointer_candidates (
+INSERT OR IGNORE INTO awm_pointer_candidates (
 	project_id,
 	path,
 	content_hash,
@@ -2015,7 +2015,7 @@ INSERT OR IGNORE INTO acm_pointer_candidates (
 ) SELECT ?, ?, ?, unixepoch(), unixepoch(), unixepoch()
 WHERE NOT EXISTS (
 	SELECT 1
-	FROM acm_pointers
+	FROM awm_pointers
 	WHERE project_id = ?
 		AND path = ?
 )
@@ -2075,7 +2075,7 @@ SELECT
 	is_stale,
 	stale_at,
 	updated_at
-FROM acm_pointers
+FROM awm_pointers
 WHERE project_id = ?
 	AND pointer_key IN (` + placeholders(len(keys)) + `)
 `
@@ -2418,7 +2418,7 @@ func upsertWorkPlanRowTx(ctx context.Context, tx *sql.Tx, plan core.WorkPlan) er
 	}
 
 	if _, err := tx.ExecContext(ctx, `
-INSERT INTO acm_work_plans (
+INSERT INTO awm_work_plans (
 	project_id,
 	plan_key,
 	receipt_id,
@@ -2510,7 +2510,7 @@ SELECT
 	references_json,
 	external_refs_json,
 	updated_at
-FROM acm_work_plans
+FROM awm_work_plans
 WHERE project_id = ?
 	AND plan_key = ?
 `, projectID, planKey).Scan(&receiptID, &title, &objective, &kind, &parentPlanKey, &status, &stageSpecOutline, &stageRefinedSpec, &stageImplementation, &inScopeJSON, &outOfScopeJSON, &discoveredPathsJSON, &constraintsJSON, &referencesJSON, &externalRefsJSON, &updatedAt); err != nil {
@@ -2583,7 +2583,7 @@ SELECT
 	outcome,
 	evidence_json,
 	updated_at
-FROM acm_work_plan_tasks
+FROM awm_work_plan_tasks
 WHERE project_id = ?
 	AND plan_key = ?
 ORDER BY task_key ASC

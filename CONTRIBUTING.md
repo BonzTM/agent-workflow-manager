@@ -1,6 +1,6 @@
-# Contributing to acm
+# Contributing to awm
 
-Thank you for your interest in contributing to acm (agent-context-manager).
+Thank you for your interest in contributing to awm (agent-workflow-manager).
 
 ## Getting Started
 
@@ -13,9 +13,9 @@ Thank you for your interest in contributing to acm (agent-context-manager).
 
 ```bash
 # Build all binaries
-go build -o dist/acm ./cmd/acm
-go build -o dist/acm-mcp ./cmd/acm-mcp
-go build -o dist/acm-web ./cmd/acm-web
+go build -o dist/awm ./cmd/awm
+go build -o dist/awm-mcp ./cmd/awm-mcp
+go build -o dist/awm-web ./cmd/awm-web
 
 # Run tests
 go test ./...
@@ -75,7 +75,7 @@ For the full rationale behind these patterns, see the [coding-handbook foundatio
 ## Architecture Notes
 
 - `internal/contracts/v1` and `spec/v1` must move in lockstep — any payload, validation, or command change must update both plus their tests.
-- CLI (`cmd/acm`) and MCP (`cmd/acm-mcp`) surfaces must stay in parity.
+- CLI (`cmd/awm`) and MCP (`cmd/awm-mcp`) surfaces must stay in parity.
 - SQLite and Postgres adapters must maintain behavioral equivalence.
 
 See [docs/maintainer-reference.md](docs/maintainer-reference.md) and [docs/maintainer-map.md](docs/maintainer-map.md) for detailed architecture and change-routing guidance.

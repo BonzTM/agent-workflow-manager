@@ -16,15 +16,15 @@ Fixes a bug where the `work` command could not clear `parent_task_key` once set 
 
 ### Plan Validator Hardening
 
-- `scripts/acm-feature-plan-validate.py` — tasks with `status=superseded` are now excluded from `index_tasks`, preventing stale renamed tasks from causing validation errors
-- Gate tasks (`verify:tests`, `review:*`) with stale `parent_task_key` values are tolerated instead of errored, since ACM does not currently support clearing `parent_task_key` on existing tasks
+- `scripts/awm-feature-plan-validate.py` — tasks with `status=superseded` are now excluded from `index_tasks`, preventing stale renamed tasks from causing validation errors
+- Gate tasks (`verify:tests`, `review:*`) with stale `parent_task_key` values are tolerated instead of errored, since AWM does not currently support clearing `parent_task_key` on existing tasks
 
 ## Added
 
 ### Agent Directives
 
 - `AGENTS.md` — **Build And Verify** section with `go build`, `go test`, `gofmt`, `go vet`, and Postgres integration test commands
-- `AGENTS.md` — **Common Mistakes** section with 10 concrete anti-patterns: missing catalog updates, unpaired migrations, business logic in adapters, payload/schema drift, manual MCP wiring, stale `.acm/*.yaml`, catch-all tasks, `go run` in CI, unjustified dependencies, and multi-layer error logging
+- `AGENTS.md` — **Common Mistakes** section with 10 concrete anti-patterns: missing catalog updates, unpaired migrations, business logic in adapters, payload/schema drift, manual MCP wiring, stale `.awm/*.yaml`, catch-all tasks, `go run` in CI, unjustified dependencies, and multi-layer error logging
 - `AGENTS.md` — **Decision Authority** section listing what agents can decide autonomously (file reading order, test strategy, internal refactoring, commit structure) vs. what requires human sign-off (new dependencies, new commands, architecture changes, compatibility changes, scope expansion, security, exported symbol changes)
 - `CONTRIBUTING.md` — **Go Style And Patterns** section covering errors (`fmt.Errorf %w`, `errors.Is`/`errors.As`), logging (`log/slog`, injected loggers), package boundaries (`core`/`backend`/`adapters` layering), and style (`gofmt -s`, early returns, naming conventions), referencing the coding-handbook for rationale
 
@@ -34,9 +34,9 @@ Fixes a bug where the `work` command could not clear `parent_task_key` once set 
 
 ## Changed
 
-- `docs/examples/CLAUDE.md` — replaced 25-line restated ACM workflow loop with a concise slash-command mapping table that links to `AGENTS.md`
+- `docs/examples/CLAUDE.md` — replaced 25-line restated AWM workflow loop with a concise slash-command mapping table that links to `AGENTS.md`
 - `CLAUDE.md` — kept as minimal routing file; build commands now live in `AGENTS.md` where all agents benefit
-- Bootstrap template `acm-feature-plan-validate.py` — fully synced to current canonical version with both fixes (superseded filter + gate-task tolerance)
+- Bootstrap template `awm-feature-plan-validate.py` — fully synced to current canonical version with both fixes (superseded filter + gate-task tolerance)
 - `internal/contracts/v1/validate.go` — updated `parent_task_key` validation for `*string` type
 - `internal/contracts/v1/validate_test.go` — updated assertion for `*string` parent_task_key
 
@@ -44,19 +44,19 @@ Fixes a bug where the `work` command could not clear `parent_task_key` once set 
 
 - Binary rebuild required — the `work` command behavior changed. New binaries should be built and deployed.
 - Database schema unchanged from 1.1.1.
-- External repo copies of `acm-feature-plan-validate.py` (agent-memory-manager, soundspan) received the superseded-task filter fix.
+- External repo copies of `awm-feature-plan-validate.py` (agent-memory-manager, soundspan) received the superseded-task filter fix.
 
 ## Deployment and Distribution
 
-- Go install: `go install github.com/bonztm/agent-context-manager/cmd/acm@v1.1.2`
-- Go install (MCP): `go install github.com/bonztm/agent-context-manager/cmd/acm-mcp@v1.1.2`
-- Go install (Web): `go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.1.2`
-- Source: `https://github.com/BonzTM/agent-context-manager`
+- Go install: `go install github.com/bonztm/agent-workflow-manager/cmd/awm@v1.1.2`
+- Go install (MCP): `go install github.com/bonztm/agent-workflow-manager/cmd/awm-mcp@v1.1.2`
+- Go install (Web): `go install github.com/bonztm/agent-workflow-manager/cmd/awm-web@v1.1.2`
+- Source: `https://github.com/BonzTM/agent-workflow-manager`
 
 ```bash
-go install github.com/bonztm/agent-context-manager/cmd/acm@v1.1.2
-go install github.com/bonztm/agent-context-manager/cmd/acm-mcp@v1.1.2
-go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.1.2
+go install github.com/bonztm/agent-workflow-manager/cmd/awm@v1.1.2
+go install github.com/bonztm/agent-workflow-manager/cmd/awm-mcp@v1.1.2
+go install github.com/bonztm/agent-workflow-manager/cmd/awm-web@v1.1.2
 ```
 
 ## Breaking Changes
@@ -65,7 +65,7 @@ go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.1.2
 
 ## Known Issues
 
-- ACM `work` command does not support clearing other string fields (`blocked_reason`, `outcome`) via empty string in the same way. These fields have their own semantic clear rules (e.g., `blocked_reason` clears when status changes to non-blocked). A future release may generalize the explicit-clear pattern.
+- AWM `work` command does not support clearing other string fields (`blocked_reason`, `outcome`) via empty string in the same way. These fields have their own semantic clear rules (e.g., `blocked_reason` clears when status changes to non-blocked). A future release may generalize the explicit-clear pattern.
 
 ## Compatibility and Migration
 
@@ -76,5 +76,5 @@ go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.1.2
 
 ## Full Changelog
 
-- Compare changes: https://github.com/BonzTM/agent-context-manager/compare/1.1.1...1.1.2
-- Full changelog: https://github.com/BonzTM/agent-context-manager/commits/1.1.2
+- Compare changes: https://github.com/BonzTM/agent-workflow-manager/compare/1.1.1...1.1.2
+- Full changelog: https://github.com/BonzTM/agent-workflow-manager/commits/1.1.2

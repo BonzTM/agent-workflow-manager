@@ -1,28 +1,28 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: detailed-planning-enforcement
 summary: Seed a richer feature-planning contract and validator.
 operations:
   - type: replace_if_pristine
-    target: .acm/acm-rules.yaml
-    source: files/.acm/acm-rules.yaml
+    target: .awm/awm-rules.yaml
+    source: files/.awm/awm-rules.yaml
     pristine:
       - blank_rules_v1
       - starter_contract_rules_v1
   - type: replace_if_pristine
-    target: acm-rules.yaml
-    source: files/.acm/acm-rules.yaml
+    target: awm-rules.yaml
+    source: files/.awm/awm-rules.yaml
     pristine:
       - blank_rules_v1
       - starter_contract_rules_v1
   - type: replace_if_pristine
-    target: .acm/acm-tests.yaml
-    source: files/.acm/acm-tests.yaml
+    target: .awm/awm-tests.yaml
+    source: files/.awm/awm-tests.yaml
     pristine:
       - blank_tests_v1
       - verify_generic_tests_v1
   - type: replace_if_pristine
-    target: acm-tests.yaml
-    source: files/.acm/acm-tests.yaml
+    target: awm-tests.yaml
+    source: files/.awm/awm-tests.yaml
     pristine:
       - blank_tests_v1
       - verify_generic_tests_v1
@@ -30,6 +30,6 @@ operations:
     target: docs/feature-plans.md
     source: files/docs/feature-plans.md
   - type: create_if_missing
-    target: scripts/acm-feature-plan-validate.py
-    source: files/scripts/acm-feature-plan-validate.py
+    target: scripts/awm-feature-plan-validate.py
+    source: files/scripts/awm-feature-plan-validate.py
     mode: "0755"

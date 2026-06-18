@@ -23,11 +23,11 @@ func TestInstallSkillPackInstallsCodexSkillLocally(t *testing.T) {
 		t.Fatalf("expected install output, got %s", string(output))
 	}
 
-	raw, err := os.ReadFile(filepath.Join(codexHome, "skills", "acm-broker", "SKILL.md"))
+	raw, err := os.ReadFile(filepath.Join(codexHome, "skills", "awm-broker", "SKILL.md"))
 	if err != nil {
 		t.Fatalf("read installed skill: %v", err)
 	}
-	if !strings.Contains(string(raw), "# acm-broker") {
+	if !strings.Contains(string(raw), "# awm-broker") {
 		t.Fatalf("unexpected installed skill content: %s", string(raw))
 	}
 }
@@ -47,7 +47,7 @@ exit 23
 `)
 
 	codexHome := filepath.Join(tempRoot, "codex-home")
-	installedSkill := filepath.Join(codexHome, "skills", "acm-broker")
+	installedSkill := filepath.Join(codexHome, "skills", "awm-broker")
 	if err := os.MkdirAll(installedSkill, 0o755); err != nil {
 		t.Fatalf("mkdir installed skill: %v", err)
 	}

@@ -10,7 +10,7 @@
 
 ## Items
 
-### Exportable ACM artifacts
+### Exportable AWM artifacts
 
 - Key: plan:receipt-339e5cfde29fa58b2c5f1c16
 - Entity: work

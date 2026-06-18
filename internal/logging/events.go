@@ -31,7 +31,7 @@ const (
 	EventMCPResult          = "mcp.result"
 	EventMCPFailure         = "mcp.failure"
 
-	EventACMRun    = "acm.run"
-	EventACMMCP    = "acm.mcp"
-	EventACMIORead = "acm.io.read"
+	EventAWMRun    = "awm.run"
+	EventAWMMCP    = "awm.mcp"
+	EventAWMIORead = "awm.io.read"
 )

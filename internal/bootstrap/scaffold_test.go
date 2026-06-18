@@ -60,7 +60,7 @@ func TestEnsureProjectScaffoldAndWriteCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read scaffolded .gitignore: %v", err)
 	}
-	if got := string(gitignoreRaw); got != ".acm/context.db\n.acm/context.db-shm\n.acm/context.db-wal\n" {
+	if got := string(gitignoreRaw); got != ".awm/context.db\n.awm/context.db-shm\n.awm/context.db-wal\n" {
 		t.Fatalf("unexpected scaffolded .gitignore: %q", got)
 	}
 
