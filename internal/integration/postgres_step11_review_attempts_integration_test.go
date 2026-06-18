@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	postgresrepo "github.com/bonztm/agent-context-manager/internal/adapters/postgres"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	postgresrepo "github.com/bonztm/agent-workflow-manager/internal/adapters/postgres"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestPostgresReviewAttempts_RoundTrip(t *testing.T) {
@@ -56,8 +56,8 @@ func TestPostgresReviewAttempts_RoundTrip(t *testing.T) {
 		Status:             " failed ",
 		Passed:             false,
 		Outcome:            " Blocking findings remain ",
-		WorkflowSourcePath: " .acm/acm-workflows.yaml ",
-		CommandArgv:        []string{" scripts/acm-cross-review.sh ", "", " --strict "},
+		WorkflowSourcePath: " .awm/awm-workflows.yaml ",
+		CommandArgv:        []string{" scripts/awm-cross-review.sh ", "", " --strict "},
 		CommandCWD:         " . ",
 		TimeoutSec:         900,
 		ExitCode:           &firstExitCode,
@@ -79,8 +79,8 @@ func TestPostgresReviewAttempts_RoundTrip(t *testing.T) {
 		Status:             "passed",
 		Passed:             true,
 		Outcome:            "No blocking findings",
-		WorkflowSourcePath: ".acm/acm-workflows.yaml",
-		CommandArgv:        []string{"scripts/acm-cross-review.sh"},
+		WorkflowSourcePath: ".awm/awm-workflows.yaml",
+		CommandArgv:        []string{"scripts/awm-cross-review.sh"},
 		CommandCWD:         ".",
 		TimeoutSec:         900,
 		CreatedAt:          secondCreatedAt,
@@ -110,8 +110,8 @@ func TestPostgresReviewAttempts_RoundTrip(t *testing.T) {
 			Status:             "failed",
 			Passed:             false,
 			Outcome:            "Blocking findings remain",
-			WorkflowSourcePath: ".acm/acm-workflows.yaml",
-			CommandArgv:        []string{"scripts/acm-cross-review.sh", "--strict"},
+			WorkflowSourcePath: ".awm/awm-workflows.yaml",
+			CommandArgv:        []string{"scripts/awm-cross-review.sh", "--strict"},
 			CommandCWD:         ".",
 			TimeoutSec:         900,
 			ExitCode:           &firstExitCode,
@@ -131,8 +131,8 @@ func TestPostgresReviewAttempts_RoundTrip(t *testing.T) {
 			Status:             "passed",
 			Passed:             true,
 			Outcome:            "No blocking findings",
-			WorkflowSourcePath: ".acm/acm-workflows.yaml",
-			CommandArgv:        []string{"scripts/acm-cross-review.sh"},
+			WorkflowSourcePath: ".awm/awm-workflows.yaml",
+			CommandArgv:        []string{"scripts/awm-cross-review.sh"},
 			CommandCWD:         ".",
 			TimeoutSec:         900,
 			ExitCode:           nil,

@@ -1,0 +1,11 @@
+{
+  "version": "awm.v1",
+  "command": "history",
+  "request_id": "req-history-001",
+  "payload": {
+    "project_id": "customer-portal",
+    "entity": "all",
+    "query": "profile save",
+    "limit": 20
+  }
+}

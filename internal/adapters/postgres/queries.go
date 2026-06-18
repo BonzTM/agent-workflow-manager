@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
-	storagedomain "github.com/bonztm/agent-context-manager/internal/storage/domain"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
 const (
@@ -65,7 +65,7 @@ SELECT
 	p.is_rule,
 	p.is_stale,
 	p.updated_at
-FROM acm_pointers p
+FROM awm_pointers p
 WHERE p.project_id = `)
 	sb.WriteString(projectIDArg)
 
@@ -101,7 +101,7 @@ SELECT
 	r.initial_scope_paths,
 	r.baseline_captured,
 	r.baseline_paths_json
-FROM acm_receipts r
+FROM awm_receipts r
 WHERE r.project_id = $1
 	AND r.receipt_id = $2
 `, []any{projectID, receiptID}, nil
@@ -123,10 +123,10 @@ SELECT
 	COALESCE(run.run_id, 0) AS run_id,
 	COALESCE(run.status, '') AS run_status,
 	COALESCE(run.created_at, r.created_at) AS updated_at
-FROM acm_receipts r
+FROM awm_receipts r
 LEFT JOIN LATERAL (
 	SELECT run_id, status, created_at
-	FROM acm_runs
+	FROM awm_runs
 	WHERE project_id = r.project_id
 		AND receipt_id = r.receipt_id
 	ORDER BY created_at DESC, run_id DESC
@@ -159,7 +159,7 @@ SELECT
 	is_rule,
 	is_stale,
 	updated_at
-FROM acm_pointers
+FROM awm_pointers
 WHERE project_id = $1
 	AND pointer_key = $2
 	AND is_stale = FALSE
@@ -181,7 +181,7 @@ SELECT
 	item_key,
 	status,
 	updated_at
-FROM acm_work_items
+FROM awm_work_items
 WHERE project_id = $1
 	AND receipt_id = $2
 ORDER BY item_key ASC
@@ -221,7 +221,7 @@ func buildUpsertWorkItemsQuery(input core.WorkItemsUpsertInput) (string, []any, 
 WITH incoming(item_key, status) AS (
 	VALUES ` + strings.Join(valuesRows, ", ") + `
 )
-INSERT INTO acm_work_items (
+INSERT INTO awm_work_items (
 	project_id,
 	receipt_id,
 	item_key,
@@ -257,7 +257,7 @@ func buildMarkDeletedPointersStaleQuery(projectID string, deletedPaths []string)
 	}
 
 	return `
-UPDATE acm_pointers
+UPDATE awm_pointers
 SET
 	is_stale = TRUE,
 	stale_at = NOW(),
@@ -276,7 +276,7 @@ func buildMarkMissingPointersStaleQuery(projectID string, presentPaths []string)
 	normalizedPaths := normalizeSyncPaths(presentPaths)
 	if len(normalizedPaths) == 0 {
 		return `
-UPDATE acm_pointers
+UPDATE awm_pointers
 SET
 	is_stale = TRUE,
 	stale_at = NOW(),
@@ -287,7 +287,7 @@ WHERE project_id = $1
 	}
 
 	return `
-UPDATE acm_pointers
+UPDATE awm_pointers
 SET
 	is_stale = TRUE,
 	stale_at = NOW(),
@@ -324,7 +324,7 @@ func buildRefreshPointersQuery(projectID string, paths []core.SyncPath) (string,
 WITH sync(path, content_hash) AS (
 	VALUES ` + strings.Join(valuesRows, ", ") + `
 )
-UPDATE acm_pointers p
+UPDATE awm_pointers p
 SET
 	content_hash = sync.content_hash,
 	is_stale = FALSE,
@@ -367,12 +367,12 @@ WITH sync(path, content_hash) AS (
 missing AS (
 	SELECT s.path, s.content_hash
 	FROM sync s
-	LEFT JOIN acm_pointers p
+	LEFT JOIN awm_pointers p
 		ON p.project_id = ` + projectIDArg + `
 		AND p.path = s.path
 	WHERE p.pointer_id IS NULL
 )
-INSERT INTO acm_pointer_candidates (
+INSERT INTO awm_pointer_candidates (
 	project_id,
 	path,
 	content_hash

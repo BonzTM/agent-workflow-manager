@@ -2,13 +2,13 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in acm, please report it responsibly.
+If you discover a security vulnerability in awm, please report it responsibly.
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
 Instead, please use GitHub's private vulnerability reporting feature:
 
-1. Go to the [Security tab](https://github.com/BonzTM/agent-context-manager/security) of this repository.
+1. Go to the [Security tab](https://github.com/BonzTM/agent-workflow-manager/security) of this repository.
 2. Click "Report a vulnerability".
 3. Provide a description of the vulnerability, steps to reproduce, and any potential impact.
 
@@ -28,9 +28,9 @@ The following areas are in scope for security reports:
 - SQL injection in SQLite or Postgres adapters.
 - Path traversal in file operations (init, sync, verify).
 - Credential exposure through logs, error messages, or environment variable handling.
-- Web dashboard (`acm-web`) vulnerabilities including XSS or information disclosure.
+- Web dashboard (`awm-web`) vulnerabilities including XSS or information disclosure.
 
 ## Out of Scope
 
-- Denial of service through large but valid inputs (acm is a local/single-tenant tool).
+- Denial of service through large but valid inputs (awm is a local/single-tenant tool).
 - Vulnerabilities in upstream dependencies — please report those to the relevant projects directly.

@@ -5,7 +5,7 @@ Implement deterministic markdown
 - Plan Key: plan:receipt-339e5cfde29fa58b2c5f1c16
 - Receipt ID: receipt-339e5cfde29fa58b2c5f1c16
 - Status: in_progress
-- Title: Exportable ACM artifacts with JSON and Markdown renderers
+- Title: Exportable AWM artifacts with JSON and Markdown renderers
 - Objective: Ship export output across read surfaces.
 - Kind: feature
 - Parent Plan: plan:receipt-parent

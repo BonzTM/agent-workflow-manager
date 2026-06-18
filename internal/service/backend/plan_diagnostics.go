@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 const stalePlanWarningAge = 7 * 24 * time.Hour

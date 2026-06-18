@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	backendsvc "github.com/bonztm/agent-context-manager/internal/service/backend"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	backendsvc "github.com/bonztm/agent-workflow-manager/internal/service/backend"
 )
 
 type ServiceFlowConfig struct {
@@ -31,7 +31,7 @@ func RunServiceFlows(t *testing.T, cfg ServiceFlowConfig) {
 	}
 
 	projectRoot := setupGitRepo(t, map[string]string{
-		".acm/acm-rules.yaml": "version: acm.rules.v1\nrules:\n  - id: rule.runtime.default\n    summary: Runtime defaults remain receipt-scoped\n    content: Runtime default backend evidence must stay tied to the originating receipt.\n    enforcement: hard\n    tags: [runtime]\n",
+		".awm/awm-rules.yaml": "version: awm.rules.v1\nrules:\n  - id: rule.runtime.default\n    summary: Runtime defaults remain receipt-scoped\n    content: Runtime default backend evidence must stay tied to the originating receipt.\n    enforcement: hard\n    tags: [runtime]\n",
 		"docs/runtime.md":     "runtime pointer content",
 	})
 	t.Chdir(projectRoot)
@@ -48,7 +48,7 @@ func RunServiceFlows(t *testing.T, cfg ServiceFlowConfig) {
 	}
 	if _, err := cfg.Repo.SyncRulePointers(ctx, core.RulePointerSyncInput{
 		ProjectID:  projectID,
-		SourcePath: ".acm/acm-rules.yaml",
+		SourcePath: ".awm/awm-rules.yaml",
 		Pointers: []core.RulePointer{{
 			RuleID:      "rule.runtime.default",
 			Summary:     "Runtime defaults remain receipt-scoped",
@@ -188,7 +188,7 @@ func RunServiceFlows(t *testing.T, cfg ServiceFlowConfig) {
 	}
 
 	syncProjectRoot := setupGitRepo(t, map[string]string{
-		".acm/acm-rules.yaml":     "version: acm.rules.v1\nrules:\n  - id: rule.runtime.default\n    summary: Runtime defaults remain receipt-scoped\n    content: Runtime default backend evidence must stay tied to the originating receipt.\n    enforcement: hard\n    tags: [runtime]\n",
+		".awm/awm-rules.yaml":     "version: awm.rules.v1\nrules:\n  - id: rule.runtime.default\n    summary: Runtime defaults remain receipt-scoped\n    content: Runtime default backend evidence must stay tied to the originating receipt.\n    enforcement: hard\n    tags: [runtime]\n",
 		"docs/runtime-renamed.md": "runtime pointer content",
 		"docs/new.md":             "new pointer candidate",
 	})

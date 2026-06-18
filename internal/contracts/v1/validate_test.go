@@ -10,7 +10,7 @@ import (
 
 func TestDecodeAndValidateCommand_ContextSuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -76,7 +76,7 @@ func TestDecodeAndValidateCommand_CoreCommandAliasesSuccess(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			json := fmt.Sprintf(`{
-				"version":"acm.v1",
+				"version":"awm.v1",
 				"command":%q,
 				"request_id":"req-12345",
 				"payload":%s
@@ -96,7 +96,7 @@ func TestDecodeAndValidateCommand_RejectsRemovedLegacyCommands(t *testing.T) {
 	for _, command := range []string{"get_context", "report_completion", "bootstrap"} {
 		t.Run(command, func(t *testing.T) {
 			json := fmt.Sprintf(`{
-				"version":"acm.v1",
+				"version":"awm.v1",
 				"command":%q,
 				"request_id":"req-12345",
 				"payload":{}
@@ -114,7 +114,7 @@ func TestDecodeAndValidateCommand_RejectsRemovedLegacyCommands(t *testing.T) {
 
 func TestDecodeAndValidateCommandWithDefaults_FillsMissingProjectID(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -137,7 +137,7 @@ func TestDecodeAndValidateCommandWithDefaults_FillsMissingProjectID(t *testing.T
 
 func TestDecodeAndValidateCommand_RejectsMissingProjectIDWithoutDefaults(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -159,14 +159,14 @@ func TestDecodeAndValidateCommand_RejectsMissingProjectIDWithoutDefaults(t *test
 
 func TestDecodeAndValidateCommand_ContextAcceptsTagsFile(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
 			"project_id":"my-cool-app",
 			"task_text":"fix preference save bug",
 			"phase":"execute",
-			"tags_file":".acm/acm-tags.yaml"
+			"tags_file":".awm/awm-tags.yaml"
 		}
 	}`
 	_, payload, errp := DecodeAndValidateCommand([]byte(json))
@@ -177,7 +177,7 @@ func TestDecodeAndValidateCommand_ContextAcceptsTagsFile(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected payload type: %T", payload)
 	}
-	if p.TagsFile != ".acm/acm-tags.yaml" {
+	if p.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected tags_file: %q", p.TagsFile)
 	}
 }
@@ -185,7 +185,7 @@ func TestDecodeAndValidateCommand_ContextAcceptsTagsFile(t *testing.T) {
 func TestDecodeAndValidateCommand_StatusDefaultsProjectIDFromProjectRoot(t *testing.T) {
 	projectRoot := filepath.Join("/tmp", "Example Repo")
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"status",
 		"request_id":"req-12345",
 		"payload":{
@@ -212,7 +212,7 @@ func TestDecodeAndValidateCommand_StatusDefaultsProjectIDFromProjectRoot(t *test
 
 func TestDecodeAndValidateCommand_StatusRejectsInvalidPhase(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"status",
 		"request_id":"req-12345",
 		"payload":{
@@ -251,7 +251,7 @@ func TestDecodeAndValidateCommand_InvalidVersion(t *testing.T) {
 
 func TestDecodeAndValidateCommand_RejectsUnknownField(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -272,7 +272,7 @@ func TestDecodeAndValidateCommand_RejectsUnknownField(t *testing.T) {
 
 func TestDecodeAndValidateCommand_DoneRejectsInvalidScopeMode(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
@@ -294,7 +294,7 @@ func TestDecodeAndValidateCommand_DoneRejectsInvalidScopeMode(t *testing.T) {
 
 func TestDecodeAndValidateCommand_DoneRejectsEscapingPath(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
@@ -316,7 +316,7 @@ func TestDecodeAndValidateCommand_DoneRejectsEscapingPath(t *testing.T) {
 
 func TestDecodeAndValidateCommand_ReviewSuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
@@ -341,7 +341,7 @@ func TestDecodeAndValidateCommand_ReviewSuccess(t *testing.T) {
 
 func TestDecodeAndValidateCommand_ReviewBlockedReasonNormalizesToBlocked(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
@@ -365,7 +365,7 @@ func TestDecodeAndValidateCommand_ReviewBlockedReasonNormalizesToBlocked(t *test
 
 func TestDecodeAndValidateCommand_ReviewRejectsConflictingBlockedReasonStatus(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
@@ -386,7 +386,7 @@ func TestDecodeAndValidateCommand_ReviewRejectsConflictingBlockedReasonStatus(t 
 
 func TestDecodeAndValidateCommand_ReviewBlockedStatusRequiresBlockedReason(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
@@ -406,7 +406,7 @@ func TestDecodeAndValidateCommand_ReviewBlockedStatusRequiresBlockedReason(t *te
 
 func TestDecodeAndValidateCommand_ReviewRequiresSelectionContext(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
@@ -424,7 +424,7 @@ func TestDecodeAndValidateCommand_ReviewRequiresSelectionContext(t *testing.T) {
 
 func TestDecodeAndValidateCommand_ReviewRejectsEmptyEvidenceArray(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
@@ -444,14 +444,14 @@ func TestDecodeAndValidateCommand_ReviewRejectsEmptyEvidenceArray(t *testing.T) 
 
 func TestDecodeAndValidateCommand_ReviewRunSuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
 			"project_id":"my-cool-app",
 			"receipt_id":"receipt-1234",
 			"run":true,
-			"tags_file":".acm/acm-tags.yaml"
+			"tags_file":".awm/awm-tags.yaml"
 		}
 	}`
 	_, payload, errp := DecodeAndValidateCommand([]byte(json))
@@ -462,14 +462,14 @@ func TestDecodeAndValidateCommand_ReviewRunSuccess(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected payload type: %T", payload)
 	}
-	if !p.Run || p.TagsFile != ".acm/acm-tags.yaml" {
+	if !p.Run || p.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected payload: %+v", p)
 	}
 }
 
 func TestDecodeAndValidateCommand_ReviewRunRejectsManualOutcomeFields(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"review",
 		"request_id":"req-12345",
 		"payload":{
@@ -491,7 +491,7 @@ func TestDecodeAndValidateCommand_ReviewRunRejectsManualOutcomeFields(t *testing
 
 func TestDecodeAndValidateCommand_HistorySearchPayloadValidation(t *testing.T) {
 	validJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"history",
 		"request_id":"req-12345",
 		"payload":{
@@ -520,7 +520,7 @@ func TestDecodeAndValidateCommand_HistorySearchPayloadValidation(t *testing.T) {
 	}
 
 	invalidJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"history",
 		"request_id":"req-12345",
 		"payload":{
@@ -541,7 +541,7 @@ func TestDecodeAndValidateCommand_HistorySearchPayloadValidation(t *testing.T) {
 
 func TestDecodeAndValidateCommand_HistorySearchRejectsWorkOnlyFiltersForNonWorkEntity(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"history",
 		"request_id":"req-12345",
 		"payload":{
@@ -563,7 +563,7 @@ func TestDecodeAndValidateCommand_HistorySearchRejectsWorkOnlyFiltersForNonWorkE
 
 func TestDecodeAndValidateCommand_FetchSuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -592,7 +592,7 @@ func TestDecodeAndValidateCommand_FetchSuccess(t *testing.T) {
 
 func TestDecodeAndValidateCommand_FetchRejectsUnknownField(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -612,7 +612,7 @@ func TestDecodeAndValidateCommand_FetchRejectsUnknownField(t *testing.T) {
 
 func TestDecodeAndValidateCommand_FetchRejectsBlankKey(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -632,7 +632,7 @@ func TestDecodeAndValidateCommand_FetchRejectsBlankKey(t *testing.T) {
 func TestDecodeAndValidateCommand_FetchRejectsLongKey(t *testing.T) {
 	longKey := strings.Repeat("k", 513)
 	json := fmt.Sprintf(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -651,7 +651,7 @@ func TestDecodeAndValidateCommand_FetchRejectsLongKey(t *testing.T) {
 
 func TestDecodeAndValidateCommand_ExportSuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"export",
 		"request_id":"req-12345",
 		"payload":{
@@ -680,7 +680,7 @@ func TestDecodeAndValidateCommand_ExportSuccess(t *testing.T) {
 
 func TestDecodeAndValidateCommand_ExportRejectsMissingSelector(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"export",
 		"request_id":"req-12345",
 		"payload":{
@@ -699,7 +699,7 @@ func TestDecodeAndValidateCommand_ExportRejectsMissingSelector(t *testing.T) {
 
 func TestDecodeAndValidateCommand_ExportRejectsMultipleSelectors(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"export",
 		"request_id":"req-12345",
 		"payload":{
@@ -725,7 +725,7 @@ func TestDecodeAndValidateCommand_ExportRejectsMultipleSelectors(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkSuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -757,7 +757,7 @@ func TestDecodeAndValidateCommand_WorkSuccess(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkAcceptsHierarchyAndExternalRefs(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -800,7 +800,7 @@ func TestDecodeAndValidateCommand_WorkAcceptsHierarchyAndExternalRefs(t *testing
 
 func TestDecodeAndValidateCommand_WorkRejectsInvalidPlanKind(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -823,7 +823,7 @@ func TestDecodeAndValidateCommand_WorkRejectsInvalidPlanKind(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkRejectsWhitespaceWrappedParentPlanKey(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -846,7 +846,7 @@ func TestDecodeAndValidateCommand_WorkRejectsWhitespaceWrappedParentPlanKey(t *t
 
 func TestDecodeAndValidateCommand_WorkRejectsInvalidStatus(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -868,7 +868,7 @@ func TestDecodeAndValidateCommand_WorkRejectsInvalidStatus(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkRejectsEmptyPlanKey(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -890,7 +890,7 @@ func TestDecodeAndValidateCommand_WorkRejectsEmptyPlanKey(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkRejectsEmptyTaskKey(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -912,7 +912,7 @@ func TestDecodeAndValidateCommand_WorkRejectsEmptyTaskKey(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkRejectsInvalidPlanKeyFormat(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -934,7 +934,7 @@ func TestDecodeAndValidateCommand_WorkRejectsInvalidPlanKeyFormat(t *testing.T) 
 
 func TestDecodeAndValidateCommand_WorkRejectsMixedCasePlanKeyPrefix(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -956,7 +956,7 @@ func TestDecodeAndValidateCommand_WorkRejectsMixedCasePlanKeyPrefix(t *testing.T
 
 func TestDecodeAndValidateCommand_WorkRejectsWhitespacePaddedPlanKey(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -978,7 +978,7 @@ func TestDecodeAndValidateCommand_WorkRejectsWhitespacePaddedPlanKey(t *testing.
 
 func TestDecodeAndValidateCommand_WorkRejectsShortPlanReceiptID(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -1000,7 +1000,7 @@ func TestDecodeAndValidateCommand_WorkRejectsShortPlanReceiptID(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkRejectsPlanKeyReceiptMismatch(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -1023,7 +1023,7 @@ func TestDecodeAndValidateCommand_WorkRejectsPlanKeyReceiptMismatch(t *testing.T
 
 func TestDecodeAndValidateCommand_FetchReceiptIDOnlySuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -1046,7 +1046,7 @@ func TestDecodeAndValidateCommand_FetchReceiptIDOnlySuccess(t *testing.T) {
 
 func TestDecodeAndValidateCommand_FetchRejectsMissingKeysAndReceiptID(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -1064,7 +1064,7 @@ func TestDecodeAndValidateCommand_FetchRejectsMissingKeysAndReceiptID(t *testing
 
 func TestDecodeAndValidateCommand_FetchRejectsExpectedVersionsWithoutKeys(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -1086,7 +1086,7 @@ func TestDecodeAndValidateCommand_FetchRejectsExpectedVersionsWithoutKeys(t *tes
 
 func TestDecodeAndValidateCommand_FetchRejectsInvalidReceiptID(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -1105,7 +1105,7 @@ func TestDecodeAndValidateCommand_FetchRejectsInvalidReceiptID(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkReceiptOnlySuccess(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -1128,7 +1128,7 @@ func TestDecodeAndValidateCommand_WorkReceiptOnlySuccess(t *testing.T) {
 
 func TestDecodeAndValidateCommand_WorkReceiptOnlyAllowsEmptyTasks(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -1152,7 +1152,7 @@ func TestDecodeAndValidateCommand_WorkReceiptOnlyAllowsEmptyTasks(t *testing.T) 
 
 func TestDecodeAndValidateCommand_WorkRejectsMissingPlanKeyAndReceiptID(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"work",
 		"request_id":"req-12345",
 		"payload":{
@@ -1173,7 +1173,7 @@ func TestDecodeAndValidateCommand_WorkRejectsMissingPlanKeyAndReceiptID(t *testi
 
 func TestDecodeAndValidateCommand_SyncPayloadValidation(t *testing.T) {
 	validJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"sync",
 		"request_id":"req-12345",
 		"payload":{
@@ -1201,7 +1201,7 @@ func TestDecodeAndValidateCommand_SyncPayloadValidation(t *testing.T) {
 
 func TestDecodeAndValidateCommand_HealthPayloadValidation(t *testing.T) {
 	validJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"health",
 		"request_id":"req-12345",
 		"payload":{
@@ -1238,7 +1238,7 @@ func TestDecodeAndValidateCommand_HealthPayloadValidation(t *testing.T) {
 	}
 
 	invalidJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"health",
 		"request_id":"req-12345",
 		"payload":{
@@ -1257,7 +1257,7 @@ func TestDecodeAndValidateCommand_HealthPayloadValidation(t *testing.T) {
 
 func TestDecodeAndValidateCommand_InitPayloadPersistCandidates(t *testing.T) {
 	validJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"init",
 		"request_id":"req-12345",
 		"payload":{
@@ -1289,7 +1289,7 @@ func TestDecodeAndValidateCommand_InitPayloadPersistCandidates(t *testing.T) {
 
 func TestDecodeAndValidateCommand_InitAllowsInferredDefaults(t *testing.T) {
 	validJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"init",
 		"request_id":"req-12345",
 		"payload":{
@@ -1364,7 +1364,7 @@ func TestDecodeAndValidateCommand_ProjectRootOverridesDefaultProjectID(t *testin
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			json := fmt.Sprintf(`{
-				"version":"acm.v1",
+				"version":"awm.v1",
 				"command":%q,
 				"request_id":"req-12345",
 				"payload":%s
@@ -1380,7 +1380,7 @@ func TestDecodeAndValidateCommand_ProjectRootOverridesDefaultProjectID(t *testin
 
 func TestDecodeAndValidateCommand_InitRejectsEmptyApplyTemplates(t *testing.T) {
 	invalidJSON := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"init",
 		"request_id":"req-12345",
 		"payload":{
@@ -1400,13 +1400,13 @@ func TestDecodeAndValidateCommand_InitRejectsEmptyApplyTemplates(t *testing.T) {
 
 func TestDecodeAndValidateCommand_DoneAcceptsTagsFile(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
 			"project_id":"my-cool-app",
 			"receipt_id":"receipt-1234",
-			"tags_file":".acm/acm-tags.yaml",
+			"tags_file":".awm/awm-tags.yaml",
 			"files_changed":["src/main.go"],
 			"outcome":"done"
 		}
@@ -1419,14 +1419,14 @@ func TestDecodeAndValidateCommand_DoneAcceptsTagsFile(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected payload type: %T", payload)
 	}
-	if p.TagsFile != ".acm/acm-tags.yaml" {
+	if p.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected tags_file: %q", p.TagsFile)
 	}
 }
 
 func TestDecodeAndValidateCommand_ContextRejectsInvalidInitialScopePaths(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -1447,7 +1447,7 @@ func TestDecodeAndValidateCommand_ContextRejectsInvalidInitialScopePaths(t *test
 
 func TestDecodeAndValidateCommand_FetchRejectsDuplicateKeys(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"fetch",
 		"request_id":"req-12345",
 		"payload":{
@@ -1466,7 +1466,7 @@ func TestDecodeAndValidateCommand_FetchRejectsDuplicateKeys(t *testing.T) {
 
 func TestDecodeAndValidateCommand_DoneAcceptsMissingFilesChanged(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
@@ -1493,7 +1493,7 @@ func TestDecodeAndValidateCommand_DoneAcceptsMissingFilesChanged(t *testing.T) {
 
 func TestDecodeAndValidateCommand_DoneAcceptsPlanKeyWithoutReceiptID(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
@@ -1520,7 +1520,7 @@ func TestDecodeAndValidateCommand_DoneAcceptsPlanKeyWithoutReceiptID(t *testing.
 
 func TestDecodeAndValidateCommand_DoneAcceptsEmptyFilesChanged(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
@@ -1545,7 +1545,7 @@ func TestDecodeAndValidateCommand_DoneAcceptsEmptyFilesChanged(t *testing.T) {
 
 func TestDecodeAndValidateCommand_DoneAcceptsExplicitNoFileChanges(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
@@ -1570,7 +1570,7 @@ func TestDecodeAndValidateCommand_DoneAcceptsExplicitNoFileChanges(t *testing.T)
 
 func TestDecodeAndValidateCommand_DoneRejectsFilesChangedWithExplicitNoFileChanges(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"done",
 		"request_id":"req-12345",
 		"payload":{
@@ -1592,7 +1592,7 @@ func TestDecodeAndValidateCommand_DoneRejectsFilesChangedWithExplicitNoFileChang
 
 func TestDecodeAndValidateCommand_HealthRejectsDuplicateFixers(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"health",
 		"request_id":"req-12345",
 		"payload":{
@@ -1611,7 +1611,7 @@ func TestDecodeAndValidateCommand_HealthRejectsDuplicateFixers(t *testing.T) {
 
 func TestDecodeAndValidateCommand_VerifyRejectsEmptyFilesChangedWhenProvided(t *testing.T) {
 	json := `{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"verify",
 		"request_id":"req-12345",
 		"payload":{

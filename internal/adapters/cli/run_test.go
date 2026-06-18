@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
-	"github.com/bonztm/agent-context-manager/internal/service/unconfigured"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/service/unconfigured"
 )
 
 type fakeService struct{}
@@ -93,7 +93,7 @@ func (c *capturingService) Init(_ context.Context, payload v1.InitPayload) (v1.I
 
 func TestRun_SuccessEnvelope(t *testing.T) {
 	in := bytes.NewBufferString(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -122,7 +122,7 @@ func TestRun_SuccessEnvelope(t *testing.T) {
 
 func TestRun_ExportSuccessEnvelope(t *testing.T) {
 	in := bytes.NewBufferString(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"export",
 		"request_id":"req-12345",
 		"payload":{
@@ -150,7 +150,7 @@ func TestRun_ExportSuccessEnvelope(t *testing.T) {
 }
 
 func TestRun_ValidationFailure(t *testing.T) {
-	in := bytes.NewBufferString(`{"version":"acm.v1","command":"context","request_id":"bad","payload":{}}`)
+	in := bytes.NewBufferString(`{"version":"awm.v1","command":"context","request_id":"bad","payload":{}}`)
 	out := &bytes.Buffer{}
 	code := Run(context.Background(), fakeService{}, in, out, time.Now)
 	if code == 0 {
@@ -170,7 +170,7 @@ func TestRun_ValidationFailure(t *testing.T) {
 }
 
 func TestRun_RejectsRemovedLegacyCommand(t *testing.T) {
-	in := bytes.NewBufferString(`{"version":"acm.v1","command":"get_context","request_id":"req-12345","payload":{"project_id":"my-cool-app","task_text":"x","phase":"execute"}}`)
+	in := bytes.NewBufferString(`{"version":"awm.v1","command":"get_context","request_id":"req-12345","payload":{"project_id":"my-cool-app","task_text":"x","phase":"execute"}}`)
 	out := &bytes.Buffer{}
 	code := Run(context.Background(), fakeService{}, in, out, time.Now)
 	if code == 0 {
@@ -193,7 +193,7 @@ func TestRun_DefaultsProjectIDFromEnv(t *testing.T) {
 	t.Setenv(runtime.ProjectIDEnvVar, "env-project")
 
 	in := bytes.NewBufferString(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -221,7 +221,7 @@ func TestRun_InitPrefersProjectRootInferenceOverEnvProjectID(t *testing.T) {
 	projectRoot := filepath.Join(t.TempDir(), "Target Repo")
 
 	in := bytes.NewBufferString(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"init",
 		"request_id":"req-12345",
 		"payload":{
@@ -241,7 +241,7 @@ func TestRun_InitPrefersProjectRootInferenceOverEnvProjectID(t *testing.T) {
 
 func TestRun_UnconfiguredServiceNotImplementedEnvelope(t *testing.T) {
 	in := bytes.NewBufferString(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -294,7 +294,7 @@ func TestRun_DispatchesHealthAndInit(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			in := bytes.NewBufferString(`{
-				"version":"acm.v1",
+				"version":"awm.v1",
 				"command":"` + tc.command + `",
 				"request_id":"req-12345",
 				"payload":` + tc.payload + `
@@ -394,7 +394,7 @@ func TestProjectIDFromPayload_ExtractsFromMapAndStruct(t *testing.T) {
 
 func TestRunWithLogger_LogsIngressDispatchAndResultOnSuccess(t *testing.T) {
 	in := bytes.NewBufferString(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{
@@ -464,7 +464,7 @@ func TestRunWithLogger_LogsReadFailure(t *testing.T) {
 }
 
 func TestRunWithLogger_LogsValidationFailure(t *testing.T) {
-	in := bytes.NewBufferString(`{"version":"acm.v1","command":"context","request_id":"bad","payload":{}}`)
+	in := bytes.NewBufferString(`{"version":"awm.v1","command":"context","request_id":"bad","payload":{}}`)
 	out := &bytes.Buffer{}
 	recorder := logging.NewRecorder()
 
@@ -496,7 +496,7 @@ func TestRunWithLogger_LogsValidationFailure(t *testing.T) {
 
 func TestRunWithLogger_LogsDispatchFailure(t *testing.T) {
 	in := bytes.NewBufferString(`{
-		"version":"acm.v1",
+		"version":"awm.v1",
 		"command":"context",
 		"request_id":"req-12345",
 		"payload":{

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 var statusTemplateIDs = []string{
@@ -158,8 +158,8 @@ func (s *Service) statusRules(projectRoot, rulesFile, tagsFile, projectID string
 		allItems = append(allItems, item)
 	}
 
-	// Collapse alternate-path sources (e.g. .acm/acm-rules.yaml and
-	// acm-rules.yaml) into one status line. Keep the best representative:
+	// Collapse alternate-path sources (e.g. .awm/awm-rules.yaml and
+	// awm-rules.yaml) into one status line. Keep the best representative:
 	// prefer loaded > exists > first discovered.
 	items := collapseAlternateSourceItems(allItems)
 
@@ -440,10 +440,10 @@ func statusIntegrations(projectRoot string) ([]v1.StatusIntegration, error) {
 }
 
 // groupAlternateTargets groups template operation targets so that paths
-// differing only by a ".acm/" prefix are treated as alternate locations for
-// the same logical file. For example, ".acm/acm-rules.yaml" and
-// "acm-rules.yaml" become one group. Targets without an alternate are their
-// own group. Order within each group puts the .acm/ variant first (preferred).
+// differing only by a ".awm/" prefix are treated as alternate locations for
+// the same logical file. For example, ".awm/awm-rules.yaml" and
+// "awm-rules.yaml" become one group. Targets without an alternate are their
+// own group. Order within each group puts the .awm/ variant first (preferred).
 func groupAlternateTargets(targets []string) [][]string {
 	grouped := make(map[string][]string) // canonical -> [paths]
 	order := make([]string, 0, len(targets))
@@ -459,12 +459,12 @@ func groupAlternateTargets(targets []string) [][]string {
 	result := make([][]string, 0, len(order))
 	for _, canon := range order {
 		paths := grouped[canon]
-		// Sort so .acm/ prefixed paths come first (preferred location).
+		// Sort so .awm/ prefixed paths come first (preferred location).
 		sort.Slice(paths, func(i, j int) bool {
-			iDotACM := strings.HasPrefix(paths[i], ".acm/")
-			jDotACM := strings.HasPrefix(paths[j], ".acm/")
-			if iDotACM != jDotACM {
-				return iDotACM
+			iDotAWM := strings.HasPrefix(paths[i], ".awm/")
+			jDotAWM := strings.HasPrefix(paths[j], ".awm/")
+			if iDotAWM != jDotAWM {
+				return iDotAWM
 			}
 			return paths[i] < paths[j]
 		})
@@ -474,14 +474,14 @@ func groupAlternateTargets(targets []string) [][]string {
 }
 
 // canonicalTargetKey returns a normalized key for grouping alternate target
-// paths. It strips a leading ".acm/" prefix so that "acm-rules.yaml" and
-// ".acm/acm-rules.yaml" produce the same key.
+// paths. It strips a leading ".awm/" prefix so that "awm-rules.yaml" and
+// ".awm/awm-rules.yaml" produce the same key.
 func canonicalTargetKey(target string) string {
-	return strings.TrimPrefix(target, ".acm/")
+	return strings.TrimPrefix(target, ".awm/")
 }
 
 // collapseAlternateSourceItems groups status source items whose paths differ
-// only by a ".acm/" prefix (alternate locations for the same logical file)
+// only by a ".awm/" prefix (alternate locations for the same logical file)
 // and keeps the best representative per group: loaded > exists > first.
 func collapseAlternateSourceItems(items []v1.StatusSource) []v1.StatusSource {
 	type group struct {

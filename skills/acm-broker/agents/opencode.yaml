@@ -1,3 +1,0 @@
-interface:
-  display_name: "OpenCode Companion"
-  short_description: "Use repo-local ACM companion docs plus acm CLI/MCP for context, durable work, verification/review gates, and completion reporting"

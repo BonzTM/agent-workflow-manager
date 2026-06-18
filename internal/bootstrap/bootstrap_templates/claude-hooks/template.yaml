@@ -1,27 +1,27 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: claude-hooks
-summary: Add Claude hooks that keep the ACM task loop visible and enforced.
+summary: Add Claude hooks that keep the AWM task loop visible and enforced.
 operations:
   - type: merge_json
     target: .claude/settings.json
     source: files/.claude/settings.json
   - type: create_if_missing
-    target: .claude/hooks/acm-receipt-guard.sh
-    source: files/.claude/hooks/acm-receipt-guard.sh
+    target: .claude/hooks/awm-receipt-guard.sh
+    source: files/.claude/hooks/awm-receipt-guard.sh
     mode: "0755"
   - type: create_if_missing
-    target: .claude/hooks/acm-receipt-mark.sh
-    source: files/.claude/hooks/acm-receipt-mark.sh
+    target: .claude/hooks/awm-receipt-mark.sh
+    source: files/.claude/hooks/awm-receipt-mark.sh
     mode: "0755"
   - type: create_if_missing
-    target: .claude/hooks/acm-session-context.sh
-    source: files/.claude/hooks/acm-session-context.sh
+    target: .claude/hooks/awm-session-context.sh
+    source: files/.claude/hooks/awm-session-context.sh
     mode: "0755"
   - type: create_if_missing
-    target: .claude/hooks/acm-edit-state.sh
-    source: files/.claude/hooks/acm-edit-state.sh
+    target: .claude/hooks/awm-edit-state.sh
+    source: files/.claude/hooks/awm-edit-state.sh
     mode: "0755"
   - type: create_if_missing
-    target: .claude/hooks/acm-stop-guard.sh
-    source: files/.claude/hooks/acm-stop-guard.sh
+    target: .claude/hooks/awm-stop-guard.sh
+    source: files/.claude/hooks/awm-stop-guard.sh
     mode: "0755"

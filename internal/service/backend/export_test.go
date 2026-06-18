@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestExportFetchPlanRendersStructuredJSON(t *testing.T) {
@@ -85,12 +85,12 @@ func TestExportFetchPlanRendersStructuredJSON(t *testing.T) {
 
 func TestExportContextMarkdownIncludesReceiptSections(t *testing.T) {
 	root := t.TempDir()
-	writeRepoFile(t, root, ".acm/acm-rules.yaml", strings.Join([]string{
-		"version: acm.rules.v1",
+	writeRepoFile(t, root, ".awm/awm-rules.yaml", strings.Join([]string{
+		"version: awm.rules.v1",
 		"rules:",
 		"  - id: export_rule",
 		"    summary: Export rules stay deterministic",
-		"    content: Render ACM-owned artifacts with stable section ordering.",
+		"    content: Render AWM-owned artifacts with stable section ordering.",
 		"    enforcement: hard",
 		"    tags: [backend]",
 		"",
@@ -101,7 +101,7 @@ func TestExportContextMarkdownIncludesReceiptSections(t *testing.T) {
 		workPlanListResults: [][]core.WorkPlanSummary{{
 			{
 				PlanKey:   "plan:receipt-12345678",
-				Summary:   "Exportable ACM artifacts",
+				Summary:   "Exportable AWM artifacts",
 				Status:    core.PlanStatusInProgress,
 				ReceiptID: "receipt-12345678",
 			},
@@ -194,16 +194,16 @@ func TestExportStatusMarkdownIncludesProjectAndContextPreview(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
-	writeRepoFile(t, root, ".acm/acm-rules.yaml", "version: acm.rules.v1\nrules:\n  - summary: Keep export deterministic\n")
-	writeRepoFile(t, root, ".acm/acm-tags.yaml", "version: acm.tags.v1\ncanonical_tags:\n  backend:\n    - export\n")
-	writeRepoFile(t, root, ".acm/acm-tests.yaml", "version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 120\ntests:\n  - id: smoke\n    summary: Run smoke tests\n    command:\n      argv: [\"go\", \"test\", \"./...\"]\n")
-	writeRepoFile(t, root, ".acm/acm-workflows.yaml", "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n")
+	writeRepoFile(t, root, ".awm/awm-rules.yaml", "version: awm.rules.v1\nrules:\n  - summary: Keep export deterministic\n")
+	writeRepoFile(t, root, ".awm/awm-tags.yaml", "version: awm.tags.v1\ncanonical_tags:\n  backend:\n    - export\n")
+	writeRepoFile(t, root, ".awm/awm-tests.yaml", "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 120\ntests:\n  - id: smoke\n    summary: Run smoke tests\n    command:\n      argv: [\"go\", \"test\", \"./...\"]\n")
+	writeRepoFile(t, root, ".awm/awm-workflows.yaml", "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n")
 	withWorkingDir(t, root)
 
 	repo := &fakeRepository{}
 	svc, err := NewWithRuntimeStatus(repo, root, RuntimeStatusSnapshot{
 		Backend:                "sqlite",
-		SQLitePath:             filepath.Join(root, ".acm", "context.db"),
+		SQLitePath:             filepath.Join(root, ".awm", "context.db"),
 		UsesImplicitSQLitePath: true,
 	})
 	if err != nil {
@@ -253,7 +253,7 @@ func TestRenderExportMarkdown_Golden(t *testing.T) {
 				Plan: &v1.ExportPlanDocument{
 					PlanKey:       "plan:receipt-339e5cfde29fa58b2c5f1c16",
 					ReceiptID:     "receipt-339e5cfde29fa58b2c5f1c16",
-					Title:         "Exportable ACM artifacts with JSON and Markdown renderers",
+					Title:         "Exportable AWM artifacts with JSON and Markdown renderers",
 					Objective:     "Ship export output across read surfaces.",
 					Kind:          "feature",
 					ParentPlanKey: "plan:receipt-parent",
@@ -354,7 +354,7 @@ func TestRenderExportMarkdown_Golden(t *testing.T) {
 					Items: []v1.HistoryItem{{
 						Key:           "plan:receipt-339e5cfde29fa58b2c5f1c16",
 						Entity:        v1.HistoryEntityWork,
-						Summary:       "Exportable ACM artifacts",
+						Summary:       "Exportable AWM artifacts",
 						Status:        "in_progress",
 						Scope:         v1.HistoryScopeCurrent,
 						PlanKey:       "plan:receipt-339e5cfde29fa58b2c5f1c16",
@@ -393,20 +393,20 @@ func TestRenderExportMarkdown_Golden(t *testing.T) {
 						ProjectRoot:            "/repo",
 						DetectedRepoRoot:       "/repo",
 						Backend:                "sqlite",
-						SQLitePath:             "/repo/.acm/context.db",
+						SQLitePath:             "/repo/.awm/context.db",
 						UsesImplicitSQLitePath: true,
 					},
 					Sources: []v1.StatusSource{{
 						Kind:         "rules",
-						SourcePath:   ".acm/acm-rules.yaml",
-						AbsolutePath: "/repo/.acm/acm-rules.yaml",
+						SourcePath:   ".awm/awm-rules.yaml",
+						AbsolutePath: "/repo/.awm/awm-rules.yaml",
 						Exists:       true,
 						Loaded:       true,
 						ItemCount:    3,
 						Notes:        []string{"loaded from project root"},
 					}},
 					Integrations: []v1.StatusIntegration{{
-						ID:              "acm-broker",
+						ID:              "awm-broker",
 						Summary:         "Skill pack installed",
 						Installed:       true,
 						PresentTargets:  2,

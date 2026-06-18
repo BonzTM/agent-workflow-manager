@@ -63,7 +63,7 @@ func TestVersion_UsesShortVCSRevisionAndDirtySuffix(t *testing.T) {
 	commitShort = ""
 	readBuildInfo = func() (*debug.BuildInfo, bool) {
 		return &debug.BuildInfo{
-			Main: debug.Module{Path: "github.com/bonztm/agent-context-manager", Version: "(devel)"},
+			Main: debug.Module{Path: "github.com/bonztm/agent-workflow-manager", Version: "(devel)"},
 			Settings: []debug.BuildSetting{
 				{Key: "vcs.revision", Value: "0123456789abcdef"},
 				{Key: "vcs.modified", Value: "true"},
@@ -91,7 +91,7 @@ func TestVersion_UsesPseudoVersionCommitWhenRevisionMissing(t *testing.T) {
 	readBuildInfo = func() (*debug.BuildInfo, bool) {
 		return &debug.BuildInfo{
 			Main: debug.Module{
-				Path:    "github.com/bonztm/agent-context-manager",
+				Path:    "github.com/bonztm/agent-workflow-manager",
 				Version: "v0.0.0-20260305211823-89abcdef0123",
 			},
 		}, true
@@ -139,7 +139,7 @@ func TestBanner(t *testing.T) {
 		return nil, false
 	}
 
-	if got := Banner("acm"); got != "acm abc1234" {
-		t.Fatalf("unexpected banner: got %q want %q", got, "acm abc1234")
+	if got := Banner("awm"); got != "awm abc1234" {
+		t.Fatalf("unexpected banner: got %q want %q", got, "awm abc1234")
 	}
 }

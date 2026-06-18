@@ -1,18 +1,18 @@
 # AGENTS.md
 
-Starter operating contract for a repo that uses `acm`.
+Starter operating contract for a repo that uses `awm`.
 
 ## Source Of Truth
 
 - Follow this file first.
-- Keep canonical rules in `.acm/acm-rules.yaml` (preferred) or `acm-rules.yaml` at the repo root.
-- Keep canonical tags in `.acm/acm-tags.yaml` and executable checks in `.acm/acm-tests.yaml`.
-- Keep canonical completion workflow gates in `.acm/acm-workflows.yaml` (preferred) or `acm-workflows.yaml`.
+- Keep canonical rules in `.awm/awm-rules.yaml` (preferred) or `awm-rules.yaml` at the repo root.
+- Keep canonical tags in `.awm/awm-tags.yaml` and executable checks in `.awm/awm-tests.yaml`.
+- Keep canonical completion workflow gates in `.awm/awm-workflows.yaml` (preferred) or `awm-workflows.yaml`.
 - If tool-specific instructions conflict with this file, this file wins unless a human explicitly says otherwise.
 
 ## Task Loop
 
-See [.acm/acm-work-loop.md](.acm/acm-work-loop.md) for the full ACM command reference (CLI and MCP).
+See [.awm/awm-work-loop.md](.awm/awm-work-loop.md) for the full AWM command reference (CLI and MCP).
 
 The short version: `context` → `work` → `verify` → `done`. Trivial single-file fixes can skip the ceremony.
 
@@ -28,5 +28,5 @@ The short version: `context` → `work` → `verify` → `done`. Trivial single-
 ## Ruleset Maintenance
 
 1. Edit the canonical rules, tags, tests, or workflow files.
-2. Run `acm sync --mode working_tree --insert-new-candidates` or `acm health --apply`.
-3. Run `acm health --include-details` and resolve blocking findings.
+2. Run `awm sync --mode working_tree --insert-new-candidates` or `awm health --apply`.
+3. Run `awm health --include-details` and resolve blocking findings.

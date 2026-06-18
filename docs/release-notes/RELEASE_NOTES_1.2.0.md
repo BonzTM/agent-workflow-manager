@@ -6,13 +6,13 @@ Architectural retrofit and code quality pass. The MCP server migrates to JSON-RP
 
 ## Breaking Changes
 
-- **`acm-mcp` is now a JSON-RPC 2.0 stdio server.** The `acm-mcp tools` and `acm-mcp invoke` subcommands are removed. Clients must send JSON-RPC requests (`initialize`, `tools/list`, `tools/call`) over line-delimited stdin/stdout. See `docs/mcp-reference.md` for the new protocol.
+- **`awm-mcp` is now a JSON-RPC 2.0 stdio server.** The `awm-mcp tools` and `awm-mcp invoke` subcommands are removed. Clients must send JSON-RPC requests (`initialize`, `tools/list`, `tools/call`) over line-delimited stdin/stdout. See `docs/mcp-reference.md` for the new protocol.
 
 ## Added
 
 ### MCP Protocol
 
-- JSON-RPC 2.0 stdio MCP server — `acm-mcp` implements `initialize`, `tools/list`, `tools/call` over line-delimited JSON on stdin/stdout
+- JSON-RPC 2.0 stdio MCP server — `awm-mcp` implements `initialize`, `tools/list`, `tools/call` over line-delimited JSON on stdin/stdout
 - `internal/adapters/mcp/jsonrpc.go` — JSON-RPC 2.0 request/response types, parse/serialize helpers, standard error codes
 - `internal/adapters/mcp/protocol.go` — MCP method dispatch
 - `internal/adapters/mcp/server.go` — line-delimited stdio server loop
@@ -30,9 +30,9 @@ Architectural retrofit and code quality pass. The MCP server migrates to JSON-RP
 - `internal/contracts/v1/command_catalog_test.go` — catalog completeness test asserting all 12 specs have non-empty metadata, no duplicates
 - `internal/contracts/v1/errors_test.go` — error code uniqueness and format tests, `ErrorPayload.Source` JSON round-trip
 - `internal/core/errors_test.go` — `APIError.ToPayload()` source propagation test
-- `cmd/acm/main_test.go` — CLI entrypoint smoke tests (`--help`, `--version`, unknown subcommand exit codes)
-- `cmd/acm-mcp/main_test.go` — MCP entrypoint smoke tests (`--help`, `--version`)
-- `cmd/acm-web/main_test.go` — web entrypoint smoke test (`staticFS` returns valid filesystem)
+- `cmd/awm/main_test.go` — CLI entrypoint smoke tests (`--help`, `--version`, unknown subcommand exit codes)
+- `cmd/awm-mcp/main_test.go` — MCP entrypoint smoke tests (`--help`, `--version`)
+- `cmd/awm-web/main_test.go` — web entrypoint smoke test (`staticFS` returns valid filesystem)
 - 2 new shared parity contract subtests (rule sync roundtrip, DoD JSON roundtrip) — both SQLite and Postgres adapters run them automatically
 
 ### Documentation
@@ -46,10 +46,10 @@ Architectural retrofit and code quality pass. The MCP server migrates to JSON-RP
 
 ### Architecture
 
-- `cmd/acm/main.go` — reduced to 11-line thin shell delegating to `cli.RunCLI()`
-- `cmd/acm-mcp/main.go` — reduced to 11-line thin shell delegating to `mcp.RunMCP()`
-- CLI routing (`convenience.go`, `routes.go`) moved from `cmd/acm/` to `internal/adapters/cli/`
-- MCP dispatch logic moved from `cmd/acm-mcp/` to `internal/adapters/mcp/`
+- `cmd/awm/main.go` — reduced to 11-line thin shell delegating to `cli.RunCLI()`
+- `cmd/awm-mcp/main.go` — reduced to 11-line thin shell delegating to `mcp.RunMCP()`
+- CLI routing (`convenience.go`, `routes.go`) moved from `cmd/awm/` to `internal/adapters/cli/`
+- MCP dispatch logic moved from `cmd/awm-mcp/` to `internal/adapters/mcp/`
 - `internal/adapters/mcp/invoke.go` — `ToolDef` updated to MCP format (`inputSchema` camelCase, `title` and `output_schema` removed)
 - `spec/v1/mcp.tools.v1.json` — tool contract schema updated to match JSON-RPC tool format
 - Ad-hoc error code string literals replaced with `v1.ErrCode*` constants across validation, dispatch, and backend
@@ -59,8 +59,8 @@ Architectural retrofit and code quality pass. The MCP server migrates to JSON-RP
 
 - `README.md` — CLI Reference and MCP sections replaced with summaries linking to new dedicated docs
 - `docs/getting-started.md` — cross-references to new CLI, MCP, and integration docs
-- `skills/acm-broker/assets/requests/mcp_*.json` — all 8 MCP example payloads converted to JSON-RPC 2.0 `tools/call` requests
-- `skills/acm-broker/{claude,codex,opencode}/README.md` — `acm-mcp invoke` references replaced with JSON-RPC protocol guidance
+- `skills/awm-broker/assets/requests/mcp_*.json` — all 8 MCP example payloads converted to JSON-RPC 2.0 `tools/call` requests
+- `skills/awm-broker/{claude,codex,opencode}/README.md` — `awm-mcp invoke` references replaced with JSON-RPC protocol guidance
 
 ## Fixed
 
@@ -87,8 +87,8 @@ Architectural retrofit and code quality pass. The MCP server migrates to JSON-RP
 
 ## Removed
 
-- `acm-mcp tools` subcommand — replaced by `tools/list` JSON-RPC method
-- `acm-mcp invoke` subcommand — replaced by `tools/call` JSON-RPC method
+- `awm-mcp tools` subcommand — replaced by `tools/list` JSON-RPC method
+- `awm-mcp invoke` subcommand — replaced by `tools/call` JSON-RPC method
 - `internal/service/backend/service_test.go` — split into 12 focused per-command test files
 - `internal/adapters/sqlite/repository_rules_test.go` — test promoted to shared parity contract
 - `internal/adapters/sqlite/repository_run_summary_test.go` — test promoted to shared parity contract
@@ -102,22 +102,22 @@ Architectural retrofit and code quality pass. The MCP server migrates to JSON-RP
 ## Deployment and Distribution
 
 ```bash
-go install github.com/bonztm/agent-context-manager/cmd/acm@v1.2.0
-go install github.com/bonztm/agent-context-manager/cmd/acm-mcp@v1.2.0
-go install github.com/bonztm/agent-context-manager/cmd/acm-web@v1.2.0
+go install github.com/bonztm/agent-workflow-manager/cmd/awm@v1.2.0
+go install github.com/bonztm/agent-workflow-manager/cmd/awm-mcp@v1.2.0
+go install github.com/bonztm/agent-workflow-manager/cmd/awm-web@v1.2.0
 ```
 
-- Source: `https://github.com/BonzTM/agent-context-manager`
+- Source: `https://github.com/BonzTM/agent-workflow-manager`
 
 ## Compatibility and Migration
 
 - Requires Go 1.26+ for `go install` or building from source.
 - Direct upgrade from 1.1.x or 1.0.0. No data migration required.
-- **MCP clients must migrate** from `acm-mcp invoke <tool>` to JSON-RPC 2.0 `tools/call` requests. See `docs/mcp-reference.md`.
+- **MCP clients must migrate** from `awm-mcp invoke <tool>` to JSON-RPC 2.0 `tools/call` requests. See `docs/mcp-reference.md`.
 - CLI usage is unchanged — all 12 commands work identically.
 - Wire format (JSON payloads) is unchanged for all commands.
 
 ## Full Changelog
 
-- Compare changes: https://github.com/BonzTM/agent-context-manager/compare/1.1.2...1.2.0
-- Full changelog: https://github.com/BonzTM/agent-context-manager/commits/1.2.0
+- Compare changes: https://github.com/BonzTM/agent-workflow-manager/compare/1.1.2...1.2.0
+- Full changelog: https://github.com/BonzTM/agent-workflow-manager/commits/1.2.0

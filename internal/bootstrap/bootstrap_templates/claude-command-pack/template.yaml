@@ -1,25 +1,25 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: claude-command-pack
-summary: Seed the Claude acm-broker command pack into .claude.
+summary: Seed the Claude awm-broker command pack into .claude.
 operations:
   - type: create_if_missing
-    target: .claude/acm-broker/README.md
-    source: files/.claude/acm-broker/README.md
+    target: .claude/awm-broker/README.md
+    source: files/.claude/awm-broker/README.md
   - type: create_if_missing
-    target: .claude/acm-broker/CLAUDE.md
-    source: files/.claude/acm-broker/CLAUDE.md
+    target: .claude/awm-broker/CLAUDE.md
+    source: files/.claude/awm-broker/CLAUDE.md
   - type: create_if_missing
-    target: .claude/commands/acm-context.md
-    source: files/.claude/commands/acm-context.md
+    target: .claude/commands/awm-context.md
+    source: files/.claude/commands/awm-context.md
   - type: create_if_missing
-    target: .claude/commands/acm-done.md
-    source: files/.claude/commands/acm-done.md
+    target: .claude/commands/awm-done.md
+    source: files/.claude/commands/awm-done.md
   - type: create_if_missing
-    target: .claude/commands/acm-review.md
-    source: files/.claude/commands/acm-review.md
+    target: .claude/commands/awm-review.md
+    source: files/.claude/commands/awm-review.md
   - type: create_if_missing
-    target: .claude/commands/acm-verify.md
-    source: files/.claude/commands/acm-verify.md
+    target: .claude/commands/awm-verify.md
+    source: files/.claude/commands/awm-verify.md
   - type: create_if_missing
-    target: .claude/commands/acm-work.md
-    source: files/.claude/commands/acm-work.md
+    target: .claude/commands/awm-work.md
+    source: files/.claude/commands/awm-work.md

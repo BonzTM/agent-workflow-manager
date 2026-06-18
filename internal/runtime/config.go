@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/projectid"
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	"github.com/bonztm/agent-workflow-manager/internal/projectid"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
-const PostgresDSNEnvVar = "ACM_PG_DSN"
-const SQLitePathEnvVar = "ACM_SQLITE_PATH"
-const ProjectIDEnvVar = "ACM_PROJECT_ID"
-const ProjectRootEnvVar = "ACM_PROJECT_ROOT"
+const PostgresDSNEnvVar = "AWM_PG_DSN"
+const SQLitePathEnvVar = "AWM_SQLITE_PATH"
+const ProjectIDEnvVar = "AWM_PROJECT_ID"
+const ProjectRootEnvVar = "AWM_PROJECT_ROOT"
 
 type Config struct {
 	PostgresDSN   string
@@ -51,7 +51,7 @@ func (c Config) EffectiveSQLitePath() string {
 	if base := c.effectiveProjectRoot(); base != "" {
 		return filepath.Join(base, filepath.FromSlash(workspace.DefaultSQLiteRelativePath))
 	}
-	return filepath.Join(os.TempDir(), "agent-context-manager-context.db")
+	return filepath.Join(os.TempDir(), "agent-workflow-manager-context.db")
 }
 
 func (c Config) UsesImplicitSQLitePath() bool {

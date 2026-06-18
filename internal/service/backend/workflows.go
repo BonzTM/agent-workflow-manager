@@ -7,16 +7,16 @@ import (
 	"sort"
 	"strings"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"gopkg.in/yaml.v3"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 )
 
 const (
-	workflowDefinitionsVersionV1           = "acm.workflows.v1"
-	workflowDefinitionsPrimarySourcePath   = ".acm/acm-workflows.yaml"
-	workflowDefinitionsSecondarySourcePath = "acm-workflows.yaml"
+	workflowDefinitionsVersionV1           = "awm.workflows.v1"
+	workflowDefinitionsPrimarySourcePath   = ".awm/awm-workflows.yaml"
+	workflowDefinitionsSecondarySourcePath = "awm-workflows.yaml"
 	maxWorkflowRequiredTasks               = 128
 )
 

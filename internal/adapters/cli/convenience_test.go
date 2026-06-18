@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 )
 
 func TestParseExpectedVersion(t *testing.T) {
@@ -354,14 +354,14 @@ func TestBuildWorkEnvelope_LoadsPlanAndTasksJSON(t *testing.T) {
 		"--mode", "replace",
 		"--plan-json", `{
 			"title":"Init this repo",
-			"objective":"Capture spec, tasks, and outcomes in acm",
+			"objective":"Capture spec, tasks, and outcomes in awm",
 			"status":"in_progress",
 			"stages":{
 				"spec_outline":"complete",
 				"refined_spec":"in_progress",
 				"implementation_plan":"pending"
 			},
-			"in_scope":["internal/service/backend","cmd/acm"],
+			"in_scope":["internal/service/backend","cmd/awm"],
 			"out_of_scope":["release automation"],
 			"constraints":["no breaking APIs"],
 			"references":["docs/getting-started.md"]
@@ -392,7 +392,7 @@ func TestBuildWorkEnvelope_LoadsPlanAndTasksJSON(t *testing.T) {
 	if payload.Plan == nil {
 		t.Fatal("expected plan payload")
 	}
-	if payload.Plan.Title != "Init this repo" || payload.Plan.Objective != "Capture spec, tasks, and outcomes in acm" {
+	if payload.Plan.Title != "Init this repo" || payload.Plan.Objective != "Capture spec, tasks, and outcomes in awm" {
 		t.Fatalf("unexpected plan metadata: %+v", payload.Plan)
 	}
 	if payload.Plan.Stages == nil || payload.Plan.Stages.SpecOutline != v1.WorkItemStatusComplete {
@@ -410,7 +410,7 @@ func TestBuildWorkEnvelope_MergesDiscoveredPathsIntoPlan(t *testing.T) {
 	env, err := buildConvenienceEnvelope("work", []string{
 		"--project", "myproject",
 		"--receipt-id", "receipt-87654321",
-		"--discovered-path", "cmd/acm/routes.go",
+		"--discovered-path", "cmd/awm/routes.go",
 		"--discovered-path", "internal/contracts/v1/command_catalog.go",
 	}, fixedNow)
 	if err != nil {
@@ -425,7 +425,7 @@ func TestBuildWorkEnvelope_MergesDiscoveredPathsIntoPlan(t *testing.T) {
 		t.Fatal("expected plan payload for discovered paths")
 	}
 	if got, want := payload.Plan.DiscoveredPaths, []string{
-		"cmd/acm/routes.go",
+		"cmd/awm/routes.go",
 		"internal/contracts/v1/command_catalog.go",
 	}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected discovered_paths: got %v want %v", got, want)
@@ -490,7 +490,7 @@ func TestBuildReviewEnvelope_RunModeIncludesTagsFile(t *testing.T) {
 		"--project", "myproject",
 		"--receipt-id", "receipt-87654321",
 		"--run",
-		"--tags-file", ".acm/acm-tags.yaml",
+		"--tags-file", ".awm/awm-tags.yaml",
 	}, fixedNow)
 	if err != nil {
 		t.Fatalf("buildConvenienceEnvelope returned error: %v", err)
@@ -503,7 +503,7 @@ func TestBuildReviewEnvelope_RunModeIncludesTagsFile(t *testing.T) {
 	if !payload.Run {
 		t.Fatalf("expected run=true, got %+v", payload)
 	}
-	if payload.TagsFile != ".acm/acm-tags.yaml" {
+	if payload.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected tags file: %q", payload.TagsFile)
 	}
 }
@@ -623,7 +623,7 @@ func TestBuildContextEnvelope_TagsFileFlag(t *testing.T) {
 		"--project", "myproject",
 		"--task-text", "Check sync tags",
 		"--phase", "execute",
-		"--tags-file", ".acm/acm-tags.yaml",
+		"--tags-file", ".awm/awm-tags.yaml",
 	}, fixedNow)
 	if err != nil {
 		t.Fatalf("buildConvenienceEnvelope returned error: %v", err)
@@ -633,14 +633,14 @@ func TestBuildContextEnvelope_TagsFileFlag(t *testing.T) {
 	if err := json.Unmarshal(env.Payload, &payload); err != nil {
 		t.Fatalf("failed to decode payload: %v", err)
 	}
-	if payload.TagsFile != ".acm/acm-tags.yaml" {
+	if payload.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected tags_file: %q", payload.TagsFile)
 	}
 }
 
 func TestBuildDoneEnvelope_FilesAndOutcomeFromFiles(t *testing.T) {
 	filesPath := filepath.Join(t.TempDir(), "files.json")
-	if err := os.WriteFile(filesPath, []byte(`["cmd/acm/main.go","cmd/acm/convenience.go"]`), 0o644); err != nil {
+	if err := os.WriteFile(filesPath, []byte(`["cmd/awm/main.go","cmd/awm/convenience.go"]`), 0o644); err != nil {
 		t.Fatalf("write files fixture: %v", err)
 	}
 	outcomePath := filepath.Join(t.TempDir(), "outcome.txt")
@@ -674,9 +674,9 @@ func TestBuildDoneEnvelope_TagsFileFlag(t *testing.T) {
 	env, err := buildConvenienceEnvelope("done", []string{
 		"--project", "myproject",
 		"--receipt-id", "req-12345678",
-		"--file-changed", "cmd/acm/main.go",
+		"--file-changed", "cmd/awm/main.go",
 		"--outcome", "Done",
-		"--tags-file", ".acm/acm-tags.yaml",
+		"--tags-file", ".awm/awm-tags.yaml",
 	}, fixedNow)
 	if err != nil {
 		t.Fatalf("buildConvenienceEnvelope returned error: %v", err)
@@ -686,7 +686,7 @@ func TestBuildDoneEnvelope_TagsFileFlag(t *testing.T) {
 	if err := json.Unmarshal(env.Payload, &payload); err != nil {
 		t.Fatalf("failed to decode payload: %v", err)
 	}
-	if payload.TagsFile != ".acm/acm-tags.yaml" {
+	if payload.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected tags_file: %q", payload.TagsFile)
 	}
 }
@@ -731,7 +731,7 @@ func TestBuildDoneEnvelope_LoadsFilesChangedJSON(t *testing.T) {
 		"--project", "myproject",
 		"--receipt-id", "req-87654321",
 		"--outcome", "Done",
-		"--files-changed-json", `["cmd/acm/main.go","cmd/acm/convenience.go"]`,
+		"--files-changed-json", `["cmd/awm/main.go","cmd/awm/convenience.go"]`,
 	}, fixedNow)
 	if err != nil {
 		t.Fatalf("buildConvenienceEnvelope returned error: %v", err)
@@ -799,7 +799,7 @@ func TestBuildDoneEnvelope_RejectsFilesChangedWithExplicitNoFileChanges(t *testi
 		"--project", "myproject",
 		"--receipt-id", "req-87654321",
 		"--outcome", "Captured planning result",
-		"--file-changed", "cmd/acm/main.go",
+		"--file-changed", "cmd/awm/main.go",
 		"--no-file-changes",
 	}, fixedNow)
 	if err == nil {
@@ -813,8 +813,8 @@ func TestBuildDoneEnvelope_RejectsFilesChangedWithExplicitNoFileChanges(t *testi
 func TestBuildSyncEnvelope_RulesAndTagsFileFlags(t *testing.T) {
 	env, err := buildConvenienceEnvelope("sync", []string{
 		"--project", "myproject",
-		"--rules-file", ".acm/acm-rules.yaml",
-		"--tags-file", ".acm/acm-tags.yaml",
+		"--rules-file", ".awm/awm-rules.yaml",
+		"--tags-file", ".awm/awm-tags.yaml",
 	}, fixedNow)
 	if err != nil {
 		t.Fatalf("buildConvenienceEnvelope returned error: %v", err)
@@ -824,10 +824,10 @@ func TestBuildSyncEnvelope_RulesAndTagsFileFlags(t *testing.T) {
 	if err := json.Unmarshal(env.Payload, &payload); err != nil {
 		t.Fatalf("failed to decode payload: %v", err)
 	}
-	if payload.RulesFile != ".acm/acm-rules.yaml" {
+	if payload.RulesFile != ".awm/awm-rules.yaml" {
 		t.Fatalf("unexpected rules_file: %q", payload.RulesFile)
 	}
-	if payload.TagsFile != ".acm/acm-tags.yaml" {
+	if payload.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected tags_file: %q", payload.TagsFile)
 	}
 }
@@ -1013,10 +1013,10 @@ func TestBuildStatusEnvelope_LoadsTaskFileAndOptionalSources(t *testing.T) {
 	env, err := buildConvenienceEnvelope("status", []string{
 		"--project", "myproject",
 		"--project-root", ".",
-		"--rules-file", ".acm/acm-rules.yaml",
-		"--tags-file", ".acm/acm-tags.yaml",
-		"--tests-file", ".acm/acm-tests.yaml",
-		"--workflows-file", ".acm/acm-workflows.yaml",
+		"--rules-file", ".awm/awm-rules.yaml",
+		"--tags-file", ".awm/awm-tags.yaml",
+		"--tests-file", ".awm/awm-tests.yaml",
+		"--workflows-file", ".awm/awm-workflows.yaml",
 		"--task-file", taskFile,
 		"--phase", "review",
 	}, fixedNow)
@@ -1034,10 +1034,10 @@ func TestBuildStatusEnvelope_LoadsTaskFileAndOptionalSources(t *testing.T) {
 	if payload.ProjectRoot != "." {
 		t.Fatalf("unexpected project_root: %q", payload.ProjectRoot)
 	}
-	if payload.RulesFile != ".acm/acm-rules.yaml" || payload.TagsFile != ".acm/acm-tags.yaml" {
+	if payload.RulesFile != ".awm/awm-rules.yaml" || payload.TagsFile != ".awm/awm-tags.yaml" {
 		t.Fatalf("unexpected rules/tags files: %+v", payload)
 	}
-	if payload.TestsFile != ".acm/acm-tests.yaml" || payload.WorkflowsFile != ".acm/acm-workflows.yaml" {
+	if payload.TestsFile != ".awm/awm-tests.yaml" || payload.WorkflowsFile != ".awm/awm-workflows.yaml" {
 		t.Fatalf("unexpected tests/workflows files: %+v", payload)
 	}
 	if payload.TaskText != "diagnose context drift" {
@@ -1292,7 +1292,7 @@ func TestRunConvenienceWithDeps_HistoryHelpShowsWorkFilters(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(output, "acm history [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded[=true|false]] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]") {
+	if !strings.Contains(output, "awm history [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded[=true|false]] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]") {
 		t.Fatalf("unexpected help output: %q", output)
 	}
 	for _, required := range []string{"-entity string", "-scope string", "-kind string"} {
@@ -1319,13 +1319,13 @@ func TestRunConvenienceWithDeps_StatusHelpUsesCanonicalUsage(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(output, "Usage:\n  acm status [--project <id>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--tests-file <path>] [--workflows-file <path>] [--task-text <text>|--task-file <path>] [--phase <plan|execute|review>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]") {
+	if !strings.Contains(output, "Usage:\n  awm status [--project <id>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--tests-file <path>] [--workflows-file <path>] [--task-text <text>|--task-file <path>] [--phase <plan|execute|review>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]") {
 		t.Fatalf("unexpected help output: %q", output)
 	}
-	if strings.Contains(output, "Usage:\n  acm doctor") {
+	if strings.Contains(output, "Usage:\n  awm doctor") {
 		t.Fatalf("status help should not advertise doctor usage: %q", output)
 	}
-	if !strings.Contains(output, "acm status --task-text \"add review gate\" --phase execute") {
+	if !strings.Contains(output, "awm status --task-text \"add review gate\" --phase execute") {
 		t.Fatalf("status help should include a canonical example: %q", output)
 	}
 }

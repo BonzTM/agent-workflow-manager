@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
 )
 
 func TestNewServiceWithLogger_DefaultsToSQLiteAndIsLoggingDecorated(t *testing.T) {
@@ -100,7 +100,7 @@ func TestNewServiceWithLogger_ImplicitRepoSQLiteDoesNotMutateGitIgnore(t *testin
 	if _, err := os.Stat(filepath.Join(root, ".gitignore")); !os.IsNotExist(err) {
 		t.Fatalf("expected runtime service construction to leave .gitignore alone, stat err=%v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".acm", "context.db")); err != nil {
+	if _, err := os.Stat(filepath.Join(root, ".awm", "context.db")); err != nil {
 		t.Fatalf("expected default sqlite file: %v", err)
 	}
 }

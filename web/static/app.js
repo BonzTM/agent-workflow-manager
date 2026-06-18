@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ACM Kanban — Application JS
+   AWM Kanban — Application JS
    Vanilla JS, no build step. Uses fetch for API calls.
    ========================================================================== */
 
@@ -153,7 +153,7 @@
     }
 
     return `
-      <div class="task-card ${statusCls}" onclick="ACM.openCard(${idx})">
+      <div class="task-card ${statusCls}" onclick="AWM.openCard(${idx})">
         ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ""}
         <div class="card-summary">${esc(task.summary || "")}</div>
         ${parentLabel ? `<div class="card-footer"><span class="card-parent-ctx">${esc(parentLabel)}</span></div>` : ""}
@@ -216,7 +216,7 @@
         container.innerHTML = `
           <div class="board-empty">
             <h2>No plans found</h2>
-            <p>Create a plan with ACM to see tasks here.</p>
+            <p>Create a plan with AWM to see tasks here.</p>
           </div>`;
         return;
       }
@@ -428,7 +428,7 @@
 
     return `
       <div class="swimlane${depthCls} ${isExpanded ? "" : "collapsed"}" id="${planId}" data-plan-key="${esc(expandKey)}">
-        <div class="swimlane-header" onclick="ACM.togglePlan(this)">
+        <div class="swimlane-header" onclick="AWM.togglePlan(this)">
           <span class="swimlane-toggle">&#9662;</span>
           <span class="swimlane-title">${esc(title)}</span>
           <div class="swimlane-counts">${countBadges}</div>
@@ -441,8 +441,8 @@
       </div>`;
   }
 
-  window.ACM = window.ACM || {};
-  window.ACM.setScope = function (scope) {
+  window.AWM = window.AWM || {};
+  window.AWM.setScope = function (scope) {
     _boardScope = scope;
     document.querySelectorAll("[data-scope]").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.scope === scope);
@@ -450,7 +450,7 @@
     loadBoard();
   };
 
-  window.ACM.setFilter = function (filter) {
+  window.AWM.setFilter = function (filter) {
     _taskFilter = filter;
     document.querySelectorAll("[data-filter]").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.filter === filter);
@@ -458,7 +458,7 @@
     loadBoard();
   };
 
-  window.ACM.togglePlan = function (headerEl) {
+  window.AWM.togglePlan = function (headerEl) {
     const swimlane = headerEl.closest(".swimlane");
     if (!swimlane) return;
     const key = swimlane.dataset.planKey || swimlane.querySelector(".swimlane-title")?.textContent || "";
@@ -652,7 +652,7 @@
   // Card Detail Modal
   // ---------------------------------------------------------------------------
 
-  window.ACM = window.ACM || {};
+  window.AWM = window.AWM || {};
 
   function ensureModalContainer() {
     let overlay = document.getElementById("card-modal-overlay");
@@ -662,7 +662,7 @@
       overlay.className = "modal-overlay";
       overlay.innerHTML = `<div class="modal-content" id="card-modal-content"></div>`;
       overlay.addEventListener("click", function (e) {
-        if (e.target === overlay) ACM.closeCard();
+        if (e.target === overlay) AWM.closeCard();
       });
       document.body.appendChild(overlay);
     }
@@ -783,10 +783,10 @@
     const t = _boardTasks[idx];
     const type = taskType(key);
     const typeLabel = type ? `<span class="card-type ${type.cls}" style="font-size:0.68rem">${esc(type.label)}</span> ` : "";
-    return `<a class="task-link" onclick="ACM.openCard(${idx})">${typeLabel}${esc(t.summary || key)}</a>`;
+    return `<a class="task-link" onclick="AWM.openCard(${idx})">${typeLabel}${esc(t.summary || key)}</a>`;
   }
 
-  window.ACM.openCard = function (idx) {
+  window.AWM.openCard = function (idx) {
     const task = _boardTasks[idx];
     if (!task) return;
 
@@ -891,7 +891,7 @@
     }
 
     content.innerHTML = `
-      <button class="modal-close" onclick="ACM.closeCard()">&times;</button>
+      <button class="modal-close" onclick="AWM.closeCard()">&times;</button>
       <div class="modal-title">${esc(task.summary || task.key || "")}</div>
       <div class="modal-body">${sections}</div>`;
 
@@ -899,14 +899,14 @@
     document.addEventListener("keydown", _modalEscHandler);
   };
 
-  window.ACM.closeCard = function () {
+  window.AWM.closeCard = function () {
     const overlay = document.getElementById("card-modal-overlay");
     if (overlay) overlay.classList.remove("open");
     document.removeEventListener("keydown", _modalEscHandler);
   };
 
   function _modalEscHandler(e) {
-    if (e.key === "Escape") ACM.closeCard();
+    if (e.key === "Escape") AWM.closeCard();
   }
 
   // ---------------------------------------------------------------------------

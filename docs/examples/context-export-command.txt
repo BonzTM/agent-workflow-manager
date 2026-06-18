@@ -1,1 +1,1 @@
-acm context --task-text "continue export renderer implementation" --phase execute --format markdown --out-file artifacts/context.md --force
+awm context --task-text "continue export renderer implementation" --phase execute --format markdown --out-file artifacts/context.md --force

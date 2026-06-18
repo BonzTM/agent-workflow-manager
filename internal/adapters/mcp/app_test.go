@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 )
 
 func TestRunMCP_VersionFlagPrintsBanner(t *testing.T) {
@@ -24,7 +24,7 @@ func TestRunMCP_VersionFlagPrintsBanner(t *testing.T) {
 		t.Fatalf("unexpected exit code: got %d want 0", code)
 	}
 	text := strings.TrimSpace(stdout.String())
-	if !strings.HasPrefix(text, "acm-mcp ") {
+	if !strings.HasPrefix(text, "awm-mcp ") {
 		t.Fatalf("unexpected version output: %q", text)
 	}
 }
@@ -38,7 +38,7 @@ func TestRunMCP_HelpFlagPrintsUsage(t *testing.T) {
 		t.Fatalf("unexpected exit code: got %d want 0", code)
 	}
 	text := stdout.String()
-	if !strings.Contains(text, "acm-mcp - MCP JSON-RPC 2.0 stdio server") {
+	if !strings.Contains(text, "awm-mcp - MCP JSON-RPC 2.0 stdio server") {
 		t.Fatalf("unexpected help output: %q", text)
 	}
 	if !strings.Contains(text, "tools/call") {
@@ -78,9 +78,9 @@ func TestRunMCP_DefaultModeStartsServer(t *testing.T) {
 
 func TestPrintVersionWritesBinaryBanner(t *testing.T) {
 	var out bytes.Buffer
-	printVersion(&out, "acm-mcp")
+	printVersion(&out, "awm-mcp")
 	text := strings.TrimSpace(out.String())
-	if !strings.HasPrefix(text, "acm-mcp ") {
+	if !strings.HasPrefix(text, "awm-mcp ") {
 		t.Fatalf("unexpected version output: %q", text)
 	}
 }

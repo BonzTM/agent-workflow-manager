@@ -1,0 +1,79 @@
+# awm-rules.yaml
+# Sane starter ruleset for a new repo using awm.
+# Save this as .awm/awm-rules.yaml (preferred) or awm-rules.yaml in the project root.
+
+version: awm.rules.v1
+rules:
+  - id: rule_startup_context
+    summary: Start every task with context.
+    content: Retrieve context before reading or editing repo files, then follow every hard rule returned in the receipt.
+    enforcement: hard
+    tags: [startup, context]
+
+  - id: rule_fetch_surgically
+    summary: Keep context compact by fetching only the artifacts needed for the current step.
+    content: Fetch the specific pointer, plan, or task keys you need. If the receipt is missing obvious context, rerun context with a better task description instead of bulk fetching.
+    enforcement: soft
+    tags: [context, efficiency]
+
+  - id: rule_track_multistep_work
+    summary: Track multi-step or multi-file work with work.
+    content: Create or update a work plan when the task spans multiple steps, touches multiple files, or may need to survive context compaction. Use verify:tests as the executable verification task when code changes, and add any extra task keys required by .awm/awm-workflows.yaml.
+    enforcement: hard
+    tags: [planning, tracking]
+
+  - id: rule_no_silent_scope_expansion
+    summary: Do not silently widen scope.
+    content: If the task spills into adjacent systems, files, or decisions that are not represented in the current receipt, rerun context or record the later-discovered governed files through work.plan.discovered_paths before making file-backed changes.
+    enforcement: hard
+    tags: [scope, safety]
+
+  - id: rule_verify_code_changes
+    summary: Run verify before closing code, config, or behavior changes.
+    content: Use repo-defined verify checks that match the changed files and current phase. Do not call done until executable verification has passed or the required completion tasks from .awm/awm-workflows.yaml are satisfied.
+    enforcement: hard
+    tags: [verification, quality]
+
+  - id: rule_done
+    summary: Finish every task with done.
+    content: Report every changed file for file-backed work when you know them and give a concise outcome summary. AWM can derive the task delta from the receipt baseline; when that detected delta is empty, the closeout is effectively no-file.
+    enforcement: hard
+    tags: [completion, audit]
+
+  - id: rule_escalate_missing_decisions
+    summary: Escalate when a task depends on a missing product or architectural decision.
+    content: Do not invent product requirements, compatibility guarantees, migrations, or rollout behavior when the repo does not define them. Surface the decision and wait for direction.
+    enforcement: hard
+    tags: [escalation, safety]
+
+# Optional stricter feature-planning rules:
+#   - id: rule_plan_before_code
+#     summary: Plan multi-step implementation work before writing code.
+#     content: For tasks with more than one implementation step, create work with explicit steps and acceptance criteria before implementation. Single-file, single-purpose fixes are exempt.
+#     enforcement: hard
+#     tags: [planning, workflow]
+#
+#   - id: rule_feature_plan_schema
+#     summary: Use a repo-local feature plan schema for net-new feature work.
+#     content: Require root `kind=feature` plans with scope metadata, `plan.stages`, top-level `stage:*` tasks, and leaf-task acceptance criteria. Use `kind=feature_stream` plus `parent_plan_key` for split execution streams, and enforce the schema through a repo-local verify script.
+#     enforcement: hard
+#     tags: [planning, workflow]
+
+# Optional TDD gate rules (used in the awm dogfood repo):
+#   - id: rule_tdd_red_green
+#     summary: Write a failing test before implementing behavior-changing Go code.
+#     content: Planned behavior-changing Go work under cmd/** or internal/** must include a tdd:red task before implementation, or a tdd:exemption task with a concrete justification.
+#     enforcement: hard
+#     tags: [verification, quality, tdd]
+
+# Field notes:
+# - id: optional; when omitted, awm generates a deterministic stable id.
+# - summary: required (title or content may substitute, but summary is preferred).
+# - content: optional; defaults to summary when omitted.
+# - enforcement: optional; defaults to "hard" (allowed: hard|soft).
+# - tags: optional.
+
+# Maintenance flow:
+# 1) Add/remove/update entries under rules.
+# 2) Run awm sync --mode working_tree --insert-new-candidates (or awm health --apply when it covers the needed fixers).
+# 3) Run awm health --include-details and resolve blocking findings.

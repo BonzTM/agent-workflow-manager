@@ -14,9 +14,9 @@ import (
 	"sort"
 	"strings"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func (s *Service) Sync(ctx context.Context, payload v1.SyncPayload) (v1.SyncResult, *core.APIError) {

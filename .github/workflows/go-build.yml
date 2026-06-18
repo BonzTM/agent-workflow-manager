@@ -45,17 +45,17 @@ jobs:
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
           LDFLAGS="-s -w"
-          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-context-manager/internal/buildinfo.commitShort=${SHORT_SHA}"
+          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-workflow-manager/internal/buildinfo.commitShort=${SHORT_SHA}"
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           mkdir -p dist
-          for bin in acm acm-mcp acm-web; do
+          for bin in awm awm-mcp awm-web; do
             go build -ldflags "$LDFLAGS" -o "dist/${bin}${EXT}" "./cmd/${bin}"
           done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: acm-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: awm-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/
           if-no-files-found: error

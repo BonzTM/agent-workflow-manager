@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
 func TestConfigFromEnv_ReadsExplicitSQLitePath(t *testing.T) {
@@ -61,7 +61,7 @@ func TestConfigFromEnv_LoadsDotEnvFromRepoRoot(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("ACM_PROJECT_ID=dot-env-project\nACM_PG_DSN=postgres://ctx:ctx@localhost:5432/acm?sslmode=disable\nACM_SQLITE_PATH=.acm/custom.db\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("AWM_PROJECT_ID=dot-env-project\nAWM_PG_DSN=postgres://ctx:ctx@localhost:5432/awm?sslmode=disable\nAWM_SQLITE_PATH=.awm/custom.db\n"), 0o644); err != nil {
 		t.Fatalf("write .env: %v", err)
 	}
 
@@ -74,13 +74,13 @@ func TestConfigFromEnv_LoadsDotEnvFromRepoRoot(t *testing.T) {
 	unsetEnv(t, SQLitePathEnvVar)
 
 	cfg := ConfigFromEnv()
-	if got, want := cfg.PostgresDSN, "postgres://ctx:ctx@localhost:5432/acm?sslmode=disable"; got != want {
+	if got, want := cfg.PostgresDSN, "postgres://ctx:ctx@localhost:5432/awm?sslmode=disable"; got != want {
 		t.Fatalf("unexpected postgres dsn: got %q want %q", got, want)
 	}
 	if got, want := cfg.EffectiveProjectID(), "dot-env-project"; got != want {
 		t.Fatalf("unexpected project id from .env: got %q want %q", got, want)
 	}
-	if got, want := cfg.EffectiveSQLitePath(), filepath.Join(root, ".acm", "custom.db"); got != want {
+	if got, want := cfg.EffectiveSQLitePath(), filepath.Join(root, ".awm", "custom.db"); got != want {
 		t.Fatalf("unexpected sqlite path from .env: got %q want %q", got, want)
 	}
 }
@@ -90,7 +90,7 @@ func TestConfigFromEnv_ProcessEnvOverridesDotEnv(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("ACM_PG_DSN=postgres://dot-env\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("AWM_PG_DSN=postgres://dot-env\n"), 0o644); err != nil {
 		t.Fatalf("write .env: %v", err)
 	}
 
@@ -110,7 +110,7 @@ func TestConfigFromEnv_UsesExplicitProjectRootOutsideRepo(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("ACM_SQLITE_PATH=.acm/custom.db\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("AWM_SQLITE_PATH=.awm/custom.db\n"), 0o644); err != nil {
 		t.Fatalf("write .env: %v", err)
 	}
 
@@ -126,7 +126,7 @@ func TestConfigFromEnv_UsesExplicitProjectRootOutsideRepo(t *testing.T) {
 	if got, want := cfg.ProjectRoot, root; got != want {
 		t.Fatalf("unexpected project root: got %q want %q", got, want)
 	}
-	if got, want := cfg.EffectiveSQLitePath(), filepath.Join(root, ".acm", "custom.db"); got != want {
+	if got, want := cfg.EffectiveSQLitePath(), filepath.Join(root, ".awm", "custom.db"); got != want {
 		t.Fatalf("unexpected sqlite path from explicit project root: got %q want %q", got, want)
 	}
 }

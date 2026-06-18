@@ -1,10 +1,10 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: codex-pack
-summary: Seed Codex ACM companion docs into .codex/acm-broker.
+summary: Seed Codex AWM companion docs into .codex/awm-broker.
 operations:
   - type: create_if_missing
-    target: .codex/acm-broker/README.md
-    source: files/.codex/acm-broker/README.md
+    target: .codex/awm-broker/README.md
+    source: files/.codex/awm-broker/README.md
   - type: create_if_missing
-    target: .codex/acm-broker/AGENTS.example.md
-    source: files/.codex/acm-broker/AGENTS.example.md
+    target: .codex/awm-broker/AGENTS.example.md
+    source: files/.codex/awm-broker/AGENTS.example.md

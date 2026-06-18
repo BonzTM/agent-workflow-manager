@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func (r *Repository) SyncRulePointers(ctx context.Context, input core.RulePointerSyncInput) (core.RulePointerSyncResult, error) {
@@ -32,7 +32,7 @@ func (r *Repository) SyncRulePointers(ctx context.Context, input core.RulePointe
 			return core.RulePointerSyncResult{}, fmt.Errorf("encode rule pointer tags: %w", encodeErr)
 		}
 		tag, execErr := tx.ExecContext(ctx, `
-INSERT INTO acm_pointers (
+INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
 	path,
@@ -85,7 +85,7 @@ ON CONFLICT(project_id, pointer_key) DO UPDATE SET
 
 	if len(activeKeys) == 0 {
 		tag, execErr := tx.ExecContext(ctx, `
-DELETE FROM acm_pointers
+DELETE FROM awm_pointers
 WHERE project_id = ?
 	AND path = ?
 	AND is_rule = 1
@@ -100,7 +100,7 @@ WHERE project_id = ?
 		result.MarkedStale = int(rowsAffected)
 	} else {
 		query := `
-DELETE FROM acm_pointers
+DELETE FROM awm_pointers
 WHERE project_id = ?
 	AND path = ?
 	AND is_rule = 1

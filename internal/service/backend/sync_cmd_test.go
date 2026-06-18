@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -279,7 +279,7 @@ func TestSync_WorkingTreeModeIncludesUntrackedAndUsesFilesystemHashes(t *testing
 		case "diff --name-status --find-renames HEAD":
 			return "M\tsrc/tracked.go\nM\t.gitignore\n", nil
 		case "ls-files --others --exclude-standard":
-			return "src/new.go\n.acm/context.db-wal\n", nil
+			return "src/new.go\n.awm/context.db-wal\n", nil
 		default:
 			t.Fatalf("unexpected git args: %s", joined)
 		}

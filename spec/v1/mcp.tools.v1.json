@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agent-context-manager.dev/spec/v1/mcp.tools.v1.json",
-  "title": "acm MCP v1 tool contracts",
+  "$id": "https://agent-workflow-manager.dev/spec/v1/mcp.tools.v1.json",
+  "title": "awm MCP v1 tool contracts",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -10,7 +10,7 @@
   ],
   "properties": {
     "version": {
-      "const": "acm.v1"
+      "const": "awm.v1"
     },
     "tools": {
       "type": "array",
@@ -59,14 +59,14 @@
       }
     }
   },
-  "version": "acm.v1",
+  "version": "awm.v1",
   "tools": [
     {
       "name": "context",
       "description": "Resolve task-scoped rules, active plans, and optional known scope paths.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/contextPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/contextPayload"
       }
     },
     {
@@ -74,15 +74,15 @@
       "description": "Fetch receipt, plan, or indexed artifacts by key with optional expected versions.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/fetchPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/fetchPayload"
       }
     },
     {
       "name": "export",
-      "description": "Render ACM-owned context, fetch, history, or status data as stable JSON or Markdown content.",
+      "description": "Render AWM-owned context, fetch, history, or status data as stable JSON or Markdown content.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/exportPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/exportPayload"
       }
     },
     {
@@ -90,7 +90,7 @@
       "description": "Validate the task delta against effective scope and persist completion history, with explicit no-file closeout support when needed.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/donePayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/donePayload"
       }
     },
     {
@@ -98,7 +98,7 @@
       "description": "Record or execute a single review task gate such as review:cross-llm through the work tracker; runnable gates require run=true for completion.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/reviewPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/reviewPayload"
       }
     },
     {
@@ -106,7 +106,7 @@
       "description": "Create or update plan-scoped work state, tasks, and discovered paths.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/workPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/workPayload"
       }
     },
     {
@@ -114,7 +114,7 @@
       "description": "List or search work plans, receipts, and runs without direct database access.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/historySearchPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/historySearchPayload"
       }
     },
     {
@@ -122,39 +122,39 @@
       "description": "Refresh indexed repository pointers from git or the working tree.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/syncPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/syncPayload"
       }
     },
     {
       "name": "health",
-      "description": "Inspect ACM repository health or run selected repair actions through one public health surface.",
+      "description": "Inspect AWM repository health or run selected repair actions through one public health surface.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/healthPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/healthPayload"
       }
     },
     {
       "name": "status",
-      "description": "Explain current project/runtime state, loaded ACM files, installed integrations, and governance inputs.",
+      "description": "Explain current project/runtime state, loaded AWM files, installed integrations, and governance inputs.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/statusPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/statusPayload"
       }
     },
     {
       "name": "verify",
-      "description": "Select and execute repo-defined verification checks from acm test definitions.",
+      "description": "Select and execute repo-defined verification checks from awm test definitions.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/verifyPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/verifyPayload"
       }
     },
     {
       "name": "init",
-      "description": "Scan a repository, initialize ACM files, and optionally apply additive templates.",
+      "description": "Scan a repository, initialize AWM files, and optionally apply additive templates.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/initPayload"
+        "$ref": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/initPayload"
       }
     }
   ]

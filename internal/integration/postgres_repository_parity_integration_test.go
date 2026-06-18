@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	postgresrepo "github.com/bonztm/agent-context-manager/internal/adapters/postgres"
-	"github.com/bonztm/agent-context-manager/internal/testutil/repositorycontract"
+	postgresrepo "github.com/bonztm/agent-workflow-manager/internal/adapters/postgres"
+	"github.com/bonztm/agent-workflow-manager/internal/testutil/repositorycontract"
 )
 
 func TestPostgresRepositoryParity(t *testing.T) {

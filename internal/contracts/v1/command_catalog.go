@@ -37,7 +37,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandContext,
 		"context",
-		"acm context [--project <id>] [--task-text <text>|--task-file <path>] [--tags-file <path>] [--scope-path <path>]... [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"awm context [--project <id>] [--task-text <text>|--task-file <path>] [--tags-file <path>] [--scope-path <path>]... [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
 		"Resolve a scoped receipt with rules, active work, and optional known scope paths.",
 		CommandGroupWorkflow,
 		"contextPayload",
@@ -56,7 +56,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandFetch,
 		"fetch",
-		"acm fetch [--project <id>] [--key <pointer>]... [--keys-file <path>] [--keys-json <json>] [--receipt-id <id>] [--expect <key=version>]... [--expected-versions-file <path>] [--expected-versions-json <json>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"awm fetch [--project <id>] [--key <pointer>]... [--keys-file <path>] [--keys-json <json>] [--receipt-id <id>] [--expect <key=version>]... [--expected-versions-file <path>] [--expected-versions-json <json>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
 		"Fetch pointer, plan, or task content by key, with optional version checks.",
 		CommandGroupWorkflow,
 		"fetchPayload",
@@ -75,13 +75,13 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandExport,
 		"export",
-		`acm run --in <request.json>  # {"command":"export",...}`,
-		"Render ACM-owned structured artifacts as JSON or Markdown through the backend export surface.",
+		`awm run --in <request.json>  # {"command":"export",...}`,
+		"Render AWM-owned structured artifacts as JSON or Markdown through the backend export surface.",
 		CommandGroupWorkflow,
 		"exportPayload",
 		"exportResult",
 		"Export Structured Artifacts",
-		"Render ACM-owned context, fetch, history, or status data as stable JSON or Markdown content.",
+		"Render AWM-owned context, fetch, history, or status data as stable JSON or Markdown content.",
 		func(raw json.RawMessage, defaults ValidationDefaults) (any, *ErrorPayload) {
 			return decodeValidatedCommandPayloadWithFields(raw, defaults,
 				func(p *ExportPayload, defaults ValidationDefaults) {
@@ -98,7 +98,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandDone,
 		"done",
-		"acm done [--project <id>] [--receipt-id <id>|--plan-key <key>] [--outcome <text>|--outcome-file <path>] [--file-changed <path>]... [--files-changed-file <path>] [--files-changed-json <json>] [--no-file-changes[=true|false]] [--scope-mode <mode>] [--tags-file <path>]",
+		"awm done [--project <id>] [--receipt-id <id>|--plan-key <key>] [--outcome <text>|--outcome-file <path>] [--file-changed <path>]... [--files-changed-file <path>] [--files-changed-json <json>] [--no-file-changes[=true|false]] [--scope-mode <mode>] [--tags-file <path>]",
 		"Close a receipt, validate scope, and enforce configured completion task gates.",
 		CommandGroupWorkflow,
 		"donePayload",
@@ -117,7 +117,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandReview,
 		"review",
-		"acm review [--project <id>] [--receipt-id <id>|--plan-key <key>] [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>]",
+		"awm review [--project <id>] [--receipt-id <id>|--plan-key <key>] [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>]",
 		"Record or execute a single review gate such as `review:cross-llm` through the work tracker, using `--run` to satisfy runnable gates.",
 		CommandGroupWorkflow,
 		"reviewPayload",
@@ -136,7 +136,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandWork,
 		"work",
-		"acm work [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>]",
+		"awm work [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>]",
 		"Create or update structured plans and tasks that survive compaction.",
 		CommandGroupWorkflow,
 		"workPayload",
@@ -155,7 +155,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandHistorySearch,
 		"history",
-		"acm history [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded[=true|false]] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"awm history [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded[=true|false]] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
 		"Search recent work, receipt, and run history without direct database access.",
 		CommandGroupWorkflow,
 		"historySearchPayload",
@@ -174,7 +174,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandSync,
 		"sync",
-		"acm sync [--project <id>] [--mode changed|full|working_tree] [--git-range <range>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--insert-new-candidates[=true|false]]",
+		"awm sync [--project <id>] [--mode changed|full|working_tree] [--git-range <range>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--insert-new-candidates[=true|false]]",
 		"Refresh repository pointers and canonical rules from the working tree or git history.",
 		CommandGroupMaintenance,
 		"syncPayload",
@@ -193,13 +193,13 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandHealth,
 		"health",
-		"acm health [--project <id>] [--include-details[=true|false]] [--max-findings-per-check <n>] | [--fix <name>]... [--dry-run[=true|false]] [--apply[=true|false]] [--project-root <path>] [--rules-file <path>] [--tags-file <path>]",
+		"awm health [--project <id>] [--include-details[=true|false]] [--max-findings-per-check <n>] | [--fix <name>]... [--dry-run[=true|false]] [--apply[=true|false]] [--project-root <path>] [--rules-file <path>] [--tags-file <path>]",
 		"Check project health or run selected health fixers via `--fix`.",
 		CommandGroupMaintenance,
 		"healthPayload",
 		"healthResult",
 		"Inspect Or Fix Project Health",
-		"Inspect ACM repository health or run selected repair actions through one public health surface.",
+		"Inspect AWM repository health or run selected repair actions through one public health surface.",
 		func(raw json.RawMessage, defaults ValidationDefaults) (any, *ErrorPayload) {
 			return decodeValidatedCommandPayloadWithFields(raw, defaults,
 				func(p *HealthPayload, defaults ValidationDefaults) {
@@ -212,13 +212,13 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandStatus,
 		"status",
-		"acm status [--project <id>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--tests-file <path>] [--workflows-file <path>] [--task-text <text>|--task-file <path>] [--phase <plan|execute|review>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
-		"Explain active project/runtime state, loaded ACM files, installed integrations, and governance inputs.",
+		"awm status [--project <id>] [--project-root <path>] [--rules-file <path>] [--tags-file <path>] [--tests-file <path>] [--workflows-file <path>] [--task-text <text>|--task-file <path>] [--phase <plan|execute|review>] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"Explain active project/runtime state, loaded AWM files, installed integrations, and governance inputs.",
 		CommandGroupMaintenance,
 		"statusPayload",
 		"statusResult",
-		"Inspect ACM Status",
-		"Explain current project/runtime state, loaded ACM files, installed integrations, and governance inputs.",
+		"Inspect AWM Status",
+		"Explain current project/runtime state, loaded AWM files, installed integrations, and governance inputs.",
 		func(raw json.RawMessage, defaults ValidationDefaults) (any, *ErrorPayload) {
 			return decodeValidatedCommandPayload(raw, defaults,
 				func(p *StatusPayload, defaults ValidationDefaults) {
@@ -231,13 +231,13 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandVerify,
 		"verify",
-		"acm verify [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run]",
-		"Select and execute repo-defined verification checks from `.acm/acm-tests.yaml` or `acm-tests.yaml`.",
+		"awm verify [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run]",
+		"Select and execute repo-defined verification checks from `.awm/awm-tests.yaml` or `awm-tests.yaml`.",
 		CommandGroupMaintenance,
 		"verifyPayload",
 		"verifyResult",
 		"Run Executable Verification",
-		"Select and execute repo-defined verification checks from acm test definitions.",
+		"Select and execute repo-defined verification checks from awm test definitions.",
 		func(raw json.RawMessage, defaults ValidationDefaults) (any, *ErrorPayload) {
 			return decodeValidatedCommandPayloadWithFields(raw, defaults,
 				func(p *VerifyPayload, defaults ValidationDefaults) {
@@ -250,13 +250,13 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandInit,
 		"init",
-		"acm init [--project <id>] [--project-root <path>] [--apply-template <id>]... [--rules-file <path>] [--tags-file <path>] [--persist-candidates[=true|false]] [--respect-gitignore[=true|false]] [--output-candidates-path <path>]",
-		"Initialize repo-local ACM files, optionally apply additive templates, and scan a repository for initial pointer candidates.",
+		"awm init [--project <id>] [--project-root <path>] [--apply-template <id>]... [--rules-file <path>] [--tags-file <path>] [--persist-candidates[=true|false]] [--respect-gitignore[=true|false]] [--output-candidates-path <path>]",
+		"Initialize repo-local AWM files, optionally apply additive templates, and scan a repository for initial pointer candidates.",
 		CommandGroupMaintenance,
 		"initPayload",
 		"initResult",
 		"Initialize Repository",
-		"Scan a repository, initialize ACM files, and optionally apply additive templates.",
+		"Scan a repository, initialize AWM files, and optionally apply additive templates.",
 		func(raw json.RawMessage, defaults ValidationDefaults) (any, *ErrorPayload) {
 			return decodeValidatedCommandPayloadWithFields(raw, defaults,
 				func(p *InitPayload, defaults ValidationDefaults) {

@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -126,7 +126,7 @@ func TestStatus_ReportsMissingCanonicalSources(t *testing.T) {
 
 	svc, err := NewWithRuntimeStatus(&fakeRepository{}, root, RuntimeStatusSnapshot{
 		Backend:                "sqlite",
-		SQLitePath:             filepath.Join(root, ".acm", "context.db"),
+		SQLitePath:             filepath.Join(root, ".awm", "context.db"),
 		UsesImplicitSQLitePath: true,
 	})
 	if err != nil {
@@ -168,14 +168,14 @@ func TestStatus_PreviewsContextAndLoadedSources(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	files := map[string]string{
-		".acm/acm-rules.yaml":     "version: acm.rules.v1\nrules:\n  - summary: Keep tests green\n",
-		".acm/acm-tags.yaml":      "version: acm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n",
-		".acm/acm-tests.yaml":     "version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 120\ntests:\n  - id: smoke\n    summary: Run smoke tests\n    command:\n      argv: [\"go\", \"test\", \"./...\"]\n",
-		".acm/acm-workflows.yaml": "version: acm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n",
+		".awm/awm-rules.yaml":     "version: awm.rules.v1\nrules:\n  - summary: Keep tests green\n",
+		".awm/awm-tags.yaml":      "version: awm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n",
+		".awm/awm-tests.yaml":     "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 120\ntests:\n  - id: smoke\n    summary: Run smoke tests\n    command:\n      argv: [\"go\", \"test\", \"./...\"]\n",
+		".awm/awm-workflows.yaml": "version: awm.workflows.v1\ncompletion:\n  required_tasks:\n    - key: verify:tests\n",
 	}
 	for rel, contents := range files {
 		full := filepath.Join(root, filepath.FromSlash(rel))
@@ -186,13 +186,13 @@ func TestStatus_PreviewsContextAndLoadedSources(t *testing.T) {
 
 	repo := &fakeRepository{
 		candidateResults: [][]core.CandidatePointer{{
-			candidate("rule:tests", ".acm/acm-rules.yaml", true, []string{"governance"}),
+			candidate("rule:tests", ".awm/awm-rules.yaml", true, []string{"governance"}),
 			candidate("code:status", "internal/service/backend/status.go", false, []string{"backend"}),
 		}},
 	}
 	svc, err := NewWithRuntimeStatus(repo, root, RuntimeStatusSnapshot{
 		Backend:                "sqlite",
-		SQLitePath:             filepath.Join(root, ".acm", "context.db"),
+		SQLitePath:             filepath.Join(root, ".awm", "context.db"),
 		UsesImplicitSQLitePath: true,
 	})
 	if err != nil {
@@ -235,14 +235,14 @@ func TestStatus_WarnsAboutStaleAndAdministrativePlans(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	files := map[string]string{
-		".acm/acm-rules.yaml":     "version: acm.rules.v1\nrules:\n  - summary: Keep tests green\n",
-		".acm/acm-tags.yaml":      "version: acm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n",
-		".acm/acm-tests.yaml":     "version: acm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 120\ntests: []\n",
-		".acm/acm-workflows.yaml": "version: acm.workflows.v1\ncompletion:\n  required_tasks: []\n",
+		".awm/awm-rules.yaml":     "version: awm.rules.v1\nrules:\n  - summary: Keep tests green\n",
+		".awm/awm-tags.yaml":      "version: awm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n",
+		".awm/awm-tests.yaml":     "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 120\ntests: []\n",
+		".awm/awm-workflows.yaml": "version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n",
 	}
 	for rel, contents := range files {
 		full := filepath.Join(root, filepath.FromSlash(rel))
@@ -290,7 +290,7 @@ func TestStatus_WarnsAboutStaleAndAdministrativePlans(t *testing.T) {
 	}
 	svc, err := NewWithRuntimeStatus(repo, root, RuntimeStatusSnapshot{
 		Backend:                "sqlite",
-		SQLitePath:             filepath.Join(root, ".acm", "context.db"),
+		SQLitePath:             filepath.Join(root, ".awm", "context.db"),
 		UsesImplicitSQLitePath: true,
 	})
 	if err != nil {
@@ -452,10 +452,10 @@ func TestHealthCheck_RepositoryErrorMapsInternalError(t *testing.T) {
 
 func TestBuildIndexedPointerStubs_UsesRepoLocalCanonicalTags(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tags.yaml"), []byte("version: acm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tags.yaml"), []byte("version: awm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n"), 0o644); err != nil {
 		t.Fatalf("write tags file: %v", err)
 	}
 	withWorkingDir(t, root)
@@ -556,7 +556,7 @@ func TestComputeInventoryHealth_ExcludesManagedFilesFromTrackedSet(t *testing.T)
 	svc.runGitCommand = func(_ context.Context, _ string, args ...string) (string, error) {
 		switch strings.Join(args, " ") {
 		case "ls-files --cached --others --exclude-standard":
-			return ".gitignore\n.env.example\n.acm/acm-tests.yaml\n.acm/context.db-wal\nsrc/covered.go\nsrc/unindexed.go\n", nil
+			return ".gitignore\n.env.example\n.awm/awm-tests.yaml\n.awm/context.db-wal\nsrc/covered.go\nsrc/unindexed.go\n", nil
 		case "ls-files --deleted":
 			return "", nil
 		default:

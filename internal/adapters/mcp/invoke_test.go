@@ -9,11 +9,11 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
-	"github.com/bonztm/agent-context-manager/internal/service/unconfigured"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/service/unconfigured"
 )
 
 type fakeService struct{}
@@ -324,18 +324,18 @@ func TestToolDefinitions_IncludeSchemaMetadata(t *testing.T) {
 	}
 
 	expectedInputRefs := map[string]string{
-		"context": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/contextPayload",
-		"fetch":   "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/fetchPayload",
-		"export":  "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/exportPayload",
-		"done":    "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/donePayload",
-		"review":  "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/reviewPayload",
-		"work":    "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/workPayload",
-		"history": "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/historySearchPayload",
-		"sync":    "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/syncPayload",
-		"health":  "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/healthPayload",
-		"status":  "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/statusPayload",
-		"verify":  "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/verifyPayload",
-		"init":    "https://agent-context-manager.dev/spec/v1/cli.command.schema.json#/$defs/initPayload",
+		"context": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/contextPayload",
+		"fetch":   "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/fetchPayload",
+		"export":  "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/exportPayload",
+		"done":    "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/donePayload",
+		"review":  "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/reviewPayload",
+		"work":    "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/workPayload",
+		"history": "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/historySearchPayload",
+		"sync":    "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/syncPayload",
+		"health":  "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/healthPayload",
+		"status":  "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/statusPayload",
+		"verify":  "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/verifyPayload",
+		"init":    "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json#/$defs/initPayload",
 	}
 	for _, def := range defs {
 		if got := def.InputSchema["$schema"]; got != schemaDraft202012 {

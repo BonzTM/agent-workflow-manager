@@ -1,0 +1,3 @@
+interface:
+  display_name: "Context Broker"
+  short_description: "Use awm CLI/MCP as a shared control plane for context, durable work, verification/review gates, and completion reporting"

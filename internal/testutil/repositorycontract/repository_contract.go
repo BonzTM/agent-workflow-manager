@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 type ContractRepository interface {
@@ -304,11 +304,11 @@ func runWorkPlanRoundTrip(t *testing.T, projectID string, repo ContractRepositor
 		Kind:          "story",
 		ParentPlanKey: "plan:receipt.parent123",
 		DiscoveredPaths: []string{
-			" ./cmd//acm/main.go ",
+			" ./cmd//awm/main.go ",
 			"internal/contracts/v1/command_catalog.go",
-			"cmd/acm/main.go",
+			"cmd/awm/main.go",
 		},
-		ExternalRefs: []string{"jira:ACM-1"},
+		ExternalRefs: []string{"jira:AWM-1"},
 		Tasks: []core.WorkItem{
 			{
 				ItemKey:       "task.blocked",
@@ -346,10 +346,10 @@ func runWorkPlanRoundTrip(t *testing.T, projectID string, repo ContractRepositor
 	if plan.Kind != "story" || plan.ParentPlanKey != "plan:receipt.parent123" {
 		t.Fatalf("unexpected plan hierarchy fields: %+v", plan)
 	}
-	if !reflect.DeepEqual(plan.ExternalRefs, []string{"jira:ACM-1"}) {
+	if !reflect.DeepEqual(plan.ExternalRefs, []string{"jira:AWM-1"}) {
 		t.Fatalf("unexpected plan external refs: %+v", plan.ExternalRefs)
 	}
-	if !reflect.DeepEqual(plan.DiscoveredPaths, []string{"cmd/acm/main.go", "internal/contracts/v1/command_catalog.go"}) {
+	if !reflect.DeepEqual(plan.DiscoveredPaths, []string{"cmd/awm/main.go", "internal/contracts/v1/command_catalog.go"}) {
 		t.Fatalf("unexpected discovered paths: %+v", plan.DiscoveredPaths)
 	}
 	if len(plan.Tasks) != 3 {
@@ -405,7 +405,7 @@ func runWorkPlanMergePreservesTaskMetadata(t *testing.T, projectID string, repo 
 				DependsOn:          []string{"spec:merge"},
 				AcceptanceCriteria: []string{"acceptance survives status-only merge"},
 				References:         []string{"docs/feature-plans.md"},
-				ExternalRefs:       []string{"jira:ACM-42"},
+				ExternalRefs:       []string{"jira:AWM-42"},
 				BlockedReason:      "waiting on follow-up",
 				Evidence:           []string{"verifyrun:seed"},
 			},
@@ -460,7 +460,7 @@ func runWorkPlanMergePreservesTaskMetadata(t *testing.T, projectID string, repo 
 	if !reflect.DeepEqual(task.References, []string{"docs/feature-plans.md"}) {
 		t.Fatalf("expected references to survive merge, got %+v", task.References)
 	}
-	if !reflect.DeepEqual(task.ExternalRefs, []string{"jira:ACM-42"}) {
+	if !reflect.DeepEqual(task.ExternalRefs, []string{"jira:AWM-42"}) {
 		t.Fatalf("expected external refs to survive merge, got %+v", task.ExternalRefs)
 	}
 	if task.BlockedReason != "" {
@@ -475,10 +475,10 @@ func runRulePointerSyncRoundTrip(t *testing.T, projectID string, repo ContractRe
 	t.Helper()
 	ctx := context.Background()
 
-	sourcePath := ".acm/acm-rules.yaml"
+	sourcePath := ".awm/awm-rules.yaml"
 	firstPointers := []core.RulePointer{
 		{
-			PointerKey:  projectID + ":.acm/acm-rules.yaml#rule.alpha",
+			PointerKey:  projectID + ":.awm/awm-rules.yaml#rule.alpha",
 			SourcePath:  sourcePath,
 			RuleID:      "rule.alpha",
 			Summary:     "alpha summary",
@@ -487,7 +487,7 @@ func runRulePointerSyncRoundTrip(t *testing.T, projectID string, repo ContractRe
 			Tags:        []string{"ops"},
 		},
 		{
-			PointerKey:  projectID + ":.acm/acm-rules.yaml#rule.beta",
+			PointerKey:  projectID + ":.awm/awm-rules.yaml#rule.beta",
 			SourcePath:  sourcePath,
 			RuleID:      "rule.beta",
 			Summary:     "beta summary",
@@ -585,7 +585,7 @@ func runReviewAttemptRoundTrip(t *testing.T, projectID string, repo ContractRepo
 		Status:             "passed",
 		Passed:             true,
 		Outcome:            "No blocking issues.",
-		WorkflowSourcePath: ".acm/acm-workflows.yaml",
+		WorkflowSourcePath: ".awm/awm-workflows.yaml",
 		CommandArgv:        []string{"sh", "-c", "true"},
 		CommandCWD:         ".",
 		TimeoutSec:         30,

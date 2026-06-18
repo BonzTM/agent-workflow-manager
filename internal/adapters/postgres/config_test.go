@@ -11,7 +11,7 @@ func TestConfigValidate_RequiresDSN(t *testing.T) {
 
 func TestConfigPoolConfig_AppliesDefaults(t *testing.T) {
 	cfg := Config{
-		DSN: "postgres://ctx:ctx@localhost:5432/acm_test?sslmode=disable",
+		DSN: "postgres://ctx:ctx@localhost:5432/awm_test?sslmode=disable",
 	}
 
 	poolCfg, err := cfg.PoolConfig()

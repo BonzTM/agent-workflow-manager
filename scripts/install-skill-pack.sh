@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install acm-broker skill assets for Codex, Claude, and OpenCode.
+Install awm-broker skill assets for Codex, Claude, and OpenCode.
 
 Usage:
   scripts/install-skill-pack.sh [options]
@@ -31,7 +31,7 @@ USAGE
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 REPO_ROOT=""
-if [[ -n "${SCRIPT_DIR}" && -d "${SCRIPT_DIR}/../skills/acm-broker" ]]; then
+if [[ -n "${SCRIPT_DIR}" && -d "${SCRIPT_DIR}/../skills/awm-broker" ]]; then
   REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 fi
 
@@ -65,16 +65,16 @@ install_codex_skill() {
   local codex_target="$2"
   local stage_root stage_target backup_root backup_target
 
-  stage_root="$(mktemp -d "${codex_skills_dir}/.acm-broker.stage.XXXXXX")"
-  stage_target="${stage_root}/acm-broker"
+  stage_root="$(mktemp -d "${codex_skills_dir}/.awm-broker.stage.XXXXXX")"
+  stage_target="${stage_root}/awm-broker"
   backup_root=""
   backup_target=""
 
   cp -R "${skill_src}" "${stage_target}"
 
   if [[ -e "${codex_target}" ]]; then
-    backup_root="$(mktemp -d "${codex_skills_dir}/.acm-broker.backup.XXXXXX")"
-    backup_target="${backup_root}/acm-broker"
+    backup_root="$(mktemp -d "${codex_skills_dir}/.awm-broker.backup.XXXXXX")"
+    backup_target="${backup_root}/awm-broker"
     if ! mv "${codex_target}" "${backup_target}"; then
       rm -rf "${stage_root}" "${backup_root}"
       echo "error: failed to preserve existing Codex skill at ${codex_target}" >&2
@@ -164,16 +164,16 @@ fi
 
 cleanup_tmp() { :; }
 if [[ -n "${REPO_ROOT}" ]]; then
-  skill_src="${REPO_ROOT}/skills/acm-broker"
+  skill_src="${REPO_ROOT}/skills/awm-broker"
 else
   echo "Fetching skill pack from GitHub..."
   tmp_dir="$(mktemp -d)"
   cleanup_tmp() { rm -rf "${tmp_dir}"; }
   trap cleanup_tmp EXIT
   git clone --depth 1 --filter=blob:none --sparse \
-    https://github.com/bonztm/agent-context-manager.git "${tmp_dir}/repo"
-  git -C "${tmp_dir}/repo" sparse-checkout set skills/acm-broker
-  skill_src="${tmp_dir}/repo/skills/acm-broker"
+    https://github.com/bonztm/agent-workflow-manager.git "${tmp_dir}/repo"
+  git -C "${tmp_dir}/repo" sparse-checkout set skills/awm-broker
+  skill_src="${tmp_dir}/repo/skills/awm-broker"
 fi
 if [[ ! -d "${skill_src}" ]]; then
   echo "error: skill source directory not found: ${skill_src}" >&2
@@ -182,22 +182,22 @@ fi
 
 if [[ "${install_codex}" == true ]]; then
   codex_skills_dir="${codex_home}/skills"
-  codex_target="${codex_skills_dir}/acm-broker"
+  codex_target="${codex_skills_dir}/awm-broker"
   mkdir -p "${codex_skills_dir}"
   install_codex_skill "${codex_skills_dir}" "${codex_target}"
   echo "Installed Codex skill: ${codex_target}"
   if [[ -d "${codex_target}/codex" ]]; then
     echo "Installed Codex companion docs: ${codex_target}/codex"
   fi
-  echo "Optional repo-local Codex companion: acm init --apply-template codex-pack"
-  echo "Optional experimental Codex hooks: acm init --apply-template codex-hooks"
+  echo "Optional repo-local Codex companion: awm init --apply-template codex-pack"
+  echo "Optional experimental Codex hooks: awm init --apply-template codex-hooks"
  fi
 
 if [[ "${install_claude}" == true ]]; then
   claude_target="$(cd "${claude_target}" && pwd)"
   claude_dir="${claude_target}/.claude"
   claude_commands_dir="${claude_dir}/commands"
-  claude_pack_dir="${claude_dir}/acm-broker"
+  claude_pack_dir="${claude_dir}/awm-broker"
 
   mkdir -p "${claude_commands_dir}" "${claude_pack_dir}"
   cp "${skill_src}/claude/commands/"*.md "${claude_commands_dir}/"
@@ -210,15 +210,15 @@ fi
 
 if [[ "${install_opencode}" == true ]]; then
   opencode_target="$(cd "${opencode_target}" && pwd)"
-  opencode_pack_dir="${opencode_target}/.opencode/acm-broker"
+  opencode_pack_dir="${opencode_target}/.opencode/awm-broker"
 
   mkdir -p "${opencode_pack_dir}"
   cp "${skill_src}/opencode/AGENTS.example.md" "${opencode_pack_dir}/AGENTS.example.md"
   cp "${skill_src}/opencode/README.md" "${opencode_pack_dir}/README.md"
 
   echo "Installed OpenCode companion docs: ${opencode_pack_dir}"
-  echo "OpenCode install is docs-only; use normal acm CLI/MCP access from the repo."
-  echo "Optional repo-local OpenCode companion via init: acm init --apply-template opencode-pack"
+  echo "OpenCode install is docs-only; use normal awm CLI/MCP access from the repo."
+  echo "Optional repo-local OpenCode companion via init: awm init --apply-template opencode-pack"
 fi
 
 echo "Done. Restart Codex and/or Claude Code, or reload OpenCode if it caches companion docs, to load the installed assets."

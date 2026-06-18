@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/commands"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/commands"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 )
 
 type ToolDef struct {
@@ -34,7 +34,7 @@ func ToolDefinitions() []ToolDef {
 
 const (
 	schemaDraft202012 = "https://json-schema.org/draft/2020-12/schema"
-	commandSchemaID   = "https://agent-context-manager.dev/spec/v1/cli.command.schema.json"
+	commandSchemaID   = "https://agent-workflow-manager.dev/spec/v1/cli.command.schema.json"
 )
 
 func schemaRef(schemaID, defName string) map[string]any {

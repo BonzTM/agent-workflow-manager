@@ -2,7 +2,7 @@ package v1
 
 import "encoding/json"
 
-const Version = "acm.v1"
+const Version = "awm.v1"
 
 type Command string
 

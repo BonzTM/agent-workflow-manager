@@ -3,8 +3,8 @@ package commands
 import (
 	"context"
 
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 type handlerFunc func(context.Context, core.Service, any) (any, *core.APIError)

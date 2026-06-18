@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strings"
 
-	v1 "github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	v1 "github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
-// New returns an http.Handler that serves the ACM web UI and API.
+// New returns an http.Handler that serves the AWM web UI and API.
 // The projectID is used as the default for API calls that require one.
 func New(svc core.Service, projectID string, static http.FileSystem) http.Handler {
 	h := &handler{svc: svc, projectID: projectID}

@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bonztm/agent-context-manager/internal/buildinfo"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	"github.com/bonztm/agent-context-manager/internal/runtime"
+	"github.com/bonztm/agent-workflow-manager/internal/buildinfo"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 )
 
 var newMCPService = runtime.NewServiceFromEnvWithLogger
@@ -30,7 +30,7 @@ func RunMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	logger := runtime.NewLogger()
 	ctx := context.Background()
 
-	fs := flag.NewFlagSet("acm-mcp", flag.ContinueOnError)
+	fs := flag.NewFlagSet("awm-mcp", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	showHelp := fs.Bool("help", false, "print help and exit")
 	fs.BoolVar(showHelp, "h", false, "print help and exit")
@@ -38,7 +38,7 @@ func RunMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs.BoolVar(showVersion, "v", false, "print version and exit")
 
 	if err := fs.Parse(args); err != nil {
-		logger.Error(ctx, logging.EventACMMCP, "stage", "parse_flags", "ok", false, "error_code", v1.ErrCodeInvalidFlags)
+		logger.Error(ctx, logging.EventAWMMCP, "stage", "parse_flags", "ok", false, "error_code", v1.ErrCodeInvalidFlags)
 		return 2
 	}
 	if *showHelp {
@@ -46,20 +46,20 @@ func RunMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if *showVersion {
-		printVersion(stdout, "acm-mcp")
+		printVersion(stdout, "awm-mcp")
 		return 0
 	}
 	if fs.NArg() > 0 {
-		logger.Error(ctx, logging.EventACMMCP, "stage", "parse_args", "ok", false, "error_code", v1.ErrCodeUnknownSubcommand)
+		logger.Error(ctx, logging.EventAWMMCP, "stage", "parse_args", "ok", false, "error_code", v1.ErrCodeUnknownSubcommand)
 		fmt.Fprintf(stderr, "unknown arguments: %s\n", strings.Join(fs.Args(), " "))
 		printUsage(stdout)
 		return 2
 	}
 
-	logger.Info(ctx, logging.EventACMMCP, "stage", "start", "mode", "stdio")
+	logger.Info(ctx, logging.EventAWMMCP, "stage", "start", "mode", "stdio")
 	svc, closeService, err := newMCPService(ctx, logger)
 	if err != nil {
-		logger.Error(ctx, logging.EventACMMCP, "stage", "service_init", "ok", false, "error_code", v1.ErrCodeServiceInitFailed)
+		logger.Error(ctx, logging.EventAWMMCP, "stage", "service_init", "ok", false, "error_code", v1.ErrCodeServiceInitFailed)
 		fmt.Fprintf(stderr, "failed to initialize service: %v\n", err)
 		return 1
 	}
@@ -69,12 +69,12 @@ func RunMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	server := NewServer(svc, logger)
 	if err := server.Serve(ctx, stdin, stdout); err != nil {
-		logger.Error(ctx, logging.EventACMMCP, "stage", "serve", "ok", false, "error_code", v1.ErrCodeInternalError)
+		logger.Error(ctx, logging.EventAWMMCP, "stage", "serve", "ok", false, "error_code", v1.ErrCodeInternalError)
 		fmt.Fprintf(stderr, "stdio server failed: %v\n", err)
 		return 1
 	}
 
-	logger.Info(ctx, logging.EventACMMCP, "stage", "finish", "mode", "stdio", "exit_code", 0)
+	logger.Info(ctx, logging.EventAWMMCP, "stage", "finish", "mode", "stdio", "exit_code", 0)
 	return 0
 }
 
@@ -86,10 +86,10 @@ func printUsage(w io.Writer) {
 	if w == nil {
 		w = os.Stdout
 	}
-	fmt.Fprintln(w, "acm-mcp - MCP JSON-RPC 2.0 stdio server")
+	fmt.Fprintln(w, "awm-mcp - MCP JSON-RPC 2.0 stdio server")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
-	fmt.Fprintln(w, "  acm-mcp [--help] [--version]")
+	fmt.Fprintln(w, "  awm-mcp [--help] [--version]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Protocol:")
 	fmt.Fprintln(w, "  Reads one JSON-RPC 2.0 request per line from stdin.")
@@ -97,14 +97,14 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  Supported methods: initialize, notifications/initialized, tools/list, tools/call")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Config Resolution:")
-	fmt.Fprintln(w, "  1. Process environment (`ACM_*`) wins.")
+	fmt.Fprintln(w, "  1. Process environment (`AWM_*`) wins.")
 	fmt.Fprintln(w, "  2. Input `project_id` wins when provided.")
-	fmt.Fprintln(w, "  3. Otherwise `ACM_PROJECT_ID` sets the default project namespace.")
-	fmt.Fprintln(w, "  4. Otherwise the repo-root name is inferred, using `ACM_PROJECT_ROOT` when the shell is elsewhere.")
+	fmt.Fprintln(w, "  3. Otherwise `AWM_PROJECT_ID` sets the default project namespace.")
+	fmt.Fprintln(w, "  4. Otherwise the repo-root name is inferred, using `AWM_PROJECT_ROOT` when the shell is elsewhere.")
 	fmt.Fprintln(w, "  5. Repo-root `.env` is loaded when present.")
-	fmt.Fprintln(w, "  6. `ACM_PG_DSN` takes precedence over SQLite.")
-	fmt.Fprintln(w, "  7. Default SQLite path is `<repo-root>/.acm/context.db`.")
-	fmt.Fprintln(w, "  8. `ACM_UNBOUNDED=true` removes built-in list caps for supported tools.")
+	fmt.Fprintln(w, "  6. `AWM_PG_DSN` takes precedence over SQLite.")
+	fmt.Fprintln(w, "  7. Default SQLite path is `<repo-root>/.awm/context.db`.")
+	fmt.Fprintln(w, "  8. `AWM_UNBOUNDED=true` removes built-in list caps for supported tools.")
 }
 
 func printVersion(w io.Writer, binaryName string) {

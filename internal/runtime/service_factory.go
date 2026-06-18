@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bonztm/agent-context-manager/internal/adapters/postgres"
-	sqliteadapter "github.com/bonztm/agent-context-manager/internal/adapters/sqlite"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/logging"
-	backendsvc "github.com/bonztm/agent-context-manager/internal/service/backend"
+	"github.com/bonztm/agent-workflow-manager/internal/adapters/postgres"
+	sqliteadapter "github.com/bonztm/agent-workflow-manager/internal/adapters/sqlite"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/logging"
+	backendsvc "github.com/bonztm/agent-workflow-manager/internal/service/backend"
 )
 
 type CleanupFunc func()

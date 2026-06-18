@@ -1,4 +1,4 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: starter-contract
 summary: Seed starter AGENTS/CLAUDE guidance and upgrade blank rules scaffolds.
 operations:
@@ -9,15 +9,15 @@ operations:
     target: CLAUDE.md
     source: files/CLAUDE.md
   - type: create_if_missing
-    target: .acm/acm-work-loop.md
-    source: files/.acm/acm-work-loop.md
+    target: .awm/awm-work-loop.md
+    source: files/.awm/awm-work-loop.md
   - type: replace_if_pristine
-    target: .acm/acm-rules.yaml
-    source: files/.acm/acm-rules.yaml
+    target: .awm/awm-rules.yaml
+    source: files/.awm/awm-rules.yaml
     pristine:
       - blank_rules_v1
   - type: replace_if_pristine
-    target: acm-rules.yaml
-    source: files/.acm/acm-rules.yaml
+    target: awm-rules.yaml
+    source: files/.awm/awm-rules.yaml
     pristine:
       - blank_rules_v1

@@ -10,13 +10,13 @@ import (
 	"sort"
 	"strings"
 
-	bootstrapkit "github.com/bonztm/agent-context-manager/internal/bootstrap"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/workspace"
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
-const unboundedEnvVar = "ACM_UNBOUNDED"
+const unboundedEnvVar = "AWM_UNBOUNDED"
 
 const (
 	syncModeChanged         = "changed"

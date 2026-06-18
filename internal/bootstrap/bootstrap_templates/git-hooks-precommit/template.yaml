@@ -1,6 +1,6 @@
-version: acm.init-template.v1
+version: awm.init-template.v1
 id: git-hooks-precommit
-summary: Seed a pre-commit hook that runs acm verify on staged files.
+summary: Seed a pre-commit hook that runs awm verify on staged files.
 operations:
   - type: create_if_missing
     target: .githooks/pre-commit

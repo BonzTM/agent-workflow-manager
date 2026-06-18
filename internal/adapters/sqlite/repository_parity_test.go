@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bonztm/agent-context-manager/internal/core"
-	"github.com/bonztm/agent-context-manager/internal/testutil/repositorycontract"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/testutil/repositorycontract"
 )
 
 func TestRepositoryParity(t *testing.T) {
@@ -92,7 +92,7 @@ func TestRepository_WorkPlanHierarchyRoundTrip(t *testing.T) {
 		Objective:     "Keep task fetches compact",
 		Kind:          "story",
 		ParentPlanKey: "plan:receipt.parent123",
-		ExternalRefs:  []string{"jira:ACM-1"},
+		ExternalRefs:  []string{"jira:AWM-1"},
 		Tasks: []core.WorkItem{
 			{
 				ItemKey:       "task.blocked",
@@ -130,7 +130,7 @@ func TestRepository_WorkPlanHierarchyRoundTrip(t *testing.T) {
 	if plan.Kind != "story" || plan.ParentPlanKey != "plan:receipt.parent123" {
 		t.Fatalf("unexpected plan hierarchy fields: %+v", plan)
 	}
-	if !reflect.DeepEqual(plan.ExternalRefs, []string{"jira:ACM-1"}) {
+	if !reflect.DeepEqual(plan.ExternalRefs, []string{"jira:AWM-1"}) {
 		t.Fatalf("unexpected plan external refs: %+v", plan.ExternalRefs)
 	}
 	if len(plan.Tasks) != 3 {
@@ -187,7 +187,7 @@ func seedPointer(t *testing.T, ctx context.Context, repo *Repository, row seedPo
 		t.Fatalf("encode tags: %v", err)
 	}
 	_, err = repo.db.ExecContext(ctx, `
-INSERT INTO acm_pointers (
+INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
 	path,

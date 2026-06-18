@@ -69,17 +69,17 @@ func TestValidationUsesConstants(t *testing.T) {
 	}{
 		{
 			name: "invalid json",
-			json: `{"version":"acm.v1"`,
+			json: `{"version":"awm.v1"`,
 			want: ErrCodeInvalidJSON,
 		},
 		{
 			name: "invalid command",
-			json: `{"version":"acm.v1","command":"nope","request_id":"req-12345678","payload":{}}`,
+			json: `{"version":"awm.v1","command":"nope","request_id":"req-12345678","payload":{}}`,
 			want: ErrCodeInvalidCommand,
 		},
 		{
 			name: "missing payload",
-			json: `{"version":"acm.v1","command":"context","request_id":"req-12345678","payload":null}`,
+			json: `{"version":"awm.v1","command":"context","request_id":"req-12345678","payload":null}`,
 			want: ErrCodeInvalidPayload,
 		},
 	}

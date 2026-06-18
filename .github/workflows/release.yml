@@ -45,30 +45,30 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           LDFLAGS="-s -w"
-          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-context-manager/internal/buildinfo.version=${{ env.VERSION }}"
-          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-context-manager/internal/buildinfo.commitShort=${GITHUB_SHA::7}"
+          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-workflow-manager/internal/buildinfo.version=${{ env.VERSION }}"
+          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-workflow-manager/internal/buildinfo.commitShort=${GITHUB_SHA::7}"
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           mkdir -p dist
-          for bin in acm acm-mcp acm-web; do
+          for bin in awm awm-mcp awm-web; do
             go build -ldflags "$LDFLAGS" -o "dist/${bin}${EXT}" "./cmd/${bin}"
           done
 
       - name: Package release archive
         run: |
           cd dist
-          ARCHIVE="acm-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          ARCHIVE="awm-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}"
           if [ "${{ matrix.goos }}" = "windows" ]; then
-            zip "../${ARCHIVE}.zip" acm.exe acm-mcp.exe acm-web.exe
+            zip "../${ARCHIVE}.zip" awm.exe awm-mcp.exe awm-web.exe
           else
-            tar czf "../${ARCHIVE}.tar.gz" acm acm-mcp acm-web
+            tar czf "../${ARCHIVE}.tar.gz" awm awm-mcp awm-web
           fi
 
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ARCHIVE="acm-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          ARCHIVE="awm-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}"
           if [ "${{ matrix.goos }}" = "windows" ]; then
             gh release upload "${{ env.VERSION }}" "${ARCHIVE}.zip" --clobber
           else

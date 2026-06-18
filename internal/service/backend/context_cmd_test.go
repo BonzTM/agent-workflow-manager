@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-context-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-context-manager/internal/core"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,8 +14,8 @@ import (
 
 func TestContext_NormalPathReturnsOKAndReceipt(t *testing.T) {
 	root := t.TempDir()
-	writeRepoFile(t, root, ".acm/acm-rules.yaml", strings.Join([]string{
-		"version: acm.rules.v1",
+	writeRepoFile(t, root, ".awm/awm-rules.yaml", strings.Join([]string{
+		"version: awm.rules.v1",
 		"rules:",
 		"  - id: rule_startup",
 		"    summary: Startup rule",
@@ -57,7 +57,7 @@ func TestContext_NormalPathReturnsOKAndReceipt(t *testing.T) {
 	}
 
 	rules := receiptIndexEntries(result.Receipt, "rules")
-	if got, want := receiptIndexKeys(rules), []string{"project.alpha:.acm/acm-rules.yaml#rule_startup"}; !reflect.DeepEqual(got, want) {
+	if got, want := receiptIndexKeys(rules), []string{"project.alpha:.awm/awm-rules.yaml#rule_startup"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected rule index keys: got %v want %v", got, want)
 	}
 	if len(rules) != 1 {
@@ -106,8 +106,8 @@ func TestContext_NormalPathReturnsOKAndReceipt(t *testing.T) {
 	if got := repo.receiptUpsertCalls[0].TaskText; got != payload.TaskText {
 		t.Fatalf("unexpected persisted task_text: got %q want %q", got, payload.TaskText)
 	}
-	if got := repo.receiptUpsertCalls[0].PointerKeys; !reflect.DeepEqual(got, []string{"project.alpha:.acm/acm-rules.yaml#rule_startup"}) {
-		t.Fatalf("unexpected persisted pointer keys: got %v want %v", got, []string{"project.alpha:.acm/acm-rules.yaml#rule_startup"})
+	if got := repo.receiptUpsertCalls[0].PointerKeys; !reflect.DeepEqual(got, []string{"project.alpha:.awm/awm-rules.yaml#rule_startup"}) {
+		t.Fatalf("unexpected persisted pointer keys: got %v want %v", got, []string{"project.alpha:.awm/awm-rules.yaml#rule_startup"})
 	}
 	wantPersistedPaths := []string{"internal/service/backend/context.go", "spec/v1/README.md"}
 	if got := repo.receiptUpsertCalls[0].InitialScopePaths; !reflect.DeepEqual(got, wantPersistedPaths) {
@@ -133,7 +133,7 @@ func TestContext_NormalPathReturnsOKAndReceipt(t *testing.T) {
 
 func TestContext_FallsBackToFilesystemBaselineWhenGitUnavailable(t *testing.T) {
 	root := t.TempDir()
-	writeRepoFile(t, root, ".acm/acm-rules.yaml", "version: acm.rules.v1\nrules:\n  - id: rule_startup\n    summary: Startup rule\n    content: Keep the context receipt deterministic.\n    enforcement: hard\n")
+	writeRepoFile(t, root, ".awm/awm-rules.yaml", "version: awm.rules.v1\nrules:\n  - id: rule_startup\n    summary: Startup rule\n    content: Keep the context receipt deterministic.\n    enforcement: hard\n")
 	writeRepoFile(t, root, "src/main.go", "package src\n\nfunc main() {}\n")
 	withWorkingDir(t, root)
 
@@ -167,7 +167,7 @@ func TestContext_FallsBackToFilesystemBaselineWhenGitUnavailable(t *testing.T) {
 		t.Fatal("expected persisted receipt scope baseline to be captured")
 	}
 	gotPaths := syncPathPaths(repo.receiptUpsertCalls[0].BaselinePaths)
-	wantPaths := []string{".acm/acm-rules.yaml", "src/main.go"}
+	wantPaths := []string{".awm/awm-rules.yaml", "src/main.go"}
 	if !reflect.DeepEqual(gotPaths, wantPaths) {
 		t.Fatalf("unexpected fallback baseline paths: got %v want %v", gotPaths, wantPaths)
 	}
@@ -175,8 +175,8 @@ func TestContext_FallsBackToFilesystemBaselineWhenGitUnavailable(t *testing.T) {
 
 func TestContext_AllowsCanonicalRulesFromManagedPaths(t *testing.T) {
 	root := t.TempDir()
-	writeRepoFile(t, root, ".acm/acm-rules.yaml", strings.Join([]string{
-		"version: acm.rules.v1",
+	writeRepoFile(t, root, ".awm/awm-rules.yaml", strings.Join([]string{
+		"version: awm.rules.v1",
 		"rules:",
 		"  - id: rule_hard",
 		"    summary: Managed hard rule",
@@ -185,8 +185,8 @@ func TestContext_AllowsCanonicalRulesFromManagedPaths(t *testing.T) {
 		"    tags: [governance, enforcement-hard]",
 		"",
 	}, "\n"))
-	writeRepoFile(t, root, "acm-rules.yaml", strings.Join([]string{
-		"version: acm.rules.v1",
+	writeRepoFile(t, root, "awm-rules.yaml", strings.Join([]string{
+		"version: awm.rules.v1",
 		"rules:",
 		"  - id: rule_root",
 		"    summary: Root soft rule",
@@ -215,7 +215,7 @@ func TestContext_AllowsCanonicalRulesFromManagedPaths(t *testing.T) {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 
-	if got, want := receiptIndexKeys(receiptIndexEntries(result.Receipt, "rules")), []string{"project.alpha:.acm/acm-rules.yaml#rule_hard", "project.alpha:acm-rules.yaml#rule_root"}; !reflect.DeepEqual(got, want) {
+	if got, want := receiptIndexKeys(receiptIndexEntries(result.Receipt, "rules")), []string{"project.alpha:.awm/awm-rules.yaml#rule_hard", "project.alpha:awm-rules.yaml#rule_root"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected rule keys: got %v want %v", got, want)
 	}
 }
@@ -247,11 +247,11 @@ func TestContext_WithoutRulesStillReturnsReceipt(t *testing.T) {
 
 func TestContext_LoadsCanonicalRulesWithoutIndexedPointers(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
 	rules := strings.Join([]string{
-		"version: acm.rules.v1",
+		"version: awm.rules.v1",
 		"rules:",
 		"  - id: rule_simple_context",
 		"    summary: Always verify before done",
@@ -260,7 +260,7 @@ func TestContext_LoadsCanonicalRulesWithoutIndexedPointers(t *testing.T) {
 		"    tags: [verify, workflow]",
 		"",
 	}, "\n")
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-rules.yaml"), []byte(rules), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-rules.yaml"), []byte(rules), 0o644); err != nil {
 		t.Fatalf("write rules file: %v", err)
 	}
 	withWorkingDir(t, root)
@@ -284,7 +284,7 @@ func TestContext_LoadsCanonicalRulesWithoutIndexedPointers(t *testing.T) {
 	if result.Status != "ok" || result.Receipt == nil {
 		t.Fatalf("unexpected result: %+v", result)
 	}
-	if got, want := receiptIndexKeys(receiptIndexEntries(result.Receipt, "rules")), []string{"project.alpha:.acm/acm-rules.yaml#rule_simple_context"}; !reflect.DeepEqual(got, want) {
+	if got, want := receiptIndexKeys(receiptIndexEntries(result.Receipt, "rules")), []string{"project.alpha:.awm/awm-rules.yaml#rule_simple_context"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected rule keys: got %v want %v", got, want)
 	}
 	if len(repo.candidateCalls) != 0 {
@@ -293,7 +293,7 @@ func TestContext_LoadsCanonicalRulesWithoutIndexedPointers(t *testing.T) {
 	if len(repo.receiptUpsertCalls) != 1 {
 		t.Fatalf("expected one receipt scope upsert, got %d", len(repo.receiptUpsertCalls))
 	}
-	if got, want := repo.receiptUpsertCalls[0].PointerKeys, []string{"project.alpha:.acm/acm-rules.yaml#rule_simple_context"}; !reflect.DeepEqual(got, want) {
+	if got, want := repo.receiptUpsertCalls[0].PointerKeys, []string{"project.alpha:.awm/awm-rules.yaml#rule_simple_context"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected persisted pointer keys: got %v want %v", got, want)
 	}
 }
@@ -353,10 +353,10 @@ func TestContext_PhaseAndCanonicalTagsThreadedToRuleQueries(t *testing.T) {
 
 func TestContext_DefaultRepoTagsFileDiscoveryMergesCanonicalAliases(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".acm"), 0o755); err != nil {
-		t.Fatalf("mkdir .acm: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, ".awm"), 0o755); err != nil {
+		t.Fatalf("mkdir .awm: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".acm", "acm-tags.yaml"), []byte("version: acm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".awm", "awm-tags.yaml"), []byte("version: awm.tags.v1\ncanonical_tags:\n  backend:\n    - svc\n"), 0o644); err != nil {
 		t.Fatalf("write tags file: %v", err)
 	}
 	withWorkingDir(t, root)
@@ -394,7 +394,7 @@ func TestContext_DefaultRepoTagsFileDiscoveryMergesCanonicalAliases(t *testing.T
 
 func TestContext_DoesNotFallbackToFilesystemBaselineWhenGitUnavailableInsideGitRepo(t *testing.T) {
 	root := t.TempDir()
-	writeRepoFile(t, root, ".acm/acm-rules.yaml", "version: acm.rules.v1\nrules:\n  - id: rule_startup\n    summary: Startup rule\n    content: Keep the context receipt deterministic.\n    enforcement: hard\n")
+	writeRepoFile(t, root, ".awm/awm-rules.yaml", "version: awm.rules.v1\nrules:\n  - id: rule_startup\n    summary: Startup rule\n    content: Keep the context receipt deterministic.\n    enforcement: hard\n")
 	writeRepoFile(t, root, "src/main.go", "package src\n\nfunc main() {}\n")
 	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("mkdir .git: %v", err)
