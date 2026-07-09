@@ -97,6 +97,11 @@ func TestPostgresReviewAttempts_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list review attempts: %v", err)
 	}
+	// pgx scans timestamptz into the session zone; normalize to UTC so the
+	// comparison checks the instant, not the driver's presentation zone.
+	for i := range got {
+		got[i].CreatedAt = got[i].CreatedAt.UTC()
+	}
 
 	want := []core.ReviewAttempt{
 		{

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -32,7 +33,30 @@ func TestRuntimePostgresIntegration_Step10Evidence(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	svc, cleanup, err := runtime.NewServiceWithLogger(ctx, runtime.Config{PostgresDSN: dsn}, logging.NewDiscardLogger())
+	// Hermetic project root: context sources rules from the canonical
+	// repo-local rules file and captures its working-tree baseline here, so
+	// the test controls both instead of depending on the checkout's CWD.
+	projectRoot := t.TempDir()
+	writeStep10ProjectFile(t, projectRoot, ".awm/awm-rules.yaml", `version: awm.rules.v1
+rules:
+  - id: rule_step10_integration
+    summary: Postgres integration evidence must remain receipt scoped.
+    enforcement: hard
+    tags: [postgres, integration]
+`)
+	writeStep10ProjectFile(t, projectRoot, ".awm/awm-tests.yaml", `version: awm.tests.v1
+tests:
+  - id: smoke
+    summary: Step10 smoke verification
+    command:
+      argv: ["echo", "noop"]
+    select:
+      always_run: true
+`)
+	writeStep10ProjectFile(t, projectRoot, "internal/runtime/service_factory.go", "package runtime\n")
+	writeStep10ProjectFile(t, projectRoot, "internal/service/backend/service.go", "package backend\n")
+
+	svc, cleanup, err := runtime.NewServiceWithLogger(ctx, runtime.Config{PostgresDSN: dsn, ProjectRoot: projectRoot}, logging.NewDiscardLogger())
 	if err != nil {
 		t.Fatalf("new runtime service: %v", err)
 	}
@@ -99,6 +123,23 @@ func TestRuntimePostgresIntegration_Step10Evidence(t *testing.T) {
 
 	upsertReceiptScope(t, ctx, pool, getResult.Receipt, nil)
 
+	// Change a file under the hermetic root so the baseline delta detected at
+	// done time matches the explicitly declared files_changed.
+	writeStep10ProjectFile(t, projectRoot, "internal/runtime/service_factory.go", "package runtime\n\n// step10 integration edit\n")
+
+	// Satisfy the verify:tests completion fallback the same way a real
+	// closeout would: run the repo-defined verification for the receipt.
+	verifyResult, apiErr := svc.Verify(ctx, v1.VerifyPayload{
+		ProjectID: projectID,
+		ReceiptID: getResult.Receipt.Meta.ReceiptID,
+	})
+	if apiErr != nil {
+		t.Fatalf("verify API error: %+v", apiErr)
+	}
+	if !verifyResult.Passed {
+		t.Fatalf("expected verify to pass, got %+v", verifyResult)
+	}
+
 	reportOutcome := "step-10 integration done accepted"
 	reportResult, apiErr := svc.Done(ctx, v1.DonePayload{
 		ProjectID:    projectID,
@@ -134,6 +175,18 @@ WHERE run_id = $1
 	}
 	if len(persistedFiles) == 0 || !slices.Contains(persistedFiles, "internal/runtime/service_factory.go") {
 		t.Fatalf("expected persisted files_changed to include %q, got %v", "internal/runtime/service_factory.go", persistedFiles)
+	}
+}
+
+func writeStep10ProjectFile(t *testing.T, projectRoot, relPath, content string) {
+	t.Helper()
+
+	absPath := filepath.Join(projectRoot, filepath.FromSlash(relPath))
+	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
+		t.Fatalf("mkdir for %s: %v", relPath, err)
+	}
+	if err := os.WriteFile(absPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", relPath, err)
 	}
 }
 
@@ -230,6 +283,9 @@ SET
 func upsertReceiptScope(t *testing.T, ctx context.Context, pool *pgxpool.Pool, receipt *v1.ContextReceipt, pointerKeys []string) {
 	t.Helper()
 
+	if pointerKeys == nil {
+		pointerKeys = []string{}
+	}
 	if _, err := pool.Exec(ctx, `
 INSERT INTO awm_receipts (
 	receipt_id,
