@@ -152,6 +152,9 @@ func ensureEnvExample(projectRoot string) error {
 		"AWM_UNBOUNDED=false",
 		"AWM_LOG_LEVEL=info",
 		"AWM_LOG_SINK=stderr",
+		"AWM_ACTOR_HARNESS=",
+		"AWM_ACTOR_MODEL=",
+		"AWM_ACTOR_SESSION=",
 	}
 
 	if len(existingKeys) == 0 && len(raw) == 0 {
