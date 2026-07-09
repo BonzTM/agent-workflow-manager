@@ -6,42 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-09
+
+Repository hardening release bringing awm to the shared house standard with its
+sibling `agent-context-manager`: a single `make verify` gate enforced by CI
+(which previously never ran tests), codebase-wide lint remediation, a
+consistent release pipeline with per-architecture checksummed archives and
+dual-form tags, security-driven dependency and toolchain upgrades, and the
+standard governance meta files. No command, contract, storage, or MCP surface
+changes.
+
 ### Added
 
 - House-standard repository governance, matching agent-context-manager:
   `.github/CODEOWNERS`, weekly grouped Dependabot updates (`gomod` +
   `github-actions`), a pull-request template, and `.editorconfig`.
-- A single canonical verification gate: `make verify` runs tidy, format check
-  (gofumpt + gci), golangci-lint, vet, tests, the race detector, govulncheck,
-  and the build. golangci-lint and govulncheck are pinned as `go.mod` tool
-  directives, and the full lint policy (`.golangci.yml`) was applied across
-  the codebase.
-- CI (`ci.yml`) runs `make verify` plus a six-target cross-compile check on
-  every push and pull request, replacing the build-only `go-build.yml`.
+- A single canonical verification gate: `make verify` runs tidy-check
+  (`go mod tidy -diff`, read-only so CI fails on committed go.mod/go.sum
+  drift), format check (gofumpt + gci), golangci-lint, vet, tests, the race
+  detector, govulncheck, and the build. golangci-lint and govulncheck are
+  pinned as `go.mod` tool directives, and the full lint policy
+  (`.golangci.yml`) was applied across the codebase.
+- CI (`ci.yml`) runs `make verify` plus a six-target cross-compile check
+  (linux/darwin/windows on amd64/arm64) on every push and pull request,
+  replacing the build-only `go-build.yml` — tests, lint, race, and
+  vulnerability scanning now gate every change.
 
 ### Changed
 
-- Release archives now include per-archive `.sha256` checksums, and the
-  release workflow mirrors the `vX.Y.Z` tag alias onto the release commit —
-  bare `X.Y.Z` stays the house tag convention, while the `v` alias makes
+- Release archives include per-archive `.sha256` checksums, and the release
+  workflow mirrors whichever tag form is missing onto the release commit —
+  bare `X.Y.Z` stays the house tag convention, while the `vX.Y.Z` alias makes
   `go install github.com/bonztm/agent-workflow-manager/cmd/awm@latest`
-  resolve the canonical release instead of a `main` pseudo-version. A
-  retroactive `v1.3.0` alias was pushed for the current release (older tags
-  predate the module rename and cannot carry aliases). The workflow also
-  supports `workflow_dispatch` to rebuild assets for an existing tag.
+  resolve the canonical release instead of a `main` pseudo-version. The
+  workflow also supports `workflow_dispatch` to rebuild assets for an
+  existing tag. Retroactive `v` aliases were pushed for every existing
+  release tag (`v1.0.0`–`v1.3.0`); note that only `v1.3.0` and later are
+  resolvable module versions, since older commits predate the module-path
+  rename.
 - Displayed versions are v-less everywhere (`awm --version`, stamped
   binaries); the `v` prefix exists only on git tags.
 - Codebase-wide mechanical lint remediation (no behavior changes): error-wrap
-  and shadowing fixes, godoc contracts on exported identifiers, dead-code
-  removal, modernized idioms, and tightened file permissions.
+  and shadowing fixes, godoc contracts on every exported identifier,
+  dead-code removal, modernized idioms, checked type assertions in the
+  command dispatch layer (payload mismatches now return `INTERNAL_ERROR`
+  instead of panicking), and tightened file permissions for private state.
 
 ### Security
 
-- Upgraded `github.com/jackc/pgx/v5` 5.8.0 → 5.9.2, fixing GO-2026-5004 (SQL
-  injection via placeholder confusion with dollar-quoted string literals),
-  which the new `govulncheck` gate flagged on a called path
-  (`ListReviewAttempts`). The gate now blocks releases with known-vulnerable
-  called code.
+- Upgraded `github.com/jackc/pgx/v5` 5.8.0 → 5.10.0. The 5.9.2 floor fixes
+  GO-2026-5004 (SQL injection via placeholder confusion with dollar-quoted
+  string literals), which the new `govulncheck` gate flagged on a called path
+  (`ListReviewAttempts`); Dependabot then took the minor-patch group to
+  5.10.0 (with `modernc.org/sqlite` 1.46.1 → 1.53.0).
+- Raised the `go` directive to 1.26.5, whose standard library fixes
+  GO-2026-5856 (`crypto/tls`) and GO-2026-4970 (`os`) — both reached from awm
+  code paths and flagged by the CI vulnerability gate.
+
+See [docs/release-notes/RELEASE_NOTES_1.4.0.md](docs/release-notes/RELEASE_NOTES_1.4.0.md) for the full release notes.
 
 ## [1.3.0] - 2026-06-18
 
