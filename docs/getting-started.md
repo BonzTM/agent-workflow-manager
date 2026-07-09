@@ -536,7 +536,7 @@ Short walkthrough:
 1. Install the companion docs with `--opencode`, or seed them during `awm init` with `opencode-pack`.
 2. Keep `AGENTS.md` authoritative and use `.opencode/awm-broker/README.md` as the thin OpenCode companion.
 3. Start implementation or debugging work with `awm context --project <id> --task-text "..." --phase execute`.
-4. If the task spans multiple steps or files, persist it with `awm work`; add `plan.discovered_paths` before review/done when governed scope expands.
+4. If the task spans multiple steps or files, persist it with `awm work`; add `plan.discovered_paths` before review/done when governed scope expands. With no receipt yet, `awm work --task-text "<task>"` auto-opens one in a single call.
 5. Run `awm verify` before completion, then `awm review --run` when `.awm/awm-workflows.yaml` selects a runnable review gate, then `awm done`.
 
 For already isolated/containerized hosts, prefer workflow `run.argv` that uses `scripts/awm-cross-review.sh --yolo`; the shared high-trust shortcut avoids nested sandbox conflicts while relying on the outer container boundary.

@@ -62,3 +62,5 @@ For repo-local verification scaffolding, pair `init` with `--apply-template veri
 - Optional logger controls:
   - `AWM_LOG_LEVEL=debug|info|warn|error`
   - `AWM_LOG_SINK=stderr|stdout|discard`
+
+For multi-step work with no receipt yet, `awm work --task-text "<task>"` auto-opens one in a single call; `awm context` remains the recommended opening for scope-audited work.

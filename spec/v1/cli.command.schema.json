@@ -850,6 +850,14 @@
         },
         "actor": {
           "$ref": "shared.schema.json#/$defs/actor"
+        },
+        "task_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "phase": {
+          "$ref": "shared.schema.json#/$defs/phase"
         }
       },
       "anyOf": [
