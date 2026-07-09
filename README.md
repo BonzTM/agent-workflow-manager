@@ -17,7 +17,7 @@ awm is intentionally modular. You can adopt only the pieces you need.
 
 ## Adoption Modes
 
-- **plans-only**: use `init`, `context`, and `work` when the main need is durable task state that survives compaction or cross-agent handoff.
+- **plans-only**: use `init`, `context`, and `work` when the main need is durable task state that survives compaction or cross-agent handoff. `work --task-text` can open the receipt itself, so the minimum loop is a single command.
 - **governed workflow**: add `verify`, `review`, and `done` when you want explicit completion gates and audit history.
 - **full brokered flow**: use `context`, explicit `fetch` / history hydration, and governed review/closeout when you also want compact always-loaded context and receipt-scoped execution.
 

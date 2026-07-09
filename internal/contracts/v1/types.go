@@ -255,6 +255,11 @@ type WorkPayload struct {
 	Plan      *WorkPlanPayload  `json:"plan,omitempty"`
 	Tasks     []WorkTaskPayload `json:"tasks,omitempty"`
 	Actor     *ActorRef         `json:"actor,omitempty"`
+	// TaskText and Phase let work auto-open a receipt when neither plan_key
+	// nor receipt_id is supplied, so a single work call can start governed
+	// state without a prior context call. Explicit identifiers always win.
+	TaskText string `json:"task_text,omitempty"`
+	Phase    Phase  `json:"phase,omitempty"`
 }
 
 // HistoryScope filters history searches by an item's lifecycle bucket.

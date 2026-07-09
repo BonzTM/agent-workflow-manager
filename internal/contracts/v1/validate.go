@@ -350,8 +350,15 @@ func validateWorkPayload(p *WorkPayload) error {
 	rawPlanKey := p.PlanKey
 	planKey := strings.TrimSpace(rawPlanKey)
 	receiptID := strings.TrimSpace(p.ReceiptID)
-	if planKey == "" && receiptID == "" {
-		return errors.New("either plan_key or receipt_id is required")
+	taskText := strings.TrimSpace(p.TaskText)
+	if planKey == "" && receiptID == "" && taskText == "" {
+		return errors.New("either plan_key, receipt_id, or task_text is required")
+	}
+	if len(p.TaskText) > 4000 {
+		return errors.New("task_text must be at most 4000 chars")
+	}
+	if p.Phase != "" && p.Phase != PhasePlan && p.Phase != PhaseExecute && p.Phase != PhaseReview {
+		return errors.New("phase must be plan|execute|review")
 	}
 	if rawPlanKey != "" && rawPlanKey != planKey {
 		return errors.New("plan_key must not include surrounding whitespace")

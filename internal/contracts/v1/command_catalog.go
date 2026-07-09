@@ -149,7 +149,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandWork,
 		"work",
-		"awm work [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]",
+		"awm work [--project <id>] [--plan-key <key>|--receipt-id <id>|--task-text <text>] [--phase <plan|execute|review>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]",
 		"Create or update structured plans and tasks that survive compaction.",
 		CommandGroupWorkflow,
 		"workPayload",

@@ -25,17 +25,59 @@ func (s *Service) Context(ctx context.Context, payload v1.ContextPayload) (v1.Co
 		return v1.ContextResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
 	}
 
+	opened, apiErr := s.openReceiptScope(ctx, payload)
+	if apiErr != nil {
+		return v1.ContextResult{}, apiErr
+	}
+
+	plans := s.makeContextPlans(ctx, payload.ProjectID, opened.ReceiptID)
+
+	receipt := v1.ContextReceipt{
+		Rules:             opened.Rules,
+		Plans:             plans,
+		InitialScopePaths: append([]string(nil), opened.InitialScopePaths...),
+		Meta: v1.ContextReceiptMeta{
+			ReceiptID:        opened.ReceiptID,
+			ProjectID:        payload.ProjectID,
+			TaskText:         payload.TaskText,
+			Phase:            payload.Phase,
+			ResolvedTags:     opened.ResolvedTags,
+			BaselineCaptured: opened.BaselineCaptured,
+		},
+	}
+
+	return v1.ContextResult{
+		Status:  "ok",
+		Receipt: &receipt,
+	}, nil
+}
+
+// openedReceiptScope carries the derived state of a freshly opened (or
+// re-derived) receipt scope, shared by context and work auto-open.
+type openedReceiptScope struct {
+	ReceiptID         string
+	Rules             []v1.ContextRule
+	ResolvedTags      []string
+	InitialScopePaths []string
+	BaselineCaptured  bool
+}
+
+// openReceiptScope derives canonical tags and rules for the task, captures a
+// working-tree baseline, computes the deterministic receipt id, and persists
+// the receipt scope. Identical inputs re-derive the same receipt id, so any
+// agent opening the same task converges on the same receipt.
+func (s *Service) openReceiptScope(ctx context.Context, payload v1.ContextPayload) (openedReceiptScope, *core.APIError) {
 	projectRoot := s.defaultProjectRoot()
 	tagNormalizer, err := s.loadCanonicalTagNormalizer(projectRoot, payload.TagsFile)
 	if err != nil {
-		return v1.ContextResult{}, internalError("load_canonical_tags", err)
+		return openedReceiptScope{}, internalError("load_canonical_tags", err)
 	}
 
 	taskText := strings.TrimSpace(payload.TaskText)
 	taskTags := tagNormalizer.canonicalTagsFromTaskText(taskText)
 	selectedRules, ruleKeys, ruleTags, err := loadCanonicalContextRules(projectRoot, payload.ProjectID, tagNormalizer)
 	if err != nil {
-		return v1.ContextResult{}, internalError("load_canonical_rules", err)
+		return openedReceiptScope{}, internalError("load_canonical_rules", err)
 	}
 
 	rules := makeContextRules(selectedRules)
@@ -49,26 +91,11 @@ func (s *Service) Context(ctx context.Context, payload v1.ContextPayload) (v1.Co
 	}
 
 	receiptID := deterministicReceiptID(payload, resolvedTags, rules, initialScopePaths, baselinePaths)
-	plans := s.makeContextPlans(ctx, payload.ProjectID, receiptID)
-
-	receipt := v1.ContextReceipt{
-		Rules:             rules,
-		Plans:             plans,
-		InitialScopePaths: append([]string(nil), initialScopePaths...),
-		Meta: v1.ContextReceiptMeta{
-			ReceiptID:        receiptID,
-			ProjectID:        payload.ProjectID,
-			TaskText:         payload.TaskText,
-			Phase:            payload.Phase,
-			ResolvedTags:     resolvedTags,
-			BaselineCaptured: baselineCaptured,
-		},
-	}
 
 	if err := s.repo.UpsertReceiptScope(ctx, core.ReceiptScope{
 		ProjectID:         strings.TrimSpace(payload.ProjectID),
 		ReceiptID:         receiptID,
-		TaskText:          strings.TrimSpace(payload.TaskText),
+		TaskText:          taskText,
 		Phase:             strings.TrimSpace(string(payload.Phase)),
 		ResolvedTags:      append([]string(nil), resolvedTags...),
 		PointerKeys:       append([]string(nil), ruleKeys...),
@@ -77,12 +104,15 @@ func (s *Service) Context(ctx context.Context, payload v1.ContextPayload) (v1.Co
 		BaselinePaths:     append([]core.SyncPath(nil), baselinePaths...),
 		Actor:             actorFromPayload(payload.Actor),
 	}); err != nil {
-		return v1.ContextResult{}, internalError("persist_receipt_scope", err)
+		return openedReceiptScope{}, internalError("persist_receipt_scope", err)
 	}
 
-	return v1.ContextResult{
-		Status:  "ok",
-		Receipt: &receipt,
+	return openedReceiptScope{
+		ReceiptID:         receiptID,
+		Rules:             rules,
+		ResolvedTags:      resolvedTags,
+		InitialScopePaths: initialScopePaths,
+		BaselineCaptured:  baselineCaptured,
 	}, nil
 }
 

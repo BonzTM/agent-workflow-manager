@@ -18,3 +18,5 @@ Constraints:
 - Use `verify:tests` as the executable verification task key.
 - Add other task keys when `.awm/awm-workflows.yaml` requires them for completion.
 - If the repo defines a richer feature-plan contract, populate `plan.stages`, top-level `stage:*` tasks, `parent_task_key`, and leaf-task `acceptance_criteria` here instead of leaving that structure only in prose.
+
+When no plan or receipt exists yet, pass `--task-text "<task>"` (optionally `--phase`) and `work` auto-opens the receipt itself — explicit `--plan-key`/`--receipt-id` always win.

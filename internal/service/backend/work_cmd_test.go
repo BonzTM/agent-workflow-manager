@@ -221,6 +221,66 @@ func TestWork_UnknownReceiptWithTasksReturnsNotFoundWithoutPersistingPlan(t *tes
 	}
 }
 
+func TestWork_AutoOpensReceiptFromTaskText(t *testing.T) {
+	repo := &fakeRepository{}
+	svc, err := New(repo)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	result, apiErr := svc.Work(context.Background(), v1.WorkPayload{
+		ProjectID: "project.alpha",
+		TaskText:  "auto open a receipt from work",
+		Tasks: []v1.WorkTaskPayload{
+			{Key: "impl:auto-open", Summary: "Auto-open smoke", Status: v1.WorkItemStatusPending},
+		},
+	})
+	if apiErr != nil {
+		t.Fatalf("expected work to auto-open a receipt, got %+v", apiErr)
+	}
+	if !strings.HasPrefix(result.PlanKey, "plan:receipt-") {
+		t.Fatalf("expected an auto-opened receipt-derived plan key, got %q", result.PlanKey)
+	}
+	if len(repo.receiptUpsertCalls) != 1 {
+		t.Fatalf("expected one receipt scope upsert, got %d", len(repo.receiptUpsertCalls))
+	}
+	opened := repo.receiptUpsertCalls[0]
+	if opened.TaskText != "auto open a receipt from work" || opened.Phase != "execute" {
+		t.Fatalf("unexpected auto-opened receipt scope: %+v", opened)
+	}
+	if "plan:"+opened.ReceiptID != result.PlanKey {
+		t.Fatalf("plan key %q does not match auto-opened receipt %q", result.PlanKey, opened.ReceiptID)
+	}
+	if len(repo.workUpsertCalls) != 1 || repo.workUpsertCalls[0].ReceiptID != opened.ReceiptID {
+		t.Fatalf("expected task items attached to the auto-opened receipt, got %+v", repo.workUpsertCalls)
+	}
+}
+
+func TestWork_ExplicitReceiptNeverAutoOpens(t *testing.T) {
+	repo := &fakeRepository{
+		scopeResults: []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
+	}
+	svc, err := New(repo)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	_, apiErr := svc.Work(context.Background(), v1.WorkPayload{
+		ProjectID: "project.alpha",
+		ReceiptID: "receipt.abc123",
+		TaskText:  "task text must not override an explicit receipt",
+		Tasks: []v1.WorkTaskPayload{
+			{Key: "impl:explicit", Summary: "Explicit receipt", Status: v1.WorkItemStatusPending},
+		},
+	})
+	if apiErr != nil {
+		t.Fatalf("unexpected API error: %+v", apiErr)
+	}
+	if len(repo.receiptUpsertCalls) != 0 {
+		t.Fatalf("expected no auto-open for an explicit receipt, got %d upserts", len(repo.receiptUpsertCalls))
+	}
+}
+
 func TestWork_MissingPlanAndReceiptReturnsInvalidInput(t *testing.T) {
 	repo := &fakeRepository{}
 	svc, err := New(repo)
@@ -240,7 +300,7 @@ func TestWork_MissingPlanAndReceiptReturnsInvalidInput(t *testing.T) {
 	if apiErr.Code != "INVALID_INPUT" {
 		t.Fatalf("unexpected API error code: %q", apiErr.Code)
 	}
-	if !strings.Contains(apiErr.Message, "plan_key or receipt_id is required") {
+	if !strings.Contains(apiErr.Message, "plan_key, receipt_id, or task_text is required") {
 		t.Fatalf("unexpected API error message: %q", apiErr.Message)
 	}
 	details, ok := apiErr.Details.(map[string]any)

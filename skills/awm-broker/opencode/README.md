@@ -79,3 +79,5 @@ Use the same maintenance loop as any other primary AWM operator when rules, tags
 
 Use [AGENTS.example.md](AGENTS.example.md) as the OpenCode-oriented companion example for repo-root `AGENTS.md` contracts.
 It is intentionally thin: the repo-root `AGENTS.md` stays authoritative, and these companion docs should map back to that file rather than inventing a second workflow.
+
+For multi-step work with no receipt yet, `awm work --task-text "<task>"` auto-opens one in a single call; `awm context` remains the recommended opening for scope-audited work.

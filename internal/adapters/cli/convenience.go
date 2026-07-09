@@ -506,6 +506,8 @@ func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 	planKey := fs.String("plan-key", "", "plan key")
 	planTitle := fs.String("plan-title", "", "plan title")
 	receiptID := fs.String("receipt-id", "", "receipt ID")
+	taskText := fs.String("task-text", "", "task description used to auto-open a receipt when no plan or receipt is supplied")
+	phase := fs.String("phase", "", "phase for an auto-opened receipt: plan|execute|review (default execute)")
 	mode := fs.String("mode", "", "work plan update mode: merge|replace")
 	planFile := fs.String("plan-file", "", "JSON file containing work plan metadata")
 	planJSON := fs.String("plan-json", "", "inline JSON object containing work plan metadata")
@@ -523,6 +525,8 @@ func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 		PlanTitle: strings.TrimSpace(*planTitle),
 		ReceiptID: strings.TrimSpace(*receiptID),
 		Mode:      v1.WorkPlanMode(strings.TrimSpace(*mode)),
+		TaskText:  strings.TrimSpace(*taskText),
+		Phase:     v1.Phase(strings.TrimSpace(*phase)),
 	}
 	payload.Actor = actorFlags.Resolve()
 	trimmedPlanFile := strings.TrimSpace(*planFile)

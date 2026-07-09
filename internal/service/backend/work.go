@@ -51,11 +51,39 @@ func (s *Service) Work(ctx context.Context, payload v1.WorkPayload) (v1.WorkResu
 			})
 		}
 	}
+	autoOpened := false
 	if planKey == "" {
-		return v1.WorkResult{}, backendError(v1.ErrCodeInvalidInput, "plan_key or receipt_id is required", map[string]any{
-			"project_id": projectID,
-			"plan_key":   planKey,
+		taskText := strings.TrimSpace(payload.TaskText)
+		if taskText == "" {
+			return v1.WorkResult{}, backendError(v1.ErrCodeInvalidInput, "plan_key, receipt_id, or task_text is required", map[string]any{
+				"project_id": projectID,
+				"plan_key":   planKey,
+			})
+		}
+
+		// Auto-open a receipt from the task description so a single work
+		// call can start governed state without a prior context call. The
+		// deterministic receipt id means a later context call with the same
+		// task converges on this receipt. Explicit identifiers always win
+		// (this branch only runs when both are absent), and the baseline is
+		// captured now — repos relying on strict scope checks should keep
+		// opening receipts via context before editing.
+		phase := payload.Phase
+		if strings.TrimSpace(string(phase)) == "" {
+			phase = v1.PhaseExecute
+		}
+		opened, apiErr := s.openReceiptScope(ctx, v1.ContextPayload{
+			ProjectID: projectID,
+			TaskText:  taskText,
+			Phase:     phase,
+			Actor:     payload.Actor,
 		})
+		if apiErr != nil {
+			return v1.WorkResult{}, apiErr
+		}
+		receiptID = opened.ReceiptID
+		planKey = "plan:" + receiptID
+		autoOpened = true
 	}
 
 	workItems := workPayloadTasks(payload)
@@ -63,8 +91,9 @@ func (s *Service) Work(ctx context.Context, payload v1.WorkPayload) (v1.WorkResu
 	// Task items reference the receipt via a foreign key; precheck the scope
 	// so an unknown receipt fails with a friendly NOT_FOUND before any state
 	// is persisted, instead of leaking a raw constraint error after the plan
-	// row has already been written.
-	if receiptID != "" && len(workItems) > 0 {
+	// row has already been written. A receipt opened moments ago in this
+	// call provably exists, so the precheck is skipped.
+	if receiptID != "" && len(workItems) > 0 && !autoOpened {
 		if _, err := s.repo.FetchReceiptScope(ctx, core.ReceiptScopeQuery{
 			ProjectID: projectID,
 			ReceiptID: receiptID,
