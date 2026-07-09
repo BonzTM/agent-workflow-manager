@@ -142,9 +142,12 @@ type Service struct {
 	verifyRepo       verificationStore
 	runGitCommand    gitRunnerFunc
 	runVerifyCommand verifyRunnerFunc
-	runReviewCommand reviewRunnerFunc
-	projectRoot      string
-	runtimeStatus    RuntimeStatusSnapshot
+	// detectVCSMetadata reports the repo's HEAD sha and branch best-effort;
+	// injectable so tests stay deterministic. It must never fail the caller.
+	detectVCSMetadata func(projectRoot string) core.VCSInfo
+	runReviewCommand  reviewRunnerFunc
+	projectRoot       string
+	runtimeStatus     RuntimeStatusSnapshot
 }
 
 // New builds a Service on the given repository, detecting the project root
@@ -172,13 +175,14 @@ func NewWithRuntimeStatus(repo repositoryCore, projectRoot string, snapshot Runt
 		return nil, errors.New("work plan storage is required")
 	}
 	svc := &Service{
-		repo:             repo,
-		planRepo:         planRepo,
-		runGitCommand:    runGitCommand,
-		runVerifyCommand: runVerifyCommand,
-		runReviewCommand: runWorkflowReviewCommand,
-		projectRoot:      normalizeSyncProjectRoot(projectRoot),
-		runtimeStatus:    snapshot,
+		repo:              repo,
+		planRepo:          planRepo,
+		runGitCommand:     runGitCommand,
+		runVerifyCommand:  runVerifyCommand,
+		detectVCSMetadata: detectGitVCSMetadata,
+		runReviewCommand:  runWorkflowReviewCommand,
+		projectRoot:       normalizeSyncProjectRoot(projectRoot),
+		runtimeStatus:     snapshot,
 	}
 	if historyRepo, ok := repo.(historyStore); ok {
 		svc.historyRepo = historyRepo

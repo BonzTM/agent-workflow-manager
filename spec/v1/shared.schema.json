@@ -643,6 +643,20 @@
           "maxLength": 200
         }
       }
+    },
+    "vcsInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sha": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "branch": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
     }
   }
 }

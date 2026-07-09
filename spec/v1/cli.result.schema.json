@@ -1348,6 +1348,9 @@
         },
         "actor": {
           "$ref": "shared.schema.json#/$defs/actor"
+        },
+        "vcs": {
+          "$ref": "shared.schema.json#/$defs/vcsInfo"
         }
       }
     },
@@ -1451,6 +1454,9 @@
         },
         "actor": {
           "$ref": "shared.schema.json#/$defs/actor"
+        },
+        "vcs": {
+          "$ref": "shared.schema.json#/$defs/vcsInfo"
         }
       }
     },
@@ -1779,6 +1785,12 @@
         },
         "actor": {
           "$ref": "shared.schema.json#/$defs/actor"
+        },
+        "files_changed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

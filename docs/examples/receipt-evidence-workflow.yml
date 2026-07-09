@@ -1,0 +1,35 @@
+# Copyable example: advisory AWM receipt-evidence report on pull requests.
+# This is OPT-IN — awm init never seeds it. Copy into .github/workflows/ and
+# adjust the awm install step for your environment. The report never fails
+# the build unless you add --enforce.
+name: AWM Receipt Evidence
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  receipt-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Install awm
+        run: go install github.com/bonztm/agent-workflow-manager/cmd/awm@latest
+      - name: Receipt evidence report (advisory)
+        env:
+          # Point at the shared AWM database your agents write to; without it
+          # the report inspects an empty local store and reports no coverage.
+          AWM_PG_DSN: ${{ secrets.AWM_PG_DSN }}
+          AWM_PROJECT_ID: ${{ vars.AWM_PROJECT_ID }}
+        run: |
+          scripts/awm-receipt-evidence.sh \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}"
+          # Add --enforce (or AWM_EVIDENCE_ENFORCE=true) to make coverage required.

@@ -89,6 +89,13 @@ type PointerStub struct {
 	Tags        []string
 }
 
+// VCSInfo optionally records the version-control state observed when a run
+// was recorded: the HEAD commit and branch. The zero value means unrecorded.
+type VCSInfo struct {
+	Sha    string
+	Branch string
+}
+
 // Actor optionally identifies the agent behind a persisted action: the
 // harness (e.g. claude-code, codex, opencode), the model, and a
 // harness-scoped session identifier. The zero value means unattributed.
@@ -113,6 +120,7 @@ type RunReceiptSummary struct {
 	DefinitionOfDoneIssues []string
 	Outcome                string
 	Actor                  Actor
+	VCS                    VCSInfo
 }
 
 // RunReceiptIDs identifies a persisted run receipt by its run ID and
@@ -400,6 +408,7 @@ type RunHistorySummary struct {
 	Outcome      string
 	UpdatedAt    time.Time
 	Actor        Actor
+	VCS          VCSInfo
 }
 
 // ReviewAttempt records one execution of a review command, including the

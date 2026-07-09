@@ -94,6 +94,13 @@ type ContextPayload struct {
 	Actor             *ActorRef `json:"actor,omitempty"`
 }
 
+// VCSRef optionally records the version-control state observed when a run was
+// recorded: the HEAD commit and branch at done time.
+type VCSRef struct {
+	Sha    string `json:"sha,omitempty"`
+	Branch string `json:"branch,omitempty"`
+}
+
 // ActorRef optionally identifies the agent that performed a workflow action:
 // the harness (e.g. claude-code, codex, opencode), the model it ran, and a
 // harness-scoped session identifier. Every field is optional; absent actors
@@ -554,6 +561,7 @@ type ExportRunDocument struct {
 	Outcome      string    `json:"outcome,omitempty"`
 	UpdatedAt    string    `json:"updated_at,omitempty"`
 	Actor        *ActorRef `json:"actor,omitempty"`
+	VCS          *VCSRef   `json:"vcs,omitempty"`
 }
 
 // ExportBundleItemKind identifies which record type an ExportBundleItem carries.
@@ -659,6 +667,7 @@ type HistoryItem struct {
 	FetchKeys     []string               `json:"fetch_keys,omitempty"`
 	UpdatedAt     string                 `json:"updated_at"`
 	Actor         *ActorRef              `json:"actor,omitempty"`
+	FilesChanged  []string               `json:"files_changed,omitempty"`
 }
 
 // HistorySearchResult is the output of the history command: the effective search parameters and matched items.
