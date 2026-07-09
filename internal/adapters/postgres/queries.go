@@ -85,7 +85,6 @@ SELECT
 	r.phase,
 	r.resolved_tags,
 	r.pointer_keys,
-	r.memory_ids,
 	r.initial_scope_paths,
 	r.baseline_captured,
 	r.baseline_paths_json
@@ -391,13 +390,6 @@ func normalizeStaleBefore(t *time.Time) *time.Time {
 func nonNilStringList(values []string) []string {
 	if len(values) == 0 {
 		return []string{}
-	}
-	return values
-}
-
-func nonNilInt64List(values []int64) []int64 {
-	if len(values) == 0 {
-		return []int64{}
 	}
 	return values
 }

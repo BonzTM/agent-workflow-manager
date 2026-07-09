@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -1016,24 +1015,5 @@ func NormalizeStringListPreserveOrder(values []string) []string {
 	if len(out) == 0 {
 		return nil
 	}
-	return out
-}
-
-// NormalizeInt64List deduplicates the values and returns them sorted ascending.
-// It returns nil for empty input.
-func NormalizeInt64List(values []int64) []int64 {
-	if len(values) == 0 {
-		return nil
-	}
-	seen := make(map[int64]struct{}, len(values))
-	out := make([]int64, 0, len(values))
-	for _, v := range values {
-		if _, ok := seen[v]; ok {
-			continue
-		}
-		seen[v] = struct{}{}
-		out = append(out, v)
-	}
-	slices.Sort(out)
 	return out
 }

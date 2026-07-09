@@ -26,9 +26,8 @@ type migrationFile struct {
 }
 
 // ApplyMigrations runs every embedded schema migration that has not yet been
-// recorded in awm_schema_migrations, all within a single transaction, after
-// first upgrading any legacy "acm_"-prefixed schema in place. It is safe to
-// call repeatedly; already-applied migrations are skipped.
+// recorded in awm_schema_migrations, all within a single transaction. It is
+// safe to call repeatedly; already-applied migrations are skipped.
 func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	if pool == nil {
 		return errors.New("postgres pool is required")
@@ -44,10 +43,6 @@ func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		return fmt.Errorf("begin migrations tx: %w", err)
 	}
 	defer rollbackTx(ctx, tx)
-
-	if err := migrateLegacyAcmSchema(ctx, tx); err != nil {
-		return err
-	}
 
 	if _, err := tx.Exec(ctx, `
 CREATE TABLE IF NOT EXISTS awm_schema_migrations (
@@ -87,42 +82,6 @@ CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 		return fmt.Errorf("commit migrations tx: %w", err)
 	}
 
-	return nil
-}
-
-// migrateLegacyAcmSchema upgrades a pre-rename "acm_*" schema to the current
-// "awm_*" naming in place. It runs before the schema-migrations ledger is
-// consulted, so the recorded migration names line up and the standard migration
-// loop then sees every migration as already applied. It is a no-op on fresh
-// databases (no legacy ledger) and on databases that already use "awm_*".
-func migrateLegacyAcmSchema(ctx context.Context, tx pgx.Tx) error {
-	if _, err := tx.Exec(ctx, `
-DO $$
-DECLARE
-	r RECORD;
-BEGIN
-	IF to_regclass('acm_schema_migrations') IS NOT NULL
-		AND to_regclass('awm_schema_migrations') IS NULL THEN
-		FOR r IN
-			SELECT tablename FROM pg_tables
-			WHERE schemaname = current_schema() AND tablename LIKE 'acm\_%'
-		LOOP
-			EXECUTE format('ALTER TABLE %I RENAME TO %I',
-				r.tablename, 'awm_' || substring(r.tablename FROM 5));
-		END LOOP;
-		FOR r IN
-			SELECT indexname FROM pg_indexes
-			WHERE schemaname = current_schema() AND indexname LIKE '%acm\_%'
-		LOOP
-			EXECUTE format('ALTER INDEX %I RENAME TO %I',
-				r.indexname, replace(r.indexname, 'acm_', 'awm_'));
-		END LOOP;
-		UPDATE awm_schema_migrations
-			SET migration_name = replace(migration_name, '_acm_', '_awm_');
-	END IF;
-END $$;`); err != nil {
-		return fmt.Errorf("migrate legacy acm schema: %w", err)
-	}
 	return nil
 }
 

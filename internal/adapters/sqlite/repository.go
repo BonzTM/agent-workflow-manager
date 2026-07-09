@@ -348,7 +348,6 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		phase                 string
 		resolvedTagsJSON      string
 		pointerKeysJSON       string
-		memoryIDsJSON         string
 		initialScopePathsJSON string
 		baselineCaptured      int
 		baselinePathsJSON     string
@@ -356,14 +355,14 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 	err := r.db.QueryRowContext(
 		ctx,
 		`
-SELECT task_text, phase, resolved_tags_json, pointer_keys_json, memory_ids_json, initial_scope_paths_json, baseline_captured, baseline_paths_json
+SELECT task_text, phase, resolved_tags_json, pointer_keys_json, initial_scope_paths_json, baseline_captured, baseline_paths_json
 FROM awm_receipts
 WHERE project_id = ?
 	AND receipt_id = ?
 `,
 		projectID,
 		receiptID,
-	).Scan(&taskText, &phase, &resolvedTagsJSON, &pointerKeysJSON, &memoryIDsJSON, &initialScopePathsJSON, &baselineCaptured, &baselinePathsJSON)
+	).Scan(&taskText, &phase, &resolvedTagsJSON, &pointerKeysJSON, &initialScopePathsJSON, &baselineCaptured, &baselinePathsJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return core.ReceiptScope{}, core.ErrReceiptScopeNotFound
@@ -378,9 +377,6 @@ WHERE project_id = ?
 	pointerKeys, err := decodeStringList(pointerKeysJSON)
 	if err != nil {
 		return core.ReceiptScope{}, fmt.Errorf("decode pointer_keys: %w", err)
-	}
-	if _, decodeErr := decodeInt64List(memoryIDsJSON); decodeErr != nil {
-		return core.ReceiptScope{}, fmt.Errorf("decode memory_ids: %w", decodeErr)
 	}
 	initialScopePaths, err := decodeStringList(initialScopePathsJSON)
 	if err != nil {
@@ -1437,10 +1433,6 @@ func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunRe
 	if err != nil {
 		return core.RunReceiptIDs{}, err
 	}
-	memoryIDsJSON, err := encodeInt64List(nil)
-	if err != nil {
-		return core.RunReceiptIDs{}, err
-	}
 	filesChangedJSON, err := encodeStringList(nonNilStringList(normalized.FilesChanged))
 	if err != nil {
 		return core.RunReceiptIDs{}, err
@@ -1451,13 +1443,11 @@ func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunRe
 		Phase        string   `json:"phase"`
 		ResolvedTags []string `json:"resolved_tags,omitempty"`
 		PointerKeys  []string `json:"pointer_keys,omitempty"`
-		MemoryIDs    []int64  `json:"memory_ids,omitempty"`
 	}{
 		TaskText:     normalized.TaskText,
 		Phase:        normalized.Phase,
 		ResolvedTags: normalized.ResolvedTags,
 		PointerKeys:  normalized.PointerKeys,
-		MemoryIDs:    nil,
 	})
 	if err != nil {
 		return core.RunReceiptIDs{}, fmt.Errorf("marshal receipt summary: %w", err)
@@ -1493,10 +1483,9 @@ INSERT INTO awm_receipts (
 	phase,
 	resolved_tags_json,
 	pointer_keys_json,
-	memory_ids_json,
 	summary_json,
 	created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+) VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
 ON CONFLICT(receipt_id) DO UPDATE
 SET
 	project_id = excluded.project_id,
@@ -1504,7 +1493,6 @@ SET
 	phase = excluded.phase,
 	resolved_tags_json = excluded.resolved_tags_json,
 	pointer_keys_json = excluded.pointer_keys_json,
-	memory_ids_json = excluded.memory_ids_json,
 	summary_json = excluded.summary_json
 `,
 		normalized.ReceiptID,
@@ -1513,7 +1501,6 @@ SET
 		normalized.Phase,
 		resolvedTagsJSON,
 		pointerKeysJSON,
-		memoryIDsJSON,
 		string(receiptJSON),
 	)
 	if err != nil {
@@ -1577,10 +1564,6 @@ func (r *Repository) UpsertReceiptScope(ctx context.Context, input core.ReceiptS
 	if err != nil {
 		return fmt.Errorf("encode pointer_keys: %w", err)
 	}
-	memoryIDsJSON, err := encodeInt64List(nil)
-	if err != nil {
-		return fmt.Errorf("encode memory_ids: %w", err)
-	}
 	initialScopePathsJSON, err := encodeStringList(normalized.InitialScopePaths)
 	if err != nil {
 		return fmt.Errorf("encode initial_scope_paths: %w", err)
@@ -1598,13 +1581,12 @@ INSERT INTO awm_receipts (
 	phase,
 	resolved_tags_json,
 	pointer_keys_json,
-	memory_ids_json,
 	initial_scope_paths_json,
 	baseline_captured,
 	baseline_paths_json,
 	summary_json,
 	created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', unixepoch())
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', unixepoch())
 ON CONFLICT(receipt_id) DO UPDATE
 SET
 	project_id = excluded.project_id,
@@ -1612,7 +1594,6 @@ SET
 	phase = excluded.phase,
 	resolved_tags_json = excluded.resolved_tags_json,
 	pointer_keys_json = excluded.pointer_keys_json,
-	memory_ids_json = excluded.memory_ids_json,
 	initial_scope_paths_json = excluded.initial_scope_paths_json,
 	baseline_captured = excluded.baseline_captured,
 	baseline_paths_json = excluded.baseline_paths_json
@@ -1623,7 +1604,6 @@ SET
 		normalized.Phase,
 		resolvedTagsJSON,
 		pointerKeysJSON,
-		memoryIDsJSON,
 		initialScopePathsJSON,
 		boolToInt(normalized.BaselineCaptured),
 		baselinePathsJSON,
@@ -2253,26 +2233,6 @@ func decodeStringListPreserveOrder(raw string) ([]string, error) {
 	return normalizeStringListPreserveOrder(values), nil
 }
 
-func encodeInt64List(values []int64) (string, error) {
-	raw, err := json.Marshal(values)
-	if err != nil {
-		return "", fmt.Errorf("marshal int64 list: %w", err)
-	}
-	return string(raw), nil
-}
-
-func decodeInt64List(raw string) ([]int64, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return nil, nil
-	}
-	var values []int64
-	if err := json.Unmarshal([]byte(trimmed), &values); err != nil {
-		return nil, fmt.Errorf("unmarshal int64 list: %w", err)
-	}
-	return normalizeInt64List(values), nil
-}
-
 func encodeSyncPathList(values []core.SyncPath) (string, error) {
 	raw, err := json.Marshal(values)
 	if err != nil {
@@ -2309,10 +2269,6 @@ func unixTime(sec int64) time.Time {
 
 func normalizeStringListPreserveOrder(values []string) []string {
 	return storagedomain.NormalizeStringListPreserveOrder(values)
-}
-
-func normalizeInt64List(values []int64) []int64 {
-	return storagedomain.NormalizeInt64List(values)
 }
 
 func normalizeStaleBefore(t *time.Time) *time.Time {
