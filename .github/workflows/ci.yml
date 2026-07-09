@@ -1,0 +1,45 @@
+# CI gate. The single source of truth is the committed Makefile: this workflow
+# is a thin caller that runs the SAME `make verify` you run locally
+# (tidy/fmt-check/lint/vet/test/race/vuln/build).
+
+name: ci
+
+on:
+  push:
+    branches: [main] # default branch only; PR builds cover the rest
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege. Read source; grant nothing else.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod # single source of truth for the Go version
+          cache: true # build + module cache, keyed off go.sum
+      - run: make verify
+
+  # Cheap compile check for every released platform, so a cross-platform break
+  # is caught at PR time instead of at release time. No artifacts, no tests —
+  # verify above covers behavior on linux.
+  cross-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: |
+          for target in linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            echo "building ${target}"
+            for bin in awm awm-mcp awm-web; do
+              GOOS="${target%/*}" GOARCH="${target#*/}" CGO_ENABLED=0 go build -o /dev/null "./cmd/${bin}"
+            done
+          done

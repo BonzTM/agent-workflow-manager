@@ -1,16 +1,52 @@
-name: Release
+# Release pipeline. Publishing a GitHub release (from the release notes, per
+# the house flow) triggers a per-architecture matrix that builds stamped
+# binaries, packages them as archives with per-archive checksums, and uploads
+# them to that release — the same shape as the sibling agent-context-manager
+# repo. CI (ci.yml) proves the commit; this workflow only packages it.
+#
+# Tag convention: releases are cut from bare X.Y.Z tags (house style); the
+# mirror job guarantees the vX.Y.Z alias also exists on the release commit,
+# which the Go toolchain requires for canonical module resolution (so
+# `go install ...@latest` sees the release instead of a main pseudo-version).
+# Display strings drop the v everywhere.
+
+name: release
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)build assets for"
+        required: true
 
 permissions:
-  contents: write
+  contents: write # push the mirror tag, upload release assets
 
 env:
-  VERSION: ${{ github.event.release.tag_name }}
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
+  mirror-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - name: Ensure both bare and v-prefixed tags exist
+        run: |
+          BARE="${TAG#v}"
+          COMMIT="$(git rev-parse HEAD)"
+          for ref in "${BARE}" "v${BARE}"; do
+            if git ls-remote --exit-code origin "refs/tags/${ref}" > /dev/null 2>&1; then
+              echo "tag ${ref} already exists"
+            else
+              git tag "${ref}" "${COMMIT}"
+              git push origin "refs/tags/${ref}"
+            fi
+          done
+
   build:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     runs-on: ubuntu-latest
@@ -30,47 +66,52 @@ jobs:
           - goos: windows
             goarch: arm64
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Build binaries
+      - name: Build stamped binaries
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
         run: |
+          VERSION="${TAG#v}"
           LDFLAGS="-s -w"
-          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-workflow-manager/internal/buildinfo.version=${{ env.VERSION }}"
+          LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-workflow-manager/internal/buildinfo.version=${VERSION}"
           LDFLAGS="$LDFLAGS -X github.com/bonztm/agent-workflow-manager/internal/buildinfo.commitShort=${GITHUB_SHA::7}"
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           mkdir -p dist
           for bin in awm awm-mcp awm-web; do
-            go build -ldflags "$LDFLAGS" -o "dist/${bin}${EXT}" "./cmd/${bin}"
+            go build -trimpath -ldflags "$LDFLAGS" -o "dist/${bin}${EXT}" "./cmd/${bin}"
           done
 
       - name: Package release archive
         run: |
+          VERSION="${TAG#v}"
+          ARCHIVE="awm-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
           cd dist
-          ARCHIVE="awm-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}"
           if [ "${{ matrix.goos }}" = "windows" ]; then
             zip "../${ARCHIVE}.zip" awm.exe awm-mcp.exe awm-web.exe
+            cd .. && sha256sum "${ARCHIVE}.zip" > "${ARCHIVE}.zip.sha256"
           else
             tar czf "../${ARCHIVE}.tar.gz" awm awm-mcp awm-web
+            cd .. && sha256sum "${ARCHIVE}.tar.gz" > "${ARCHIVE}.tar.gz.sha256"
           fi
 
       - name: Upload release assets
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ARCHIVE="awm-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          VERSION="${TAG#v}"
+          ARCHIVE="awm-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
           if [ "${{ matrix.goos }}" = "windows" ]; then
-            gh release upload "${{ env.VERSION }}" "${ARCHIVE}.zip" --clobber
+            gh release upload "${TAG}" "${ARCHIVE}.zip" "${ARCHIVE}.zip.sha256" --clobber
           else
-            gh release upload "${{ env.VERSION }}" "${ARCHIVE}.tar.gz" --clobber
+            gh release upload "${TAG}" "${ARCHIVE}.tar.gz" "${ARCHIVE}.tar.gz.sha256" --clobber
           fi
