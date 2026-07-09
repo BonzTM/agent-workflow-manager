@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/bonztm/agent-workflow-manager/internal/commands"
@@ -88,6 +89,8 @@ func InvokeWithLogger(ctx context.Context, svc core.Service, tool string, input 
 	}
 	logMCPValidateSuccess(ctx, logger, tool, normalizedProjectID)
 	logMCPDispatchStart(ctx, logger, tool, normalizedProjectID)
+
+	payload = runtime.ApplyActorDefaults(payload, os.LookupEnv)
 
 	result, apiErr := commands.Dispatch(ctx, svc, command, payload)
 	if apiErr != nil {

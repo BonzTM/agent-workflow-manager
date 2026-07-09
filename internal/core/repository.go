@@ -89,6 +89,15 @@ type PointerStub struct {
 	Tags        []string
 }
 
+// Actor optionally identifies the agent behind a persisted action: the
+// harness (e.g. claude-code, codex, opencode), the model, and a
+// harness-scoped session identifier. The zero value means unattributed.
+type Actor struct {
+	Harness   string
+	Model     string
+	SessionID string
+}
+
 // RunReceiptSummary captures the outcome of a single run for receipt
 // persistence, including resolved scope and definition-of-done issues.
 type RunReceiptSummary struct {
@@ -103,6 +112,7 @@ type RunReceiptSummary struct {
 	FilesChanged           []string
 	DefinitionOfDoneIssues []string
 	Outcome                string
+	Actor                  Actor
 }
 
 // RunReceiptIDs identifies a persisted run receipt by its run ID and
@@ -130,6 +140,7 @@ type ReceiptScope struct {
 	InitialScopePaths []string
 	BaselineCaptured  bool
 	BaselinePaths     []SyncPath
+	Actor             Actor
 }
 
 // FetchLookupQuery identifies the fetch state for a receipt within a project.
@@ -388,6 +399,7 @@ type RunHistorySummary struct {
 	FilesChanged []string
 	Outcome      string
 	UpdatedAt    time.Time
+	Actor        Actor
 }
 
 // ReviewAttempt records one execution of a review command, including the
@@ -412,6 +424,7 @@ type ReviewAttempt struct {
 	StdoutExcerpt      string
 	StderrExcerpt      string
 	CreatedAt          time.Time
+	Actor              Actor
 }
 
 // ReviewAttemptListQuery describes the filters used to list review attempts
@@ -436,6 +449,7 @@ type VerificationBatch struct {
 	SelectedTestIDs []string
 	Results         []VerificationTestRun
 	CreatedAt       time.Time
+	Actor           Actor
 }
 
 // VerificationTestRun records one test execution within a verification

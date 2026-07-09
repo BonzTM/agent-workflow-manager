@@ -87,7 +87,10 @@ SELECT
 	r.pointer_keys,
 	r.initial_scope_paths,
 	r.baseline_captured,
-	r.baseline_paths_json
+	r.baseline_paths_json,
+	r.actor_harness,
+	r.actor_model,
+	r.actor_session
 FROM awm_receipts r
 WHERE r.project_id = $1
 	AND r.receipt_id = $2

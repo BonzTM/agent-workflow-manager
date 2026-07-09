@@ -160,6 +160,7 @@ func buildContextCommandRequest(subcommand, usage, example string, command v1.Co
 	exportFlags := addReadSurfaceExportFlags(fs)
 	var scopePaths repeatedStringFlag
 	fs.Var(&scopePaths, "scope-path", "known repository-relative path to seed into initial scope (repeatable)")
+	actorFlags := addActorFlags(fs)
 	if err := parseCommandFlags(fs, args); err != nil {
 		return convenienceBuildResult{}, err
 	}
@@ -191,6 +192,7 @@ func buildContextCommandRequest(subcommand, usage, example string, command v1.Co
 		Phase:     v1.Phase(strings.TrimSpace(*phase)),
 		TagsFile:  strings.TrimSpace(*tagsFile),
 	}
+	payload.Actor = actorFlags.Resolve()
 	if values := scopePaths.Values(); len(values) > 0 {
 		payload.InitialScopePaths = append([]string(nil), values...)
 	}
@@ -511,6 +513,7 @@ func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 	tasksJSON := fs.String("tasks-json", "", "inline JSON array containing plan tasks")
 	var discoveredPaths repeatedStringFlag
 	fs.Var(&discoveredPaths, "discovered-path", "repo-relative path discovered after context that should be added to plan.discovered_paths (repeatable)")
+	actorFlags := addActorFlags(fs)
 	if err := parseCommandFlags(fs, args); err != nil {
 		return v1.CommandEnvelope{}, err
 	}
@@ -521,6 +524,7 @@ func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 		ReceiptID: strings.TrimSpace(*receiptID),
 		Mode:      v1.WorkPlanMode(strings.TrimSpace(*mode)),
 	}
+	payload.Actor = actorFlags.Resolve()
 	trimmedPlanFile := strings.TrimSpace(*planFile)
 	trimmedPlanJSON := strings.TrimSpace(*planJSON)
 	if trimmedPlanFile != "" && trimmedPlanJSON != "" {
@@ -600,6 +604,7 @@ func buildDoneCommandEnvelope(subcommand, usage, example string, command v1.Comm
 	fs.Var(&noFileChanges, "no-file-changes", "explicitly declare that the task produced no file changes; use when auto-detection is unavailable or you want explicit no-file intent")
 	var filesChanged repeatedStringFlag
 	fs.Var(&filesChanged, "file-changed", "repository-relative changed file path (repeatable)")
+	actorFlags := addActorFlags(fs)
 	if err := parseCommandFlags(fs, args); err != nil {
 		return v1.CommandEnvelope{}, err
 	}
@@ -654,6 +659,7 @@ func buildDoneCommandEnvelope(subcommand, usage, example string, command v1.Comm
 		NoFileChanges: noFileChanges.set && noFileChanges.value,
 		Outcome:       trimmedOutcome,
 	}
+	payload.Actor = actorFlags.Resolve()
 	if trimmedScopeMode := strings.TrimSpace(*scopeMode); trimmedScopeMode != "" {
 		payload.ScopeMode = v1.ScopeMode(trimmedScopeMode)
 	}
@@ -682,6 +688,7 @@ func buildReviewEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 	tagsFile := fs.String("tags-file", "", "explicit canonical tag dictionary file path (overrides default discovery)")
 	var evidence repeatedStringFlag
 	fs.Var(&evidence, "evidence", "evidence item recorded on the review task (repeatable)")
+	actorFlags := addActorFlags(fs)
 	if err := parseCommandFlags(fs, args); err != nil {
 		return v1.CommandEnvelope{}, err
 	}
@@ -748,6 +755,7 @@ func buildReviewEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 		Run:           *run,
 		TagsFile:      strings.TrimSpace(*tagsFile),
 	}
+	payload.Actor = actorFlags.Resolve()
 	return buildEnvelope(v1.CommandReview, *requestID, payload, now)
 }
 
@@ -826,6 +834,7 @@ func buildVerifyEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 	var filesChanged repeatedStringFlag
 	fs.Var(&testIDs, "test-id", "verification test id (repeatable)")
 	fs.Var(&filesChanged, "file-changed", "repository-relative changed file path (repeatable)")
+	actorFlags := addActorFlags(fs)
 	if err := parseCommandFlags(fs, args); err != nil {
 		return v1.CommandEnvelope{}, err
 	}
@@ -855,6 +864,7 @@ func buildVerifyEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 		TagsFile:     strings.TrimSpace(*tagsFile),
 		DryRun:       *dryRun,
 	}
+	payload.Actor = actorFlags.Resolve()
 	if trimmedPhase := strings.TrimSpace(*phase); trimmedPhase != "" {
 		payload.Phase = v1.Phase(trimmedPhase)
 	}
@@ -987,6 +997,33 @@ func (f *readSurfaceExportFlags) RawOutput() *rawOutputOptions {
 		OutFile: strings.TrimSpace(derefString(f.outFile)),
 		Force:   f.force.IsSet() && f.force.value,
 	}
+}
+
+type actorFlags struct {
+	harness *string
+	model   *string
+	session *string
+}
+
+func addActorFlags(fs *flag.FlagSet) *actorFlags {
+	return &actorFlags{
+		harness: fs.String("actor-harness", "", "agent harness recorded on audit records (default: AWM_ACTOR_HARNESS or harness auto-detection)"),
+		model:   fs.String("actor-model", "", "agent model recorded on audit records (default: AWM_ACTOR_MODEL)"),
+		session: fs.String("actor-session", "", "agent session id recorded on audit records (default: AWM_ACTOR_SESSION)"),
+	}
+}
+
+// Resolve merges the explicit actor flags with AWM_ACTOR_* env defaults and
+// harness auto-detection; it returns nil when nothing identifies an actor.
+func (f *actorFlags) Resolve() *v1.ActorRef {
+	if f == nil {
+		return nil
+	}
+	return runtime.ResolveActor(&v1.ActorRef{
+		Harness:   strings.TrimSpace(derefString(f.harness)),
+		Model:     strings.TrimSpace(derefString(f.model)),
+		SessionID: strings.TrimSpace(derefString(f.session)),
+	}, os.LookupEnv)
 }
 
 func extractExportContent(raw []byte) (string, error) {

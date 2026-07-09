@@ -363,6 +363,9 @@ func runForFetch(run core.RunHistorySummary) map[string]any {
 	if strings.TrimSpace(run.Outcome) != "" {
 		content["outcome"] = strings.TrimSpace(run.Outcome)
 	}
+	if actor := actorRefFromCore(run.Actor); actor != nil {
+		content["actor"] = actor
+	}
 	if !run.UpdatedAt.IsZero() {
 		content["updated_at"] = run.UpdatedAt.UTC().Format(time.RFC3339)
 	}

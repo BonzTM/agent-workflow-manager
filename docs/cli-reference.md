@@ -5,10 +5,10 @@ This document provides a detailed reference for the `awm` command-line interface
 ## Core Agent-Facing
 
 ```bash
-awm context        [--project <id>] (--task-text <text>|--task-file <path>) [--phase <plan|execute|review>] [--tags-file <path>] [--scope-path <path>]...
-awm work           [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>]
-awm verify        [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run]
-awm done           [--project <id>] --receipt-id <id> [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] (--outcome <text>|--outcome-file <path>) [--scope-mode <strict|warn>] [--tags-file <path>]
+awm context        [--project <id>] (--task-text <text>|--task-file <path>) [--phase <plan|execute|review>] [--tags-file <path>] [--scope-path <path>]... [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]
+awm work           [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]
+awm verify        [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]
+awm done           [--project <id>] --receipt-id <id> [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] (--outcome <text>|--outcome-file <path>) [--scope-mode <strict|warn>] [--tags-file <path>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]
 ```
 
 `done` accepts omitted or empty `files_changed`. AWM computes the task delta from the receipt baseline when that baseline is available, so omission can mean "auto-detect the real delta" rather than only "no-file closure." When the detected delta is empty, the closeout is effectively no-file. When files are supplied explicitly, AWM cross-checks them against the detected delta, surfaces mismatches as violations, and still uses the detected delta as the source of truth for scope and completion-gate checks. For scope validation, `done` accepts receipt `initial_scope_paths`, plan `discovered_paths`, AWM-managed governance files (including repo-root `AGENTS.md`, `CLAUDE.md`, and canonical `.awm/**` sources), and path-like entries from `plan.in_scope` so feature-wide plans can close cleanly without forcing every owned path into the original receipt.
@@ -17,11 +17,13 @@ awm done           [--project <id>] --receipt-id <id> [--file-changed <path>]...
 
 ```bash
 awm fetch          [--project <id>] [--key <key>]... [--keys-file <path>|--keys-json <json>] [--expect <key=version>]... [--expected-versions-file <path>|--expected-versions-json <json>] [--receipt-id <id>]
-awm review         [--project <id>] (--receipt-id <id>|--plan-key <key>) [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>]
+awm review         [--project <id>] (--receipt-id <id>|--plan-key <key>) [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]
 awm history        [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded]
 ```
 
 If `--project` is omitted, convenience commands default to `AWM_PROJECT_ID` and otherwise infer the project from the effective repo root name. Explicit `--project` still wins.
+
+The workflow commands (`context`, `work`, `verify`, `review`, `done`) accept an optional actor identity recorded on receipts, runs, verification batches, and review attempts. Resolution order: explicit `--actor-*` flags win, then `AWM_ACTOR_HARNESS` / `AWM_ACTOR_MODEL` / `AWM_ACTOR_SESSION` env vars, then harness auto-detection (`CLAUDECODE`/`CLAUDE_CODE_ENTRYPOINT` → `claude-code`, `CODEX_SANDBOX` → `codex`, `OPENCODE` → `opencode`). When nothing resolves, records stay unattributed exactly as before. MCP calls resolve the same env defaults server-side; raw `awm run` envelopes carry only what the payload declares.
 
 For raw rendered artifacts, use the backend-only `export` command through `awm run` or MCP. Example request envelope: [docs/examples/export-request.json](docs/examples/export-request.json).
 

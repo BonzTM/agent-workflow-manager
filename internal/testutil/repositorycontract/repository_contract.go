@@ -78,6 +78,9 @@ func RunRepositoryParity(t *testing.T, cfg ContractConfig) {
 	t.Run("run_summary_preserves_definition_of_done_issues", func(t *testing.T) {
 		runRunSummaryPreservesDefinitionOfDoneIssues(t, projectID+".runs-dod", cfg.Repo)
 	})
+	t.Run("actor_attribution_round_trip", func(t *testing.T) {
+		runActorAttributionRoundTrip(t, projectID+".actor", cfg.Repo)
+	})
 	if cfg.IncludeServiceFlows {
 		t.Run("service_flows", func(t *testing.T) {
 			RunServiceFlows(t, ServiceFlowConfig{
@@ -744,6 +747,98 @@ func runRunSummaryRoundTrip(t *testing.T, projectID string, repo ContractReposit
 	}
 	if !reflect.DeepEqual(row.FilesChanged, []string{"internal/testutil/repositorycontract/repository_contract.go"}) {
 		t.Fatalf("unexpected run history files_changed: %+v", row.FilesChanged)
+	}
+}
+
+func runActorAttributionRoundTrip(t *testing.T, projectID string, repo ContractRepository) {
+	t.Helper()
+	ctx := context.Background()
+
+	actor := core.Actor{Harness: "claude-code", Model: "claude-fable-5", SessionID: "session-attr-1"}
+	receiptID := "receipt-actor-parity-1"
+
+	if err := repo.UpsertReceiptScope(ctx, core.ReceiptScope{
+		ProjectID: projectID,
+		ReceiptID: receiptID,
+		TaskText:  "actor attribution parity",
+		Phase:     "execute",
+		Actor:     actor,
+	}); err != nil {
+		t.Fatalf("seed receipt scope with actor: %v", err)
+	}
+	scope, err := repo.FetchReceiptScope(ctx, core.ReceiptScopeQuery{ProjectID: projectID, ReceiptID: receiptID})
+	if err != nil {
+		t.Fatalf("fetch receipt scope: %v", err)
+	}
+	if scope.Actor != actor {
+		t.Fatalf("unexpected receipt scope actor: got %+v want %+v", scope.Actor, actor)
+	}
+
+	runIDs, err := repo.SaveRunReceiptSummary(ctx, core.RunReceiptSummary{
+		ProjectID: projectID,
+		RequestID: "req-actor-parity-1",
+		ReceiptID: receiptID,
+		TaskText:  "actor attribution parity run",
+		Phase:     "execute",
+		Status:    "accepted",
+		Outcome:   "actor parity run recorded",
+		Actor:     actor,
+	})
+	if err != nil {
+		t.Fatalf("save run receipt summary with actor: %v", err)
+	}
+	row, err := repo.LookupRunHistory(ctx, core.RunHistoryLookupQuery{ProjectID: projectID, RunID: runIDs.RunID})
+	if err != nil {
+		t.Fatalf("lookup run history: %v", err)
+	}
+	if row.Actor != actor {
+		t.Fatalf("unexpected run history actor: got %+v want %+v", row.Actor, actor)
+	}
+
+	attemptTime := time.Date(2026, 7, 9, 20, 0, 0, 0, time.UTC)
+	if _, saveErr := repo.SaveReviewAttempt(ctx, core.ReviewAttempt{
+		ProjectID:   projectID,
+		ReceiptID:   receiptID,
+		PlanKey:     "plan:" + receiptID,
+		ReviewKey:   "review:cross-llm",
+		Summary:     "Cross-LLM review",
+		Fingerprint: "sha256:actor-parity",
+		Status:      "passed",
+		Passed:      true,
+		TimeoutSec:  900,
+		CreatedAt:   attemptTime,
+		Actor:       actor,
+	}); saveErr != nil {
+		t.Fatalf("save review attempt with actor: %v", saveErr)
+	}
+	attempts, err := repo.ListReviewAttempts(ctx, core.ReviewAttemptListQuery{
+		ProjectID: projectID,
+		ReceiptID: receiptID,
+		ReviewKey: "review:cross-llm",
+	})
+	if err != nil {
+		t.Fatalf("list review attempts: %v", err)
+	}
+	if len(attempts) != 1 || attempts[0].Actor != actor {
+		t.Fatalf("unexpected review attempt actors: %+v", attempts)
+	}
+
+	// Absent actors stay zero-valued so existing adopters see no change.
+	blankReceipt := "receipt-actor-parity-blank"
+	if upsertErr := repo.UpsertReceiptScope(ctx, core.ReceiptScope{
+		ProjectID: projectID,
+		ReceiptID: blankReceipt,
+		TaskText:  "actor attribution parity blank",
+		Phase:     "execute",
+	}); upsertErr != nil {
+		t.Fatalf("seed blank receipt scope: %v", upsertErr)
+	}
+	blankScope, blankErr := repo.FetchReceiptScope(ctx, core.ReceiptScopeQuery{ProjectID: projectID, ReceiptID: blankReceipt})
+	if blankErr != nil {
+		t.Fatalf("fetch blank receipt scope: %v", blankErr)
+	}
+	if blankScope.Actor != (core.Actor{}) {
+		t.Fatalf("expected zero actor for blank receipt, got %+v", blankScope.Actor)
 	}
 }
 

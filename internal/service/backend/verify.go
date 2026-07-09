@@ -261,6 +261,7 @@ func (s *Service) Verify(ctx context.Context, payload v1.VerifyPayload) (v1.Veri
 		SelectedTestIDs: append([]string(nil), result.SelectedTestIDs...),
 		Results:         records,
 		CreatedAt:       executedAt,
+		Actor:           actorFromPayload(payload.Actor),
 	}
 	if err := s.verifyRepo.SaveVerificationBatch(ctx, batch); err != nil {
 		return v1.VerifyResult{}, verifyInternalError("save_verification_batch", err, batchRunID)

@@ -924,6 +924,26 @@ DROP TABLE IF EXISTS awm_memories;
 ALTER TABLE awm_receipts DROP COLUMN memory_ids_json;
 `,
 	},
+	{
+		Name: "0016_awm_actor_attribution.sql",
+		SQL: `
+ALTER TABLE awm_receipts ADD COLUMN actor_harness TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_receipts ADD COLUMN actor_model TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_receipts ADD COLUMN actor_session TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE awm_runs ADD COLUMN actor_harness TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_runs ADD COLUMN actor_model TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_runs ADD COLUMN actor_session TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE awm_verification_batches ADD COLUMN actor_harness TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_verification_batches ADD COLUMN actor_model TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_verification_batches ADD COLUMN actor_session TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE awm_review_attempts ADD COLUMN actor_harness TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_review_attempts ADD COLUMN actor_model TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_review_attempts ADD COLUMN actor_session TEXT NOT NULL DEFAULT '';
+`,
+	},
 }
 
 func applyMigrations(ctx context.Context, db *sql.DB) error {
