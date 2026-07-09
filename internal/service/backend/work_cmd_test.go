@@ -12,7 +12,9 @@ import (
 )
 
 func TestWork_PersistsCompletedWorkItemsAndDerivesPlanStatus(t *testing.T) {
-	repo := &fakeRepository{}
+	repo := &fakeRepository{
+		scopeResults: []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
+	}
 	svc, err := New(repo)
 	if err != nil {
 		t.Fatalf("new service: %v", err)
@@ -65,7 +67,9 @@ func TestWork_PersistsCompletedWorkItemsAndDerivesPlanStatus(t *testing.T) {
 }
 
 func TestWork_AutoCloseSyncsStageMetadataFromStageTasks(t *testing.T) {
-	repo := &fakeRepository{}
+	repo := &fakeRepository{
+		scopeResults: []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
+	}
 	svc, err := New(repo)
 	if err != nil {
 		t.Fatalf("new service: %v", err)
@@ -113,7 +117,9 @@ func TestWork_AutoCloseSyncsStageMetadataFromStageTasks(t *testing.T) {
 }
 
 func TestWork_DerivesReceiptIDFromPlanKeyWhenReceiptIDOmitted(t *testing.T) {
-	repo := &fakeRepository{}
+	repo := &fakeRepository{
+		scopeResults: []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
+	}
 	svc, err := New(repo)
 	if err != nil {
 		t.Fatalf("new service: %v", err)
@@ -181,6 +187,37 @@ func TestWork_ReceiptIDOnlyAllowsStatusCheckAndDerivesPlanKey(t *testing.T) {
 	upsert := repo.workPlanUpsertCalls[0]
 	if upsert.PlanKey != "plan:receipt.abc123" || upsert.ReceiptID != "receipt.abc123" {
 		t.Fatalf("unexpected plan upsert identifiers: %+v", upsert)
+	}
+}
+
+func TestWork_UnknownReceiptWithTasksReturnsNotFoundWithoutPersistingPlan(t *testing.T) {
+	repo := &fakeRepository{}
+	svc, err := New(repo)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	_, apiErr := svc.Work(context.Background(), v1.WorkPayload{
+		ProjectID: "project.alpha",
+		ReceiptID: "receipt.missing",
+		Tasks: []v1.WorkTaskPayload{
+			{Key: "impl:example", Summary: "Example task", Status: v1.WorkItemStatusPending},
+		},
+	})
+	if apiErr == nil {
+		t.Fatal("expected an API error for an unknown receipt")
+	}
+	if apiErr.Code != v1.ErrCodeNotFound {
+		t.Fatalf("expected %s, got %s (%s)", v1.ErrCodeNotFound, apiErr.Code, apiErr.Message)
+	}
+	if apiErr.Message != "receipt scope was not found" {
+		t.Fatalf("unexpected error message: %q", apiErr.Message)
+	}
+	if len(repo.workPlanUpsertCalls) != 0 {
+		t.Fatalf("expected no plan upsert for an unknown receipt, got %d", len(repo.workPlanUpsertCalls))
+	}
+	if len(repo.workUpsertCalls) != 0 {
+		t.Fatalf("expected no work item upsert for an unknown receipt, got %d", len(repo.workUpsertCalls))
 	}
 }
 
@@ -296,6 +333,7 @@ func TestWork_PlanKeyReceiptMismatchReturnsInvalidInput(t *testing.T) {
 
 func TestWork_UpsertPlanErrorMapsInternalError(t *testing.T) {
 	repo := &fakeRepository{
+		scopeResults:         []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
 		workPlanUpsertErrors: []error{errors.New("plan upsert failed")},
 	}
 	svc, err := New(repo)
@@ -328,6 +366,7 @@ func TestWork_UpsertPlanErrorMapsInternalError(t *testing.T) {
 
 func TestWork_UpsertErrorMapsInternalError(t *testing.T) {
 	repo := &fakeRepository{
+		scopeResults: []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
 		fetchLookupResults: []core.FetchLookup{{
 			ProjectID: "project.alpha",
 			ReceiptID: "receipt.abc123",
@@ -365,6 +404,7 @@ func TestWork_UpsertErrorMapsInternalError(t *testing.T) {
 
 func TestWork_ListErrorsAreIgnoredWhenPlanRepositoryAvailable(t *testing.T) {
 	repo := &fakeRepository{
+		scopeResults:   []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
 		workListErrors: []error{errors.New("list failed")},
 	}
 	svc, err := New(repo)
@@ -435,6 +475,7 @@ func TestDerivePlanStatusFromWorkItems_Deterministic(t *testing.T) {
 
 func TestWork_UpsertsPlanAndTasksWhenPlanRepositoryAvailable(t *testing.T) {
 	repo := &fakeRepository{
+		scopeResults: []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
 		workPlanUpsertResult: []core.WorkPlanUpsertResult{{
 			Plan: core.WorkPlan{
 				ProjectID: "project.alpha",
