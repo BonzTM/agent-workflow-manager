@@ -269,6 +269,7 @@ tests:
 
 func TestVerify_WorkEvidenceIsCapped(t *testing.T) {
 	repo := &fakeRepository{
+		scopeResults:      []core.ReceiptScope{{ProjectID: "project.alpha", ReceiptID: "receipt.abc123"}},
 		workUpsertResults: []int{1},
 	}
 	svc, err := New(repo)
@@ -321,11 +322,12 @@ tests:
 	withWorkingDir(t, root)
 
 	repo := &fakeRepository{
-		scopeResults: []core.ReceiptScope{{
-			ProjectID: "project.alpha",
-			ReceiptID: "receipt.abc123",
-			Phase:     "execute",
-		}},
+		// Two entries: verify fetches the scope for selection, then the
+		// internal verify:tests work update prechecks the receipt again.
+		scopeResults: []core.ReceiptScope{
+			{ProjectID: "project.alpha", ReceiptID: "receipt.abc123", Phase: "execute"},
+			{ProjectID: "project.alpha", ReceiptID: "receipt.abc123", Phase: "execute"},
+		},
 		workUpsertResults: []int{1},
 	}
 	svc, err := New(repo)

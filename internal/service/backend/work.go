@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -58,6 +59,26 @@ func (s *Service) Work(ctx context.Context, payload v1.WorkPayload) (v1.WorkResu
 	}
 
 	workItems := workPayloadTasks(payload)
+
+	// Task items reference the receipt via a foreign key; precheck the scope
+	// so an unknown receipt fails with a friendly NOT_FOUND before any state
+	// is persisted, instead of leaking a raw constraint error after the plan
+	// row has already been written.
+	if receiptID != "" && len(workItems) > 0 {
+		if _, err := s.repo.FetchReceiptScope(ctx, core.ReceiptScopeQuery{
+			ProjectID: projectID,
+			ReceiptID: receiptID,
+		}); err != nil {
+			if errors.Is(err, core.ErrReceiptScopeNotFound) {
+				return v1.WorkResult{}, backendError(v1.ErrCodeNotFound, "receipt scope was not found", map[string]any{
+					"project_id": projectID,
+					"receipt_id": receiptID,
+					"plan_key":   planKey,
+				})
+			}
+			return v1.WorkResult{}, workInternalError("fetch_receipt_scope", err)
+		}
+	}
 
 	upsertInput := core.WorkPlanUpsertInput{
 		ProjectID: projectID,

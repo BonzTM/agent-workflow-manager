@@ -127,8 +127,13 @@ func (f *fakeRepository) FetchReceiptScope(_ context.Context, input core.Receipt
 	if idx < len(f.scopeErrors) && f.scopeErrors[idx] != nil {
 		return core.ReceiptScope{}, f.scopeErrors[idx]
 	}
-	if idx >= len(f.scopeResults) {
+	if len(f.scopeResults) == 0 {
 		return core.ReceiptScope{}, core.ErrReceiptScopeNotFound
+	}
+	// A persisted receipt keeps resolving on repeat fetches, so once the
+	// seeded sequence is exhausted the last scope stays in effect.
+	if idx >= len(f.scopeResults) {
+		idx = len(f.scopeResults) - 1
 	}
 	scope := f.scopeResults[idx]
 	scope.ResolvedTags = append([]string(nil), scope.ResolvedTags...)

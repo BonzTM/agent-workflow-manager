@@ -184,6 +184,30 @@ func TestConfigFromEnv_InferredProjectIDFallsBackToASCIIHash(t *testing.T) {
 	}
 }
 
+func TestEffectiveSQLitePath_UnresolvableRootDoesNotUseTempDir(t *testing.T) {
+	chdirIntoDeletedDir(t)
+
+	cfg := Config{}
+	if got := cfg.EffectiveSQLitePath(); got != "" {
+		t.Fatalf("expected empty sqlite path when no project root resolves, got %q", got)
+	}
+}
+
+// chdirIntoDeletedDir moves the test into a directory that is then removed,
+// making os.Getwd fail so no project root can be resolved.
+func chdirIntoDeletedDir(t *testing.T) {
+	t.Helper()
+
+	doomed := filepath.Join(t.TempDir(), "doomed")
+	if err := os.Mkdir(doomed, 0o755); err != nil {
+		t.Fatalf("mkdir doomed: %v", err)
+	}
+	t.Chdir(doomed)
+	if err := os.Remove(doomed); err != nil {
+		t.Fatalf("remove doomed cwd: %v", err)
+	}
+}
+
 func shortSHA256(value string) string {
 	sum := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(sum[:])[:8]

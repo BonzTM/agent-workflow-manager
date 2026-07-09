@@ -143,7 +143,7 @@ awm sync --mode working_tree
 
 Wire agents to awm via slash commands, skill packs, or MCP tools — see [Getting Started](docs/getting-started.md) for adopter setup details.
 
-Once connected, most adopters mainly use `context`, `work`, `verify`, and `done`, with `fetch`, `review`, and `history` as supporting surfaces. The advanced backend-only `export` surface is available through `awm run` or MCP when you need stable JSON or Markdown artifact rendering. You can test any operation manually via CLI (e.g., `awm context --task-text "fix the login bug" --phase execute`). See the [CLI Reference](docs/cli-reference.md) and [MCP Reference](docs/mcp-reference.md) for details.
+Once connected, most adopters mainly use `context`, `work`, `verify`, and `done`, with `fetch`, `review`, and `history` as supporting surfaces. The advanced backend-only `export` surface is available through `awm run` or MCP when you need stable JSON or Markdown artifact rendering; for ad hoc use, `context`, `fetch`, `history`, and `status` accept `--format json|markdown` (with `--out-file`/`--force`) through the same export path. You can test any operation manually via CLI (e.g., `awm context --task-text "fix the login bug" --phase execute`). See the [CLI Reference](docs/cli-reference.md) and [MCP Reference](docs/mcp-reference.md) for details.
 
 If you are maintaining AWM itself rather than adopting it in another repo, use [AGENTS.md](AGENTS.md), [docs/maintainer-map.md](docs/maintainer-map.md), and [docs/maintainer-reference.md](docs/maintainer-reference.md) for the repo's maintainer workflow. This README stays product-facing.
 
@@ -277,6 +277,8 @@ SQLite is zero-config by default. awm resolves config in this order:
 5. Repo-root `.env` is loaded when present
 6. If `AWM_PG_DSN` is set, Postgres is used
 7. Otherwise SQLite defaults to `<repo-root>/.awm/context.db`
+
+If no explicit path is set and no project root can be resolved at all, awm fails with an error naming `AWM_SQLITE_PATH` and `AWM_PROJECT_ROOT` as remedies. It never falls back to an implicit temp-directory database, so durable state is never silently written somewhere ephemeral.
 
 Init scaffolding is responsible for adding the implicit SQLite files to `.gitignore` when you want repo-local setup materialized.
 
