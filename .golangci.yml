@@ -1,0 +1,123 @@
+# golangci-lint configuration. Targets golangci-lint v2.12.x (schema version "2").
+# Pinned as a module tool: see go.mod tool directives and the Makefile `lint` target.
+#   go get -tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+# Run with: make lint   (which calls `go tool golangci-lint run`)
+#
+# Policy and the rationale for every enabled linter live in golang/quality/linting.md.
+# Replace the org/project placeholders below with the real module path before committing.
+version: "2"
+
+linters:
+  # Start from the upstream default set (errcheck, govet, ineffassign,
+  # staticcheck, unused) and add high-signal correctness, error-handling,
+  # security, and concurrency linters on top.
+  default: standard
+  enable:
+    - bodyclose      # HTTP/SQL response bodies are closed (leak + connection-reuse bug)
+    - copyloopvar    # loop-variable capture bugs (replaces exportloopref)
+    - errorlint      # %w wrapping and errors.Is/As usage, not == comparisons
+    - exhaustive     # switches over enum-style constants cover every value
+    - fatcontext     # contexts rebuilt inside loops (unbounded value-chain growth)
+    - gochecknoinits # no init() functions; wiring belongs in main/run
+    - gocritic       # broad correctness/performance/style diagnostics
+    - gosec          # security: unchecked file paths, weak crypto, SQL building
+    - intrange       # Go 1.22 `for i := range n` over manual counted loops
+    - misspell       # common misspellings in comments, strings, and identifiers
+    - modernize      # legacy patterns with modern stdlib replacements (min/max, slices, ...)
+    - nilerr         # returning nil when a non-nil error was just checked
+    - nilnesserr     # returning a nil error after a nil-pointer-deref guard
+    - noctx          # HTTP requests sent without a context.Context
+    - nolintlint     # every //nolint names a linter and carries a reason
+    - perfsprint     # cheaper alternatives to fmt.Sprintf on hot paths
+    - prealloc       # slices that should be preallocated in loops
+    - protogetter    # proto getters over direct field access (no-op without generated protobuf code)
+    - recvcheck      # mixed value/pointer receivers on the same type
+    - revive         # configurable replacement for the retired golint
+    - rowserrcheck   # sql.Rows.Err() is checked after iteration
+    - sloglint       # slog calls do not mix key-value args and slog.Attr in one call
+    - spancheck      # OTel spans are ended and errors recorded (no-op without the otel import)
+    - sqlclosecheck  # sql.Rows / sql.Stmt are closed
+    - testifylint    # correct testify assertion usage (no-op without testify)
+    - thelper        # test helpers call t.Helper() so failures point at the caller
+    - tparallel      # misuse of t.Parallel() between parent tests and subtests
+    - unconvert      # redundant type conversions
+    - unparam        # unused function parameters and results
+    - usestdlibvars  # use stdlib constants (http.StatusOK, time.RFC3339, ...)
+    - usetesting     # t.Context()/t.TempDir()/t.Setenv over raw os/context in tests
+    - wastedassign   # assignments whose value is never read
+
+  settings:
+    errcheck:
+      # An ignored error is a decision; force it to be explicit.
+      check-type-assertions: true
+      check-blank: true
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment # struct field ordering is a micro-optimization, not a default gate
+    gosec:
+      excludes:
+        - G104 # duplicate of errcheck; avoid double-reporting unchecked errors
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    exhaustive:
+      # A default: branch is an explicit decision that covers the remaining values.
+      default-signifies-exhaustive: true
+    nolintlint:
+      # A bare //nolint is unauditable; name the linter and state the reason.
+      require-explanation: true
+      require-specific: true
+    sloglint:
+      # Mixing key-value args and slog.Attr in one call is a latent runtime bug.
+      no-mixed-args: true
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
+
+  exclusions:
+    generated: strict      # never lint files marked `// Code generated ... DO NOT EDIT.`
+    warn-unused: true      # an unused exclusion is dead config; surface it
+    presets:
+      - common-false-positives
+      - std-error-handling
+    rules:
+      # Tests carry different risk: noisy security and dup checks are not worth the friction.
+      - path: _test\.go
+        linters:
+          - gosec
+          - bodyclose
+          - noctx
+
+formatters:
+  # Formatters own source shape and are applied by `make fmt`.
+  enable:
+    - gofumpt   # stricter superset of `gofmt -s`
+    - gci       # deterministic, grouped import ordering
+  settings:
+    gofumpt:
+      module-path: github.com/bonztm/agent-workflow-manager
+      extra-rules: true
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/bonztm/agent-workflow-manager)
+      custom-order: true
+  exclusions:
+    generated: strict
