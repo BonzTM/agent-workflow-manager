@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-07-09
+
+Fast-follow patch for 1.5.0 closing the gaps a post-release compliance audit
+found: `init` now surfaces the new attribution settings, and the repo's own
+seeded integration assets catch up with the 1.5.0 templates. No command,
+contract, storage, or MCP surface changes — a drop-in upgrade.
+
+### Fixed
+
+- The `.env.example` scaffold now lists `AWM_ACTOR_HARNESS`,
+  `AWM_ACTOR_MODEL`, and `AWM_ACTOR_SESSION`, on both the fresh-seed and
+  append-missing-keys paths, so `init` surfaces the 1.5.0 attribution
+  settings to adopters (existing `.env.example` files gain the keys on the
+  next `init` re-run).
+- This repo's installed companion assets (`.claude/commands/awm-work.md`,
+  `.codex/awm-broker/README.md`, `.opencode/awm-broker/README.md`) are
+  refreshed to the current template and skill-pack content they had drifted
+  from — templates only upgrade pristine files, so previously seeded copies
+  missed the 1.5.0 `work --task-text` auto-open guidance (the codex copy had
+  also missed an earlier MCP JSON-RPC export note).
+- The last pre-rename rule in `.awm/awm-rules.yaml`
+  (`rule_capture_durable_decisions`) no longer directs agents to record
+  decisions "in AMM" — the removed memory capability — and instead points at
+  plan task evidence and repo docs.
+
+See [docs/release-notes/RELEASE_NOTES_1.5.1.md](docs/release-notes/RELEASE_NOTES_1.5.1.md) for the full release notes.
+
 ## [1.5.0] - 2026-07-09
 
 The adoption release: the audit layer now answers *who did what* (actor
@@ -392,6 +419,7 @@ Initial public release of awm (agent-workflow-manager).
 
 See [docs/release-notes/RELEASE_NOTES_1.0.0.md](docs/release-notes/RELEASE_NOTES_1.0.0.md) for the full release notes.
 
+[1.5.1]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.5.1
 [1.5.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.5.0
 [1.4.1]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.4.1
 [1.4.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.4.0
