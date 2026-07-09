@@ -6,16 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-07-09
+
+Fast-follow patch for 1.4.0: every production file write is now crash-atomic
+without orphaning symlinked targets. No command, contract, storage, or MCP
+surface changes — a drop-in upgrade.
+
 ### Fixed
 
 - All production file writes (bootstrap templates, scaffolded workflow
-  assets, the workspace `.gitignore`, the canonical tags document) are now
-  crash-atomic (temp file + rename) via a shared `internal/fswrite` helper —
-  and symlink-safe: the write resolves the symlink chain (a dangling link
-  gets its target created) and replaces the final target, preserving its
-  file mode, so files users symlink into dotfiles repos keep their links.
-  Previously writes were in-place truncations, which a crash mid-write could
-  corrupt.
+  assets, exclusive-create scaffold files, the workspace `.gitignore` merge,
+  and the `.env.example` append) are crash-atomic via a shared
+  `internal/fswrite` helper and symlink-safe: the write resolves the symlink
+  chain (a dangling link gets its target created) and replaces the final
+  target, preserving its file mode, so files users symlink into dotfiles
+  repos keep their links. Exclusive creates keep their create-if-missing
+  semantics through an atomic hard-link publish that fails cleanly if the
+  file appears concurrently. Previously writes were in-place truncations or
+  appends, which a crash mid-write could corrupt; the `.gitignore` merge
+  also pre-created an empty file before writing.
+
+See [docs/release-notes/RELEASE_NOTES_1.4.1.md](docs/release-notes/RELEASE_NOTES_1.4.1.md) for the full release notes.
 
 ## [1.4.0] - 2026-07-09
 
