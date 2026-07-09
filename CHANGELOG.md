@@ -6,6 +6,77 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-09
+
+The adoption release: the audit layer now answers *who did what* (actor
+attribution across Claude Code, Codex, and OpenCode), the minimum honest loop
+shrinks to a single `work --task-text` call that opens its own receipt, and an
+opt-in, advisory-by-default CI report correlates a git range with the receipts
+that covered it. Dormant storage weight (the never-surfaced memory subsystem
+and the legacy ACM rename shim) is gone — see the breaking notes under
+Removed before upgrading binaries that share a database.
+
+### Added
+
+- Actor attribution on the audit layer. The `context`, `work`, `verify`,
+  `review`, and `done` payloads accept an optional `actor` block (`harness`,
+  `model`, `session_id`), resolved at the adapter boundary: explicit
+  `--actor-harness`/`--actor-model`/`--actor-session` flags win, then
+  `AWM_ACTOR_HARNESS`/`AWM_ACTOR_MODEL`/`AWM_ACTOR_SESSION` env vars, then
+  harness auto-detection (`CLAUDECODE`/`CLAUDE_CODE_ENTRYPOINT` →
+  `claude-code`, `CODEX_SANDBOX` → `codex`, `OPENCODE` → `opencode`).
+  Migration `0016_awm_actor_attribution.sql` (both backends) persists actors
+  on receipts, runs, verification batches, and review attempts as additive
+  columns; run history items, run fetch content, and export run documents
+  expose them. Unattributed records behave exactly as before, and the
+  deterministic receipt id excludes the actor so different agents converge on
+  the same receipt for the same task.
+- `work` auto-opens a receipt. With no `--plan-key`/`--receipt-id`, passing
+  `--task-text` (optionally `--phase`, default `execute`) opens the receipt
+  through the same path `context` uses — deterministic id, canonical rules,
+  working-tree baseline captured at open time — so a single call starts
+  durable governed state. Explicit identifiers always win; repos relying on
+  strict scope checks should keep opening receipts with `context` before
+  editing.
+- Receipt-evidence groundwork and report. Run history items now carry
+  `files_changed` and the recording actor; migration
+  `0017_awm_run_vcs_metadata.sql` (both backends) records the repo's HEAD sha
+  and branch on runs at `done` time, best-effort (git failures never fail the
+  closeout). `scripts/awm-receipt-evidence.sh` turns that data into an opt-in
+  CI report: for every file changed in a git range it names the covering run,
+  receipt, and actor — always exiting 0 unless `--enforce` (or
+  `AWM_EVIDENCE_ENFORCE=true`) makes coverage required.
+  `docs/examples/receipt-evidence-workflow.yml` is the copyable workflow;
+  `awm init` never seeds it.
+- Deprecated-alias resolution for init templates. Removed or renamed template
+  names (starting with `claude-receipt-guard` → `claude-hooks`) resolve to
+  their current replacement instead of failing the whole init, so recorded
+  init commands keep working across releases.
+
+### Fixed
+
+- SQLite path resolution fails loud instead of silently using the OS temp
+  dir. When no explicit `AWM_SQLITE_PATH` is set and no project root can be
+  resolved, service construction now errors naming `AWM_SQLITE_PATH` and
+  `AWM_PROJECT_ROOT` as remedies — durable state can no longer land somewhere
+  ephemeral.
+- `work` prechecks the receipt scope before persisting anything. An unknown
+  or wrong-project receipt id now returns `NOT_FOUND: receipt scope was not
+  found` instead of a raw `FOREIGN KEY constraint failed (787)` after the
+  plan row had already been written (which also orphaned that plan row).
+- `awm status` derives its template list from the embedded catalog (new
+  `bootstrap.TemplateIDs()`), so adding or dropping a template can never
+  break status at runtime through a stale hardcoded list.
+- Language verify profiles layer under `detailed-planning-enforcement`.
+  `verify-go`/`verify-ts`/`verify-python`/`verify-rust` outputs are now
+  registered pristine upgrade sources, so applying the planning template
+  after a language profile upgrades the tests file instead of silently
+  conflict-skipping.
+- The Postgres integration suite compiles and passes again. An unused import
+  left by an earlier cleanup had broken the `-tags integration` build; once
+  restored, two bit-rotted tests were fixed (timezone-safe review-attempt
+  comparison, and a hermetic project root for the step10 golden path).
+
 ### Removed
 
 - **Breaking:** the dormant memory subsystem's storage schema is gone.
@@ -22,6 +93,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   must first run any 1.4.x binary once (which performs the in-place rename)
   before upgrading past this release. Fresh databases and databases already on
   `awm_*` naming are unaffected.
+
+See [docs/release-notes/RELEASE_NOTES_1.5.0.md](docs/release-notes/RELEASE_NOTES_1.5.0.md) for the full release notes.
 
 ## [1.4.1] - 2026-07-09
 
@@ -319,6 +392,9 @@ Initial public release of awm (agent-workflow-manager).
 
 See [docs/release-notes/RELEASE_NOTES_1.0.0.md](docs/release-notes/RELEASE_NOTES_1.0.0.md) for the full release notes.
 
+[1.5.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.5.0
+[1.4.1]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.4.1
+[1.4.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.4.0
 [1.3.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.3.0
 [1.2.1]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.2.1
 [1.2.0]: https://github.com/BonzTM/agent-workflow-manager/releases/tag/1.2.0
