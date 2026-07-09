@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/fswrite"
 )
 
 const (
@@ -230,7 +231,7 @@ func syncInitCanonicalTagsFile(projectRoot, tagsFile string, candidatePaths []st
 		if len(existing.CanonicalTags) > 0 || len(suggestions.CanonicalTags) == 0 {
 			return nil
 		}
-		return os.WriteFile(source.AbsolutePath, renderCanonicalTagsDocumentYAML(suggestions), 0o644) //nolint:gosec // G306: committed repo config file, standard world-readable permissions by design
+		return fswrite.Atomic(source.AbsolutePath, renderCanonicalTagsDocumentYAML(suggestions), 0o644)
 	}
 
 	return bootstrapkit.WriteScaffoldFile(source.AbsolutePath, renderCanonicalTagsDocumentYAML(suggestions))

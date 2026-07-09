@@ -3,10 +3,13 @@ package workspace
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/bonztm/agent-workflow-manager/internal/fswrite"
 )
 
 const (
@@ -267,18 +270,14 @@ func appendUniqueLines(path string, lines []string) error {
 		return nil
 	}
 
-	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); mkdirErr != nil { //nolint:gosec // G301: repo directory, standard world-readable permissions by design
+	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); mkdirErr != nil { //nolint:gosec // G301: committed repo directory, standard permissions by design
 		return mkdirErr
 	}
 
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644) //nolint:gosec // G302: .gitignore is a committed repo file, world-readable by design
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
+	// Re-read without pre-creating: an O_CREATE handle here would materialize
+	// an empty .gitignore before the atomic write, defeating crash-atomicity.
 	existingRaw, err = os.ReadFile(path)
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
@@ -292,7 +291,7 @@ func appendUniqueLines(path string, lines []string) error {
 		builder.WriteByte('\n')
 	}
 
-	if err := os.WriteFile(path, []byte(builder.String()), 0o644); err != nil { //nolint:gosec // G306: .gitignore is a committed repo file, world-readable by design
+	if err := fswrite.Atomic(path, []byte(builder.String()), 0o644); err != nil {
 		return err
 	}
 	return nil

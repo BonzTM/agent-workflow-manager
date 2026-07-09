@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- All production file writes (bootstrap templates, scaffolded workflow
+  assets, the workspace `.gitignore`, the canonical tags document) are now
+  crash-atomic (temp file + rename) via a shared `internal/fswrite` helper —
+  and symlink-safe: the write resolves the symlink chain (a dangling link
+  gets its target created) and replaces the final target, preserving its
+  file mode, so files users symlink into dotfiles repos keep their links.
+  Previously writes were in-place truncations, which a crash mid-write could
+  corrupt.
+
 ## [1.4.0] - 2026-07-09
 
 Repository hardening release bringing awm to the shared house standard with its

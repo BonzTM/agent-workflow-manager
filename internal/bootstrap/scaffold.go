@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bonztm/agent-workflow-manager/internal/fswrite"
 	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
@@ -44,7 +45,7 @@ func NormalizeProjectRoot(projectRoot string) string {
 // under projectRoot, plus a blank canonical ruleset when rulesFile is blank
 // and no ruleset exists yet. Existing files are left untouched.
 func EnsureProjectScaffold(projectRoot, rulesFile string) error {
-	if err := os.MkdirAll(filepath.Join(projectRoot, ".awm"), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
+	if err := os.MkdirAll(filepath.Join(projectRoot, ".awm"), 0o755); err != nil { //nolint:gosec // G301: committed repo directory, standard permissions by design
 		return err
 	}
 	if err := ensureRuntimeFiles(projectRoot); err != nil {
@@ -100,10 +101,10 @@ func WriteCandidates(outputPath string, paths []string) error {
 		return fmt.Errorf("marshal candidates: %w", err)
 	}
 	blob = append(blob, '\n')
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil { //nolint:gosec // G301: committed repo directory, standard permissions by design
 		return fmt.Errorf("create output directory: %w", err)
 	}
-	if err := os.WriteFile(outputPath, blob, 0o644); err != nil { //nolint:gosec // G306: scaffolded repo file, standard world-readable permissions by design
+	if err := fswrite.Atomic(outputPath, blob, 0o644); err != nil {
 		return fmt.Errorf("write candidate output: %w", err)
 	}
 	return nil
@@ -112,18 +113,10 @@ func WriteCandidates(outputPath string, paths []string) error {
 // WriteScaffoldFile creates targetPath with content, creating parent
 // directories as needed. It is a no-op when the file already exists.
 func WriteScaffoldFile(targetPath string, content []byte) error {
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
-		return err
+	err := fswrite.AtomicNew(targetPath, content, 0o644)
+	if errors.Is(err, os.ErrExist) {
+		return nil
 	}
-	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec // G302: scaffolded repo file, standard world-readable permissions by design
-	if err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return nil
-		}
-		return err
-	}
-	defer file.Close()
-	_, err = file.Write(content)
 	return err
 }
 
@@ -185,28 +178,21 @@ func ensureEnvExample(projectRoot string) error {
 		return nil
 	}
 
-	file, err := os.OpenFile(envExamplePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o644) //nolint:gosec // G302: .env.example is a committed repo file, world-readable by design
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
+	// Build the appended content in memory and write the whole file
+	// atomically, so a crash can never leave a truncated or half-appended
+	// .env.example (and a symlinked one keeps its link).
+	var builder strings.Builder
+	builder.Write(raw)
 	if len(raw) > 0 && raw[len(raw)-1] != '\n' {
-		if _, err := file.WriteString("\n"); err != nil {
-			return err
-		}
+		builder.WriteByte('\n')
 	}
 	if len(raw) > 0 {
-		if _, err := file.WriteString("\n# AWM runtime configuration\n"); err != nil {
-			return err
-		}
+		builder.WriteString("\n# AWM runtime configuration\n")
 	}
 	for _, entry := range missing {
-		if _, err := file.WriteString(entry + "\n"); err != nil {
-			return err
-		}
+		builder.WriteString(entry + "\n")
 	}
-	return nil
+	return fswrite.Atomic(envExamplePath, []byte(builder.String()), 0o644)
 }
 
 func ensureVerifyTestsScaffold(projectRoot string) error {

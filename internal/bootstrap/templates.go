@@ -17,7 +17,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	v1 "github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/fswrite"
 )
 
 //go:embed all:bootstrap_templates/**
@@ -418,7 +419,7 @@ func applyInitTemplateCreateOrReplaceIfPristine(projectRoot string, ctx initTemp
 		return false, nil
 	}
 
-	if err := os.WriteFile(targetPath, rendered, operation.Mode); err != nil {
+	if err := fswrite.Atomic(targetPath, rendered, operation.Mode); err != nil {
 		return false, err
 	}
 	result.Updated = append(result.Updated, operation.Target)
@@ -462,7 +463,7 @@ func applyInitTemplateReplaceIfPristine(projectRoot string, ctx initTemplateCont
 		return false, nil
 	}
 
-	if err := os.WriteFile(targetPath, rendered, operation.Mode); err != nil {
+	if err := fswrite.Atomic(targetPath, rendered, operation.Mode); err != nil {
 		return false, err
 	}
 	result.Updated = append(result.Updated, operation.Target)
@@ -529,7 +530,7 @@ func applyInitTemplateMergeJSON(projectRoot string, ctx initTemplateContext, ope
 	if err != nil {
 		return false, err
 	}
-	if err := os.WriteFile(targetPath, blob, operation.Mode); err != nil {
+	if err := fswrite.Atomic(targetPath, blob, operation.Mode); err != nil {
 		return false, err
 	}
 	result.Updated = append(result.Updated, operation.Target)
@@ -575,19 +576,7 @@ func writeInitTemplateFile(targetPath string, content []byte, mode os.FileMode) 
 }
 
 func writeInitTemplateNewFile(targetPath string, content []byte, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
-		return err
-	}
-	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if _, err := file.Write(content); err != nil {
-		return err
-	}
-	return nil
+	return fswrite.AtomicNew(targetPath, content, mode)
 }
 
 func ensureInitTemplateMode(targetPath string, mode os.FileMode) (bool, error) {
