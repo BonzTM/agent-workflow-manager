@@ -315,7 +315,6 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		Phase             string
 		ResolvedTags      []string
 		PointerKeys       []string
-		MemoryIDs         []int64
 		InitialScopePaths []string
 		BaselineCaptured  bool
 		BaselinePathsJSON []byte
@@ -326,7 +325,6 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		&row.Phase,
 		&row.ResolvedTags,
 		&row.PointerKeys,
-		&row.MemoryIDs,
 		&row.InitialScopePaths,
 		&row.BaselineCaptured,
 		&row.BaselinePathsJSON,
@@ -1288,9 +1286,8 @@ INSERT INTO awm_receipts (
 	phase,
 	resolved_tags,
 	pointer_keys,
-	memory_ids,
 	summary_json
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
 ON CONFLICT (receipt_id) DO UPDATE
 SET
 	project_id = EXCLUDED.project_id,
@@ -1298,9 +1295,8 @@ SET
 	phase = EXCLUDED.phase,
 	resolved_tags = EXCLUDED.resolved_tags,
 	pointer_keys = EXCLUDED.pointer_keys,
-	memory_ids = EXCLUDED.memory_ids,
 	summary_json = EXCLUDED.summary_json
-`, normalized.ReceiptID, normalized.ProjectID, normalized.TaskText, normalized.Phase, nonNilStringList(normalized.ResolvedTags), nonNilStringList(normalized.PointerKeys), nonNilInt64List(nil), receiptJSON)
+`, normalized.ReceiptID, normalized.ProjectID, normalized.TaskText, normalized.Phase, nonNilStringList(normalized.ResolvedTags), nonNilStringList(normalized.PointerKeys), receiptJSON)
 	if err != nil {
 		return core.RunReceiptIDs{}, fmt.Errorf("upsert receipt summary: %w", err)
 	}
@@ -1357,12 +1353,11 @@ INSERT INTO awm_receipts (
 	phase,
 	resolved_tags,
 	pointer_keys,
-	memory_ids,
 	initial_scope_paths,
 	baseline_captured,
 	baseline_paths_json,
 	summary_json
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, '{}'::jsonb)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, '{}'::jsonb)
 ON CONFLICT (receipt_id) DO UPDATE
 SET
 	project_id = EXCLUDED.project_id,
@@ -1370,11 +1365,10 @@ SET
 	phase = EXCLUDED.phase,
 	resolved_tags = EXCLUDED.resolved_tags,
 	pointer_keys = EXCLUDED.pointer_keys,
-	memory_ids = EXCLUDED.memory_ids,
 	initial_scope_paths = EXCLUDED.initial_scope_paths,
 	baseline_captured = EXCLUDED.baseline_captured,
 	baseline_paths_json = EXCLUDED.baseline_paths_json
-`, normalized.ReceiptID, normalized.ProjectID, normalized.TaskText, normalized.Phase, nonNilStringList(normalized.ResolvedTags), nonNilStringList(normalized.PointerKeys), nonNilInt64List(nil), nonNilStringList(normalized.InitialScopePaths), normalized.BaselineCaptured, baselinePathsJSON)
+`, normalized.ReceiptID, normalized.ProjectID, normalized.TaskText, normalized.Phase, nonNilStringList(normalized.ResolvedTags), nonNilStringList(normalized.PointerKeys), nonNilStringList(normalized.InitialScopePaths), normalized.BaselineCaptured, baselinePathsJSON)
 	if err != nil {
 		return fmt.Errorf("upsert receipt scope: %w", err)
 	}

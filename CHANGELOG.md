@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking:** the dormant memory subsystem's storage schema is gone.
+  Migration `0015_awm_drop_memory.sql` (both backends) drops the never-surfaced
+  `awm_memories` and `awm_memory_candidates` tables and the
+  `awm_receipts.memory_ids`/`memory_ids_json` column. No command, MCP tool, or
+  contract ever exposed this data, so no caller-visible surface changes — but
+  once a newer binary migrates a shared database (e.g. Postgres via
+  `AWM_PG_DSN`), binaries older than this release fail receipt reads against it
+  with a missing-column error. Upgrade all binaries that share a database
+  together.
+- **Breaking:** the legacy `acm_*`-to-`awm_*` schema rename shim is removed
+  from both storage backends. Databases created before the ACM-to-AWM rename
+  must first run any 1.4.x binary once (which performs the in-place rename)
+  before upgrading past this release. Fresh databases and databases already on
+  `awm_*` naming are unaffected.
+
 ## [1.4.1] - 2026-07-09
 
 Fast-follow patch for 1.4.0: every production file write is now crash-atomic

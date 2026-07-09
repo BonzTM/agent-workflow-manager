@@ -17,7 +17,6 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"github.com/bonztm/agent-workflow-manager/internal/logging"
 	"github.com/bonztm/agent-workflow-manager/internal/runtime"
-	backendsvc "github.com/bonztm/agent-workflow-manager/internal/service/backend"
 )
 
 const (
@@ -181,6 +180,7 @@ func assertMigrationsApplied(t *testing.T, ctx context.Context, pool *pgxpool.Po
 		"0012_awm_initial_scope_and_baselines.sql",
 		"0013_awm_complete_status.sql",
 		"0014_awm_superseded_status.sql",
+		"0015_awm_drop_memory.sql",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected migration record set: got %v want %v", got, want)
@@ -238,9 +238,8 @@ INSERT INTO awm_receipts (
 	phase,
 	resolved_tags,
 	pointer_keys,
-	memory_ids,
 	summary_json
-) VALUES ($1, $2, $3, $4, $5, $6, $7, '{"source":"integration"}'::jsonb)
+) VALUES ($1, $2, $3, $4, $5, $6, '{"source":"integration"}'::jsonb)
 ON CONFLICT (receipt_id) DO UPDATE
 SET
 	project_id = EXCLUDED.project_id,
@@ -248,9 +247,8 @@ SET
 	phase = EXCLUDED.phase,
 	resolved_tags = EXCLUDED.resolved_tags,
 	pointer_keys = EXCLUDED.pointer_keys,
-	memory_ids = EXCLUDED.memory_ids,
 	summary_json = EXCLUDED.summary_json
-`, receipt.Meta.ReceiptID, receipt.Meta.ProjectID, receipt.Meta.TaskText, string(receipt.Meta.Phase), receipt.Meta.ResolvedTags, pointerKeys, []int64{}); err != nil {
+`, receipt.Meta.ReceiptID, receipt.Meta.ProjectID, receipt.Meta.TaskText, string(receipt.Meta.Phase), receipt.Meta.ResolvedTags, pointerKeys); err != nil {
 		t.Fatalf("upsert receipt scope: %v", err)
 	}
 }
