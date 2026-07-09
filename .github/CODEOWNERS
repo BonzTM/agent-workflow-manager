@@ -1,0 +1,5 @@
+# Auto-requests review from the listed owners when matching paths change.
+# Last matching pattern wins; order general -> specific.
+
+# Fallback owner for anything not matched below.
+* @BonzTM
