@@ -252,7 +252,7 @@ func TestInit_SeedsCanonicalScaffoldFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read scaffolded env example: %v", err)
 	}
-	wantEnvExample := "# AWM runtime configuration\n# Copy this file to .env to override local defaults.\nAWM_PROJECT_ID=myproject\nAWM_PROJECT_ROOT=/path/to/repo\nAWM_SQLITE_PATH=.awm/context.db\nAWM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nAWM_UNBOUNDED=false\nAWM_LOG_LEVEL=info\nAWM_LOG_SINK=stderr\n"
+	wantEnvExample := "# AWM runtime configuration\n# Copy this file to .env to override local defaults.\nAWM_PROJECT_ID=myproject\nAWM_PROJECT_ROOT=/path/to/repo\nAWM_SQLITE_PATH=.awm/context.db\nAWM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nAWM_UNBOUNDED=false\nAWM_LOG_LEVEL=info\nAWM_LOG_SINK=stderr\nAWM_ACTOR_HARNESS=\nAWM_ACTOR_MODEL=\nAWM_ACTOR_SESSION=\n"
 	if string(envExampleRaw) != wantEnvExample {
 		t.Fatalf("unexpected scaffolded env example contents: %q", string(envExampleRaw))
 	}
@@ -501,7 +501,7 @@ func TestInit_DoesNotOverwriteExistingCanonicalScaffoldFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read env example: %v", err)
 	}
-	wantEnvExample := "AWM_SQLITE_PATH=.awm/existing.db\n\n# AWM runtime configuration\nAWM_PROJECT_ID=myproject\nAWM_PROJECT_ROOT=/path/to/repo\nAWM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nAWM_UNBOUNDED=false\nAWM_LOG_LEVEL=info\nAWM_LOG_SINK=stderr\n"
+	wantEnvExample := "AWM_SQLITE_PATH=.awm/existing.db\n\n# AWM runtime configuration\nAWM_PROJECT_ID=myproject\nAWM_PROJECT_ROOT=/path/to/repo\nAWM_PG_DSN=postgres://user:pass@localhost:5432/agents_context?sslmode=disable\nAWM_UNBOUNDED=false\nAWM_LOG_LEVEL=info\nAWM_LOG_SINK=stderr\nAWM_ACTOR_HARNESS=\nAWM_ACTOR_MODEL=\nAWM_ACTOR_SESSION=\n"
 	if string(envExampleRaw) != wantEnvExample {
 		t.Fatalf("unexpected env example contents: got %q want %q", string(envExampleRaw), wantEnvExample)
 	}

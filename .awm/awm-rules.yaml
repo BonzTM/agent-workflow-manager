@@ -176,9 +176,11 @@ rules:
     tags: [verify, completion]
 
   - id: rule_capture_durable_decisions
-    summary: Persist stable architectural decisions in AMM.
+    summary: Persist stable architectural decisions where future work rediscovers them.
     content: >-
-      Record durable decisions and recurring pitfalls in AMM when they would
-      reduce future rework.
+      Record durable decisions and recurring pitfalls where later sessions
+      will find them: plan task evidence for work-in-flight rationale, and
+      repo docs (maintainer reference, feature plans) for standing
+      architecture decisions.
     enforcement: soft
     tags: [architecture]
