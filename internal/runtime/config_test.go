@@ -33,8 +33,7 @@ func TestConfigFromEnv_DefaultSQLitePathUsesRepoRoot(t *testing.T) {
 		t.Fatalf("mkdir subdir: %v", err)
 	}
 
-	restore := withWorkingDir(t, subdir)
-	defer restore()
+	t.Chdir(subdir)
 
 	t.Setenv(ProjectRootEnvVar, "")
 	t.Setenv(ProjectIDEnvVar, "")
@@ -65,8 +64,7 @@ func TestConfigFromEnv_LoadsDotEnvFromRepoRoot(t *testing.T) {
 		t.Fatalf("write .env: %v", err)
 	}
 
-	restore := withWorkingDir(t, root)
-	defer restore()
+	t.Chdir(root)
 
 	unsetEnv(t, ProjectRootEnvVar)
 	unsetEnv(t, ProjectIDEnvVar)
@@ -94,8 +92,7 @@ func TestConfigFromEnv_ProcessEnvOverridesDotEnv(t *testing.T) {
 		t.Fatalf("write .env: %v", err)
 	}
 
-	restore := withWorkingDir(t, root)
-	defer restore()
+	t.Chdir(root)
 
 	t.Setenv(PostgresDSNEnvVar, "postgres://process-env")
 
@@ -115,8 +112,7 @@ func TestConfigFromEnv_UsesExplicitProjectRootOutsideRepo(t *testing.T) {
 	}
 
 	outside := t.TempDir()
-	restore := withWorkingDir(t, outside)
-	defer restore()
+	t.Chdir(outside)
 
 	unsetEnv(t, PostgresDSNEnvVar)
 	unsetEnv(t, SQLitePathEnvVar)
@@ -137,8 +133,7 @@ func TestConfigFromEnv_ExplicitProjectIDWinsOverInference(t *testing.T) {
 		t.Fatalf("mkdir .git: %v", err)
 	}
 
-	restore := withWorkingDir(t, root)
-	defer restore()
+	t.Chdir(root)
 
 	t.Setenv(ProjectIDEnvVar, "stable-project")
 
@@ -159,8 +154,7 @@ func TestConfigFromEnv_InferredProjectIDSanitizesExplicitProjectRoot(t *testing.
 	}
 
 	outside := t.TempDir()
-	restore := withWorkingDir(t, outside)
-	defer restore()
+	t.Chdir(outside)
 
 	unsetEnv(t, ProjectIDEnvVar)
 	t.Setenv(ProjectRootEnvVar, root)
@@ -179,8 +173,7 @@ func TestConfigFromEnv_InferredProjectIDFallsBackToASCIIHash(t *testing.T) {
 	}
 
 	outside := t.TempDir()
-	restore := withWorkingDir(t, outside)
-	defer restore()
+	t.Chdir(outside)
 
 	unsetEnv(t, ProjectIDEnvVar)
 	t.Setenv(ProjectRootEnvVar, root)
@@ -196,39 +189,13 @@ func shortSHA256(value string) string {
 	return hex.EncodeToString(sum[:])[:8]
 }
 
-func withWorkingDir(t *testing.T, dir string) func() {
-	t.Helper()
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir %q: %v", dir, err)
-	}
-	return func() {
-		if err := os.Chdir(wd); err != nil {
-			t.Fatalf("restore wd: %v", err)
-		}
-	}
-}
-
 func unsetEnv(t *testing.T, key string) {
 	t.Helper()
 
-	previous, hadPrevious := os.LookupEnv(key)
+	// t.Setenv registers restoration of the original value (or unset state);
+	// the follow-up Unsetenv leaves the variable genuinely unset for the test.
+	t.Setenv(key, "")
 	if err := os.Unsetenv(key); err != nil {
 		t.Fatalf("unsetenv %s: %v", key, err)
 	}
-	t.Cleanup(func() {
-		var err error
-		if hadPrevious {
-			err = os.Setenv(key, previous)
-		} else {
-			err = os.Unsetenv(key)
-		}
-		if err != nil {
-			t.Fatalf("restore env %s: %v", key, err)
-		}
-	})
 }

@@ -451,7 +451,7 @@ func TestExportHistoryMarkdownFixtureHasNoLegacyMemoryFetchKeys(t *testing.T) {
 	}
 }
 
-func assertMarkdownGolden(t *testing.T, golden string, got string) {
+func assertMarkdownGolden(t *testing.T, golden, got string) {
 	t.Helper()
 
 	path := filepath.Join("testdata", "export_markdown", golden)

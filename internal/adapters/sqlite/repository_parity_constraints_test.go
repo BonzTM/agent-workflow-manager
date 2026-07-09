@@ -15,11 +15,11 @@ func TestSQLiteMigrations_EnforcePointerLinkForeignKeys(t *testing.T) {
 	}
 	defer func() { _ = repo.Close() }()
 
-	if _, err := repo.db.ExecContext(ctx, `
+	if _, insertErr := repo.db.ExecContext(ctx, `
 INSERT INTO awm_pointers (project_id, pointer_key, path, anchor, kind, label, description, tags_json, is_rule, is_stale)
 VALUES (?, ?, ?, '', 'code', ?, ?, '[]', 0, 0)
-`, "project.alpha", "code:from", "internal/from.go", "From", "from pointer"); err != nil {
-		t.Fatalf("insert source pointer: %v", err)
+`, "project.alpha", "code:from", "internal/from.go", "From", "from pointer"); insertErr != nil {
+		t.Fatalf("insert source pointer: %v", insertErr)
 	}
 
 	_, err = repo.db.ExecContext(ctx, `
@@ -57,18 +57,18 @@ func TestSQLiteDSNPragmas_ApplyToSecondConnection(t *testing.T) {
 	defer func() { _ = conn2.Close() }()
 
 	var busyTimeout int
-	if err := conn2.QueryRowContext(ctx, `PRAGMA busy_timeout`).Scan(&busyTimeout); err != nil {
-		t.Fatalf("query busy_timeout pragma: %v", err)
+	if scanErr := conn2.QueryRowContext(ctx, `PRAGMA busy_timeout`).Scan(&busyTimeout); scanErr != nil {
+		t.Fatalf("query busy_timeout pragma: %v", scanErr)
 	}
 	if busyTimeout != 5000 {
 		t.Fatalf("unexpected busy_timeout pragma: got %d want 5000", busyTimeout)
 	}
 
-	if _, err := conn1.ExecContext(ctx, `
+	if _, insertErr := conn1.ExecContext(ctx, `
 INSERT INTO awm_pointers (project_id, pointer_key, path, anchor, kind, label, description, tags_json, is_rule, is_stale)
 VALUES (?, ?, ?, '', 'code', ?, ?, '[]', 0, 0)
-`, "project.alpha", "code:from", "internal/from.go", "From", "from pointer"); err != nil {
-		t.Fatalf("insert source pointer: %v", err)
+`, "project.alpha", "code:from", "internal/from.go", "From", "from pointer"); insertErr != nil {
+		t.Fatalf("insert source pointer: %v", insertErr)
 	}
 
 	_, err = conn2.ExecContext(ctx, `

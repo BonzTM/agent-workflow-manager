@@ -2,7 +2,7 @@ package backend
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
@@ -36,12 +35,19 @@ const (
 	maxFetchKeyLength       = 512
 )
 
-var healthTagPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
-var requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{8,128}$`)
+var (
+	healthTagPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+	requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{8,128}$`)
+)
 
-type gitRunnerFunc func(ctx context.Context, projectRoot string, args ...string) (string, error)
-type reviewRunnerFunc func(ctx context.Context, projectRoot string, command workflowRunDefinition, extraEnv map[string]string) verifyCommandRun
+type (
+	gitRunnerFunc    func(ctx context.Context, projectRoot string, args ...string) (string, error)
+	reviewRunnerFunc func(ctx context.Context, projectRoot string, command workflowRunDefinition, extraEnv map[string]string) verifyCommandRun
+)
 
+// RuntimeStatusSnapshot describes how the service's storage was resolved at
+// startup (backend kind and SQLite/Postgres configuration) so Status can
+// report it without re-detecting the environment.
 type RuntimeStatusSnapshot struct {
 	Backend                string
 	PostgresConfigured     bool
@@ -126,6 +132,9 @@ func (e *fetchOperationError) Unwrap() error {
 	return e.err
 }
 
+// Service implements the v1 backend API on top of the repository storage
+// layer, executing all awm operations (context, fetch, work, review, verify,
+// done, sync, health, init, status) against a single project database.
 type Service struct {
 	repo             repositoryCore
 	planRepo         workPlanStore
@@ -138,21 +147,29 @@ type Service struct {
 	runtimeStatus    RuntimeStatusSnapshot
 }
 
+// New builds a Service on the given repository, detecting the project root
+// lazily at call time. The repository must also implement work plan storage.
 func New(repo repositoryCore) (*Service, error) {
 	return NewWithProjectRoot(repo, "")
 }
 
+// NewWithProjectRoot builds a Service pinned to the given project root instead
+// of detecting it from the working directory on each call.
 func NewWithProjectRoot(repo repositoryCore, projectRoot string) (*Service, error) {
 	return NewWithRuntimeStatus(repo, projectRoot, RuntimeStatusSnapshot{})
 }
 
+// NewWithRuntimeStatus builds a Service pinned to the given project root and
+// carrying a startup storage snapshot for Status reporting. It fails if repo
+// is nil or does not implement work plan storage; history and verification
+// stores are wired when the repository supports them.
 func NewWithRuntimeStatus(repo repositoryCore, projectRoot string, snapshot RuntimeStatusSnapshot) (*Service, error) {
 	if repo == nil {
-		return nil, fmt.Errorf("repository is required")
+		return nil, errors.New("repository is required")
 	}
 	planRepo, ok := repo.(workPlanStore)
 	if !ok {
-		return nil, fmt.Errorf("work plan storage is required")
+		return nil, errors.New("work plan storage is required")
 	}
 	svc := &Service{
 		repo:             repo,
@@ -262,8 +279,4 @@ func normalizeValues(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-func notImplemented(op string) *core.APIError {
-	return backendError(v1.ErrCodeNotImplemented, "service backend for operation is not wired yet", map[string]any{"operation": op})
 }

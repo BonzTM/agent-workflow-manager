@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -24,9 +25,13 @@ type migrationFile struct {
 	SQL  string
 }
 
+// ApplyMigrations runs every embedded schema migration that has not yet been
+// recorded in awm_schema_migrations, all within a single transaction, after
+// first upgrading any legacy "acm_"-prefixed schema in place. It is safe to
+// call repeatedly; already-applied migrations are skipped.
 func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	if pool == nil {
-		return fmt.Errorf("postgres pool is required")
+		return errors.New("postgres pool is required")
 	}
 
 	migrations, err := loadMigrations(embeddedMigrations)
@@ -38,7 +43,7 @@ func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("begin migrations tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer rollbackTx(ctx, tx)
 
 	if err := migrateLegacyAcmSchema(ctx, tx); err != nil {
 		return err

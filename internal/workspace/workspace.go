@@ -10,16 +10,26 @@ import (
 )
 
 const (
+	// DefaultSQLiteRelativePath is the repo-relative location of the SQLite
+	// database when no explicit path is configured.
 	DefaultSQLiteRelativePath = ".awm/context.db"
-	DotEnvFileName            = ".env"
-	DotEnvExampleFileName     = ".env.example"
+	// DotEnvFileName is the file name of the per-project env override file.
+	DotEnvFileName = ".env"
+	// DotEnvExampleFileName is the file name of the scaffolded env template.
+	DotEnvExampleFileName = ".env.example"
 )
 
+// Root describes a detected workspace root: its absolute path and whether it
+// was identified by the presence of a .git entry.
 type Root struct {
 	Path   string
 	IsRepo bool
 }
 
+// DetectRoot walks upward from startDir (or the current working directory
+// when blank) looking for a .git entry. It returns the containing repository
+// root when found, otherwise the cleaned absolute start directory with IsRepo
+// set to false.
 func DetectRoot(startDir string) Root {
 	base := strings.TrimSpace(startDir)
 	if base == "" {
@@ -48,6 +58,9 @@ func DetectRoot(startDir string) Root {
 	}
 }
 
+// RelativePathWithinRoot returns targetPath expressed as a slash-normalized
+// path relative to rootPath, or "" when either argument is blank or the
+// target escapes the root.
 func RelativePathWithinRoot(rootPath, targetPath string) string {
 	root := strings.TrimSpace(rootPath)
 	target := strings.TrimSpace(targetPath)
@@ -73,6 +86,9 @@ func RelativePathWithinRoot(rootPath, targetPath string) string {
 	return normalized
 }
 
+// EnsureGitIgnoreContains appends any of the given entries that are missing
+// from rootPath's .gitignore, creating the file when needed. Blank rootPath
+// is a no-op.
 func EnsureGitIgnoreContains(rootPath string, entries ...string) error {
 	root := strings.TrimSpace(rootPath)
 	if root == "" {
@@ -82,6 +98,9 @@ func EnsureGitIgnoreContains(rootPath string, entries ...string) error {
 	return appendUniqueLines(gitignorePath, entries)
 }
 
+// SQLiteGitIgnoreEntries returns the .gitignore entries covering a SQLite
+// database at relativePath plus its -shm and -wal sidecar files, or nil when
+// the path is blank.
 func SQLiteGitIgnoreEntries(relativePath string) []string {
 	normalized := normalizeRelativePath(relativePath)
 	if normalized == "" {
@@ -94,6 +113,8 @@ func SQLiteGitIgnoreEntries(relativePath string) []string {
 	}
 }
 
+// ParseDotEnvFile reads the file at path and parses it as dotenv content via
+// ParseDotEnv.
 func ParseDotEnvFile(path string) (map[string]string, error) {
 	blob, err := os.ReadFile(path)
 	if err != nil {
@@ -102,6 +123,9 @@ func ParseDotEnvFile(path string) (map[string]string, error) {
 	return ParseDotEnv(blob), nil
 }
 
+// ParseDotEnv parses dotenv-style content into a key/value map, skipping
+// blank lines and comments, honoring "export " prefixes, and unquoting
+// single- or double-quoted values.
 func ParseDotEnv(raw []byte) map[string]string {
 	parsed := make(map[string]string)
 	scanner := bufio.NewScanner(bytes.NewReader(raw))
@@ -110,8 +134,8 @@ func ParseDotEnv(raw []byte) map[string]string {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if strings.HasPrefix(line, "export ") {
-			line = strings.TrimSpace(strings.TrimPrefix(line, "export "))
+		if after, ok := strings.CutPrefix(line, "export "); ok {
+			line = strings.TrimSpace(after)
 		}
 
 		key, value, ok := parseDotEnvAssignment(line)
@@ -123,6 +147,10 @@ func ParseDotEnv(raw []byte) map[string]string {
 	return parsed
 }
 
+// LookupEnvValue resolves key first from the process environment (via
+// lookupEnv, defaulting to os.LookupEnv) and then from the .env file at the
+// workspace root detected from startDir. It returns the trimmed value, or ""
+// when the key is unset.
 func LookupEnvValue(startDir, key string, lookupEnv func(string) (string, bool)) string {
 	trimmedKey := strings.TrimSpace(key)
 	if trimmedKey == "" {
@@ -146,6 +174,8 @@ func LookupEnvValue(startDir, key string, lookupEnv func(string) (string, bool))
 	return strings.TrimSpace(values[trimmedKey])
 }
 
+// LookupEnvBool resolves key like LookupEnvValue and interprets the value as
+// a boolean, returning false when unset or unparsable.
 func LookupEnvBool(startDir, key string, lookupEnv func(string) (string, bool)) bool {
 	value := LookupEnvValue(startDir, key, lookupEnv)
 	if value == "" {
@@ -217,8 +247,8 @@ func appendUniqueLines(path string, lines []string) error {
 	}
 
 	existingSet := make(map[string]struct{})
-	existingLines := strings.Split(string(existingRaw), "\n")
-	for _, line := range existingLines {
+	existingLines := strings.SplitSeq(string(existingRaw), "\n")
+	for line := range existingLines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
 			continue
@@ -237,11 +267,11 @@ func appendUniqueLines(path string, lines []string) error {
 		return nil
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
+	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); mkdirErr != nil { //nolint:gosec // G301: repo directory, standard world-readable permissions by design
+		return mkdirErr
 	}
 
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644) //nolint:gosec // G302: .gitignore is a committed repo file, world-readable by design
 	if err != nil {
 		return err
 	}
@@ -262,7 +292,7 @@ func appendUniqueLines(path string, lines []string) error {
 		builder.WriteByte('\n')
 	}
 
-	if err := os.WriteFile(path, []byte(builder.String()), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(builder.String()), 0o644); err != nil { //nolint:gosec // G306: .gitignore is a committed repo file, world-readable by design
 		return err
 	}
 	return nil

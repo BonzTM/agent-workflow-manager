@@ -3,14 +3,15 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestFetch_PlanKeyReturnsLookupSummary(t *testing.T) {
@@ -344,16 +345,7 @@ func TestFetch_PointerKeyReadsRelativePathFromServiceProjectRoot(t *testing.T) {
 	}
 
 	otherDir := t.TempDir()
-	originalWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	if err := os.Chdir(otherDir); err != nil {
-		t.Fatalf("chdir away from project root: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = os.Chdir(originalWD)
-	})
+	t.Chdir(otherDir)
 
 	repo := &fakeRepository{
 		pointerLookupResults: []core.CandidatePointer{

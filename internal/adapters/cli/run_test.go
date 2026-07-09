@@ -372,6 +372,8 @@ func TestDispatch_RoutesFetchWorkAndHistorySearch(t *testing.T) {
 				if _, ok := result.(v1.HistorySearchResult); !ok {
 					t.Fatalf("unexpected history search result type: %T", result)
 				}
+			default:
+				t.Fatalf("unexpected command in test case: %s", tc.command)
 			}
 		})
 	}

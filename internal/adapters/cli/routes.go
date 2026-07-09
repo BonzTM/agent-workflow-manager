@@ -24,8 +24,10 @@ type routeSpec struct {
 	Hidden  bool
 }
 
-var routeCatalog = buildRouteCatalog()
-var routeCatalogByName = buildRouteCatalogByName(routeCatalog)
+var (
+	routeCatalog       = buildRouteCatalog()
+	routeCatalogByName = buildRouteCatalogByName(routeCatalog)
+)
 
 func lookupRouteSpec(name string) (routeSpec, bool) {
 	spec, ok := routeCatalogByName[name]
@@ -38,14 +40,6 @@ func matchConvenienceRoute(args []string) (routeSpec, int, bool) {
 	}
 	spec, ok := lookupRouteSpec(args[0])
 	return spec, 1, ok
-}
-
-func workflowHelpCommands() []helpCommand {
-	return helpCommandsForGroup(routeGroupWorkflow)
-}
-
-func maintenanceHelpCommands() []helpCommand {
-	return helpCommandsForGroup(routeGroupMaintenance)
 }
 
 func buildRouteCatalog() []routeSpec {

@@ -1,8 +1,10 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -11,13 +13,21 @@ import (
 )
 
 const (
-	WorkPlanListScopeCurrent   = "current"
-	WorkPlanListScopeDeferred  = "deferred"
+	// WorkPlanListScopeCurrent selects only work plans that are actively in progress.
+	WorkPlanListScopeCurrent = "current"
+	// WorkPlanListScopeDeferred selects only work plans that have been deferred.
+	WorkPlanListScopeDeferred = "deferred"
+	// WorkPlanListScopeCompleted selects only work plans that have been completed.
 	WorkPlanListScopeCompleted = "completed"
-	WorkPlanListScopeAll       = "all"
-	DefaultPhase               = "execute"
+	// WorkPlanListScopeAll selects work plans regardless of state; it is also the
+	// fallback scope when an unrecognized value is normalized.
+	WorkPlanListScopeAll = "all"
+	// DefaultPhase is the phase assigned when a raw phase value is empty or unrecognized.
+	DefaultPhase = "execute"
 )
 
+// NormalizedRunSummary is a run receipt summary whose fields have been trimmed,
+// deduplicated, and defaulted by NormalizeRunReceiptSummary, ready for storage.
 type NormalizedRunSummary struct {
 	ProjectID              string
 	RequestID              string
@@ -32,6 +42,8 @@ type NormalizedRunSummary struct {
 	Outcome                string
 }
 
+// NormalizedReceiptScope is a receipt scope whose fields have been trimmed,
+// deduplicated, and defaulted by NormalizeReceiptScope, ready for storage.
 type NormalizedReceiptScope struct {
 	ProjectID         string
 	ReceiptID         string
@@ -44,6 +56,8 @@ type NormalizedReceiptScope struct {
 	BaselinePaths     []core.SyncPath
 }
 
+// NormalizedVerificationBatch is a verification batch whose fields have been
+// validated and normalized by NormalizeVerificationBatch, ready for storage.
 type NormalizedVerificationBatch struct {
 	BatchRunID      string
 	ProjectID       string
@@ -58,6 +72,8 @@ type NormalizedVerificationBatch struct {
 	CreatedAt       time.Time
 }
 
+// NormalizedReviewAttempt is a review attempt whose fields have been validated
+// and normalized by NormalizeReviewAttempt, ready for storage.
 type NormalizedReviewAttempt struct {
 	ProjectID          string
 	ReceiptID          string
@@ -79,6 +95,8 @@ type NormalizedReviewAttempt struct {
 	CreatedAt          time.Time
 }
 
+// NormalizeWorkPlanMode maps a raw mode to WorkPlanModeReplace when it matches
+// after trimming, and to WorkPlanModeMerge for every other value.
 func NormalizeWorkPlanMode(raw core.WorkPlanMode) core.WorkPlanMode {
 	switch strings.TrimSpace(string(raw)) {
 	case string(core.WorkPlanModeReplace):
@@ -88,6 +106,8 @@ func NormalizeWorkPlanMode(raw core.WorkPlanMode) core.WorkPlanMode {
 	}
 }
 
+// NormalizePhase maps a raw phase to one of "plan", "review", or "execute"
+// (case-insensitive, trimmed), falling back to DefaultPhase for other values.
 func NormalizePhase(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "plan":
@@ -101,6 +121,9 @@ func NormalizePhase(raw string) string {
 	}
 }
 
+// SortAndLimitCandidatePointers returns a copy of candidates sorted by trimmed
+// path then key, truncated to input.Limit (or defaultLimit when Limit <= 0)
+// unless input.Unbounded is set. It returns nil for an empty input slice.
 func SortAndLimitCandidatePointers(candidates []core.CandidatePointer, input core.CandidatePointerQuery, defaultLimit int) []core.CandidatePointer {
 	if len(candidates) == 0 {
 		return nil
@@ -126,6 +149,8 @@ func SortAndLimitCandidatePointers(candidates []core.CandidatePointer, input cor
 	return sorted
 }
 
+// CandidateTagOverlap counts the distinct values that also appear in targets.
+// Duplicate matches in values are counted once; empty inputs yield 0.
 func CandidateTagOverlap(values, targets []string) int {
 	if len(values) == 0 || len(targets) == 0 {
 		return 0
@@ -149,6 +174,8 @@ func CandidateTagOverlap(values, targets []string) int {
 	return count
 }
 
+// NormalizeWorkPlanListScope maps a raw scope to one of the WorkPlanListScope*
+// constants after trimming, falling back to WorkPlanListScopeAll.
 func NormalizeWorkPlanListScope(raw string) string {
 	switch strings.TrimSpace(raw) {
 	case WorkPlanListScopeCurrent:
@@ -162,6 +189,9 @@ func NormalizeWorkPlanListScope(raw string) string {
 	}
 }
 
+// WorkPlanListSearchPattern converts a raw search term into a SQL LIKE pattern:
+// lowercased, trimmed, with `\`, `%`, and `_` escaped, wrapped in `%...%`.
+// It returns "" when the trimmed input is empty.
 func WorkPlanListSearchPattern(raw string) string {
 	trimmed := strings.ToLower(strings.TrimSpace(raw))
 	if trimmed == "" {
@@ -171,6 +201,8 @@ func WorkPlanListSearchPattern(raw string) string {
 	return "%" + replacer.Replace(trimmed) + "%"
 }
 
+// NormalizeWorkPlanStages normalizes each stage status via NormalizeWorkItemStatus,
+// treating blank stages as WorkItemStatusPending.
 func NormalizeWorkPlanStages(raw core.WorkPlanStages) core.WorkPlanStages {
 	out := core.WorkPlanStages{
 		SpecOutline:        NormalizeWorkItemStatus(raw.SpecOutline),
@@ -189,6 +221,10 @@ func NormalizeWorkPlanStages(raw core.WorkPlanStages) core.WorkPlanStages {
 	return out
 }
 
+// NormalizeWorkPlanTasks trims and normalizes each task, drops entries with an
+// empty item key, deduplicates by key keeping the entry with the highest status
+// priority (blocked > in_progress > pending > complete/superseded), and returns
+// the result sorted by item key. It returns nil when nothing survives.
 func NormalizeWorkPlanTasks(tasks []core.WorkItem) []core.WorkItem {
 	if len(tasks) == 0 {
 		return nil
@@ -242,6 +278,10 @@ func NormalizeWorkPlanTasks(tasks []core.WorkItem) []core.WorkItem {
 	return out
 }
 
+// MergeIncomingWorkPlanTasks merges incoming tasks into current ones keyed by
+// item key, sorted by key. In WorkPlanModeReplace it returns the normalized
+// incoming set alone; in merge mode incoming fields overlay matching current
+// tasks, and it returns nil when incoming is empty or has no valid keys.
 func MergeIncomingWorkPlanTasks(current, incoming []core.WorkItem, mode core.WorkPlanMode) []core.WorkItem {
 	if mode == core.WorkPlanModeReplace {
 		return NormalizeWorkPlanTasks(incoming)
@@ -345,6 +385,11 @@ func mergeWorkPlanTask(current, incoming core.WorkItem, found bool) core.WorkIte
 	return merged
 }
 
+// BuildNextWorkPlanState computes the next persisted state of a work plan from
+// the current state (used when found is true) and the upsert input. In merge
+// mode only non-empty input fields overwrite current values; in
+// WorkPlanModeReplace the plan is rebuilt from the input with pending defaults.
+// Project ID, plan key, status, and stages are always normalized on the result.
 func BuildNextWorkPlanState(current core.WorkPlan, found bool, input core.WorkPlanUpsertInput, mode core.WorkPlanMode) core.WorkPlan {
 	projectID := strings.TrimSpace(input.ProjectID)
 	planKey := strings.TrimSpace(input.PlanKey)
@@ -440,6 +485,9 @@ func BuildNextWorkPlanState(current core.WorkPlan, found bool, input core.WorkPl
 	return next
 }
 
+// MergeWorkPlanStages overlays non-blank incoming stage statuses onto current,
+// normalizing each applied value. In WorkPlanModeReplace all stages are taken
+// from incoming, replacing the current values entirely.
 func MergeWorkPlanStages(current, incoming core.WorkPlanStages, mode core.WorkPlanMode) core.WorkPlanStages {
 	out := current
 	if mode == core.WorkPlanModeReplace {
@@ -457,10 +505,13 @@ func MergeWorkPlanStages(current, incoming core.WorkPlanStages, mode core.WorkPl
 	return out
 }
 
+// NormalizeRunReceiptSummary trims and defaults a run receipt summary: status
+// defaults to "accepted" and phase to "execute" when blank, and list fields are
+// deduplicated and sorted. It returns an error when project_id is empty.
 func NormalizeRunReceiptSummary(input core.RunReceiptSummary) (NormalizedRunSummary, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return NormalizedRunSummary{}, fmt.Errorf("project_id is required")
+		return NormalizedRunSummary{}, errors.New("project_id is required")
 	}
 	status := strings.TrimSpace(input.Status)
 	if status == "" {
@@ -485,14 +536,17 @@ func NormalizeRunReceiptSummary(input core.RunReceiptSummary) (NormalizedRunSumm
 	}, nil
 }
 
+// NormalizeReceiptScope trims and defaults a receipt scope: phase defaults to
+// "execute" when blank, and tag, pointer, and path lists are normalized. It
+// returns an error when project_id or receipt_id is empty.
 func NormalizeReceiptScope(input core.ReceiptScope) (NormalizedReceiptScope, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return NormalizedReceiptScope{}, fmt.Errorf("project_id is required")
+		return NormalizedReceiptScope{}, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return NormalizedReceiptScope{}, fmt.Errorf("receipt_id is required")
+		return NormalizedReceiptScope{}, errors.New("receipt_id is required")
 	}
 	phase := strings.TrimSpace(input.Phase)
 	if phase == "" {
@@ -511,18 +565,23 @@ func NormalizeReceiptScope(input core.ReceiptScope) (NormalizedReceiptScope, err
 	}, nil
 }
 
+// NormalizeVerificationBatch validates and normalizes a verification batch.
+// It requires project_id and batch_run_id, a status of passed|failed, and for
+// each result a test_id, definition_hash, a recognized status, timeout_sec > 0,
+// and expected_exit_code in 0..255. Zero timestamps default to the current time
+// and finished_at is clamped to be no earlier than started_at.
 func NormalizeVerificationBatch(input core.VerificationBatch) (NormalizedVerificationBatch, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return NormalizedVerificationBatch{}, fmt.Errorf("project_id is required")
+		return NormalizedVerificationBatch{}, errors.New("project_id is required")
 	}
 	batchRunID := strings.TrimSpace(input.BatchRunID)
 	if batchRunID == "" {
-		return NormalizedVerificationBatch{}, fmt.Errorf("batch_run_id is required")
+		return NormalizedVerificationBatch{}, errors.New("batch_run_id is required")
 	}
 	status := strings.TrimSpace(input.Status)
 	if status != "passed" && status != "failed" {
-		return NormalizedVerificationBatch{}, fmt.Errorf("status must be passed|failed")
+		return NormalizedVerificationBatch{}, errors.New("status must be passed|failed")
 	}
 
 	results := make([]core.VerificationTestRun, 0, len(input.Results))
@@ -549,10 +608,7 @@ func NormalizeVerificationBatch(input core.VerificationBatch) (NormalizedVerific
 		if expectedExitCode < 0 || expectedExitCode > 255 {
 			return NormalizedVerificationBatch{}, fmt.Errorf("results[%d].expected_exit_code must be 0..255", i)
 		}
-		durationMS := raw.DurationMS
-		if durationMS < 0 {
-			durationMS = 0
-		}
+		durationMS := max(raw.DurationMS, 0)
 		startedAt := raw.StartedAt.UTC()
 		if startedAt.IsZero() {
 			startedAt = time.Now().UTC()
@@ -602,35 +658,39 @@ func NormalizeVerificationBatch(input core.VerificationBatch) (NormalizedVerific
 	}, nil
 }
 
+// NormalizeReviewAttempt validates and normalizes a review attempt. It requires
+// project_id, receipt_id, review_key, and fingerprint, a status of
+// passed|failed, timeout_sec > 0, and an exit code in 0..255 when provided.
+// A zero created_at defaults to the current UTC time.
 func NormalizeReviewAttempt(input core.ReviewAttempt) (NormalizedReviewAttempt, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return NormalizedReviewAttempt{}, fmt.Errorf("project_id is required")
+		return NormalizedReviewAttempt{}, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return NormalizedReviewAttempt{}, fmt.Errorf("receipt_id is required")
+		return NormalizedReviewAttempt{}, errors.New("receipt_id is required")
 	}
 	reviewKey := strings.TrimSpace(input.ReviewKey)
 	if reviewKey == "" {
-		return NormalizedReviewAttempt{}, fmt.Errorf("review_key is required")
+		return NormalizedReviewAttempt{}, errors.New("review_key is required")
 	}
 	fingerprint := strings.TrimSpace(input.Fingerprint)
 	if fingerprint == "" {
-		return NormalizedReviewAttempt{}, fmt.Errorf("fingerprint is required")
+		return NormalizedReviewAttempt{}, errors.New("fingerprint is required")
 	}
 	status := strings.TrimSpace(input.Status)
 	if status != "passed" && status != "failed" {
-		return NormalizedReviewAttempt{}, fmt.Errorf("status must be passed|failed")
+		return NormalizedReviewAttempt{}, errors.New("status must be passed|failed")
 	}
 	timeoutSec := input.TimeoutSec
 	if timeoutSec <= 0 {
-		return NormalizedReviewAttempt{}, fmt.Errorf("timeout_sec must be > 0")
+		return NormalizedReviewAttempt{}, errors.New("timeout_sec must be > 0")
 	}
 	if input.ExitCode != nil {
 		exitCode := *input.ExitCode
 		if exitCode < 0 || exitCode > 255 {
-			return NormalizedReviewAttempt{}, fmt.Errorf("exit_code must be 0..255 when provided")
+			return NormalizedReviewAttempt{}, errors.New("exit_code must be 0..255 when provided")
 		}
 	}
 	createdAt := input.CreatedAt.UTC()
@@ -659,10 +719,15 @@ func NormalizeReviewAttempt(input core.ReviewAttempt) (NormalizedReviewAttempt, 
 	}, nil
 }
 
+// NormalizeSyncApplyInput validates and normalizes a sync apply request. It
+// requires project_id, defaults the mode to "changed", and rejects modes other
+// than changed|full|working_tree. Paths are normalized, deduplicated (deletions
+// do not override non-deleted entries), and sorted; non-deleted paths must
+// carry a content hash.
 func NormalizeSyncApplyInput(input core.SyncApplyInput) (core.SyncApplyInput, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.SyncApplyInput{}, fmt.Errorf("project_id is required")
+		return core.SyncApplyInput{}, errors.New("project_id is required")
 	}
 
 	mode := strings.TrimSpace(input.Mode)
@@ -670,7 +735,7 @@ func NormalizeSyncApplyInput(input core.SyncApplyInput) (core.SyncApplyInput, er
 		mode = "changed"
 	}
 	if mode != "changed" && mode != "full" && mode != "working_tree" {
-		return core.SyncApplyInput{}, fmt.Errorf("mode must be changed|full|working_tree")
+		return core.SyncApplyInput{}, errors.New("mode must be changed|full|working_tree")
 	}
 
 	pathByKey := make(map[string]core.SyncPath, len(input.Paths))
@@ -716,6 +781,10 @@ func NormalizeSyncApplyInput(input core.SyncApplyInput) (core.SyncApplyInput, er
 	}, nil
 }
 
+// NormalizeWorkItems normalizes item keys as repo paths and statuses, then
+// deduplicates by key keeping the highest-priority status (blocked >
+// in_progress > pending > complete) and returns items sorted by key. It errors
+// when any item key normalizes to empty and returns nil for empty input.
 func NormalizeWorkItems(items []core.WorkItem) ([]core.WorkItem, error) {
 	if len(items) == 0 {
 		return nil, nil
@@ -732,7 +801,7 @@ func NormalizeWorkItems(items []core.WorkItem) ([]core.WorkItem, error) {
 	for _, raw := range items {
 		itemKey := NormalizeRepoPath(raw.ItemKey)
 		if itemKey == "" {
-			return nil, fmt.Errorf("work item key is required")
+			return nil, errors.New("work item key is required")
 		}
 		status := NormalizeWorkItemStatus(raw.Status)
 
@@ -756,6 +825,9 @@ func NormalizeWorkItems(items []core.WorkItem) ([]core.WorkItem, error) {
 	return out, nil
 }
 
+// DerivePlanStatus computes an aggregate plan status from item statuses with
+// precedence blocked > in_progress > pending > complete > superseded, and
+// returns PlanStatusPending when items is empty.
 func DerivePlanStatus(items []core.WorkItem) string {
 	if len(items) == 0 {
 		return core.PlanStatusPending
@@ -798,10 +870,15 @@ func DerivePlanStatus(items []core.WorkItem) string {
 	}
 }
 
+// StorageWorkItemStatus returns the storage representation of a work item
+// status; it is an alias for NormalizeWorkItemStatus.
 func StorageWorkItemStatus(raw string) string {
 	return NormalizeWorkItemStatus(raw)
 }
 
+// NormalizeWorkItemStatus maps a raw status (case-insensitive, trimmed;
+// "completed" is accepted for complete) to a canonical core.WorkItemStatus*
+// value, falling back to WorkItemStatusPending.
 func NormalizeWorkItemStatus(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case core.WorkItemStatusComplete, "completed":
@@ -817,6 +894,9 @@ func NormalizeWorkItemStatus(raw string) string {
 	}
 }
 
+// NormalizeRepoPath trims a repository path, converts backslashes to forward
+// slashes, and cleans it. It returns "" for empty input or paths that clean
+// to ".".
 func NormalizeRepoPath(raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
@@ -830,6 +910,9 @@ func NormalizeRepoPath(raw string) string {
 	return cleaned
 }
 
+// NormalizeRepoPathList normalizes each entry via NormalizeRepoPath, drops
+// empties, deduplicates, and returns the result sorted. It returns nil for
+// empty input.
 func NormalizeRepoPathList(values []string) []string {
 	if len(values) == 0 {
 		return nil
@@ -851,6 +934,9 @@ func NormalizeRepoPathList(values []string) []string {
 	return out
 }
 
+// NormalizeSyncPathList normalizes sync paths, deduplicates by normalized path
+// (last entry wins), clears content hashes on deleted entries, and returns the
+// result sorted by path. It returns nil when nothing survives.
 func NormalizeSyncPathList(values []core.SyncPath) []core.SyncPath {
 	if len(values) == 0 {
 		return nil
@@ -889,6 +975,8 @@ func NormalizeSyncPathList(values []core.SyncPath) []core.SyncPath {
 	return out
 }
 
+// NormalizeStringList trims each value, drops empties, deduplicates, and
+// returns the result sorted. It returns nil for empty input.
 func NormalizeStringList(values []string) []string {
 	if len(values) == 0 {
 		return nil
@@ -910,6 +998,9 @@ func NormalizeStringList(values []string) []string {
 	return out
 }
 
+// NormalizeStringListPreserveOrder trims each value and drops empties while
+// keeping the original order and any duplicates. It returns nil when nothing
+// survives.
 func NormalizeStringListPreserveOrder(values []string) []string {
 	if len(values) == 0 {
 		return nil
@@ -928,6 +1019,8 @@ func NormalizeStringListPreserveOrder(values []string) []string {
 	return out
 }
 
+// NormalizeInt64List deduplicates the values and returns them sorted ascending.
+// It returns nil for empty input.
 func NormalizeInt64List(values []int64) []int64 {
 	if len(values) == 0 {
 		return nil
@@ -941,6 +1034,6 @@ func NormalizeInt64List(values []int64) []int64 {
 		seen[v] = struct{}{}
 		out = append(out, v)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }

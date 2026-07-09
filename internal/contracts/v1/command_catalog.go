@@ -6,13 +6,22 @@ import (
 	"strings"
 )
 
+// CommandGroup classifies catalog commands into functional groups used to
+// filter the catalog (see WorkflowCommandCatalog and MaintenanceCommandCatalog).
 type CommandGroup string
 
 const (
-	CommandGroupWorkflow    CommandGroup = "workflow"
+	// CommandGroupWorkflow marks commands that drive the day-to-day task
+	// workflow (context, fetch, done, review, work, history, export).
+	CommandGroupWorkflow CommandGroup = "workflow"
+	// CommandGroupMaintenance marks commands that maintain or inspect project
+	// state (sync, health, status, verify, init).
 	CommandGroupMaintenance CommandGroup = "maintenance"
 )
 
+// CommandSpec describes one catalog command: its canonical Command name, CLI
+// subcommand/usage/summary, group, JSON schema definition names, MCP tool
+// title/description, and the payload decoder invoked via Decode.
 type CommandSpec struct {
 	Command         Command
 	CLISubcommand   string
@@ -26,6 +35,10 @@ type CommandSpec struct {
 	decode          func(json.RawMessage, ValidationDefaults) (any, *ErrorPayload)
 }
 
+// Decode parses and validates the raw JSON payload for this command using the
+// spec's decoder, applying the normalized validation defaults. It returns the
+// typed payload, or an ErrorPayload when the spec has no decoder or the payload
+// fails decoding or validation.
 func (s CommandSpec) Decode(raw json.RawMessage, defaults ValidationDefaults) (any, *ErrorPayload) {
 	if s.decode == nil {
 		return nil, validationError(ErrCodeInvalidCommand, "command is not recognized")
@@ -269,33 +282,47 @@ var commandCatalog = []CommandSpec{
 }
 var commandCatalogByCommand = buildCommandCatalogByCommand(commandCatalog)
 
+// CommandCatalog returns a copy of the full command catalog in its declared
+// order; callers may modify the returned slice freely.
 func CommandCatalog() []CommandSpec {
 	out := make([]CommandSpec, len(commandCatalog))
 	copy(out, commandCatalog)
 	return out
 }
 
+// CommandSpecs returns a copy of the full command catalog; it is an alias for
+// CommandCatalog.
 func CommandSpecs() []CommandSpec {
 	return CommandCatalog()
 }
 
+// WorkflowCommandCatalog returns the catalog commands in CommandGroupWorkflow,
+// in declared order.
 func WorkflowCommandCatalog() []CommandSpec {
 	return commandCatalogByGroup(commandCatalog, CommandGroupWorkflow)
 }
 
+// MaintenanceCommandCatalog returns the catalog commands in
+// CommandGroupMaintenance, in declared order.
 func MaintenanceCommandCatalog() []CommandSpec {
 	return commandCatalogByGroup(commandCatalog, CommandGroupMaintenance)
 }
 
+// LookupCommandSpec returns the catalog spec for the given command and whether
+// the command is registered.
 func LookupCommandSpec(command Command) (CommandSpec, bool) {
 	spec, ok := commandCatalogByCommand[command]
 	return spec, ok
 }
 
+// LookupCommand returns the catalog spec for the given command and whether it
+// is registered; it is an alias for LookupCommandSpec.
 func LookupCommand(command Command) (CommandSpec, bool) {
 	return LookupCommandSpec(command)
 }
 
+// LookupCommandByCLISubcommand returns the catalog spec whose CLISubcommand
+// matches the trimmed input, and whether a match was found.
 func LookupCommandByCLISubcommand(subcommand string) (CommandSpec, bool) {
 	trimmed := strings.TrimSpace(subcommand)
 	for _, spec := range commandCatalog {
@@ -306,6 +333,8 @@ func LookupCommandByCLISubcommand(subcommand string) (CommandSpec, bool) {
 	return CommandSpec{}, false
 }
 
+// CommandNames returns the canonical command names of every catalog entry, in
+// declared order.
 func CommandNames() []string {
 	out := make([]string, 0, len(commandCatalog))
 	for _, spec := range commandCatalog {
@@ -314,6 +343,8 @@ func CommandNames() []string {
 	return out
 }
 
+// CommandFromToolName maps an MCP tool name (trimmed) to its canonical catalog
+// Command, returning false when the name is not a registered command.
 func CommandFromToolName(tool string) (Command, bool) {
 	spec, ok := LookupCommand(Command(strings.TrimSpace(tool)))
 	if !ok {
@@ -322,6 +353,8 @@ func CommandFromToolName(tool string) (Command, bool) {
 	return spec.Command, true
 }
 
+// BuildEnvelopeForCommand marshals a CommandEnvelope for the given command with
+// the current contract Version, the trimmed request ID, and the raw payload.
 func BuildEnvelopeForCommand(command Command, requestID string, payload json.RawMessage) ([]byte, error) {
 	return json.Marshal(CommandEnvelope{
 		Version:   Version,
@@ -331,6 +364,9 @@ func BuildEnvelopeForCommand(command Command, requestID string, payload json.Raw
 	})
 }
 
+// ProjectIDFromPayload extracts the trimmed project ID from any known command
+// payload type, a map with a "project_id" key, or (via reflection) any struct
+// with a string ProjectID field. It returns "" when no project ID is found.
 func ProjectIDFromPayload(payload any) string {
 	switch p := payload.(type) {
 	case ContextPayload:

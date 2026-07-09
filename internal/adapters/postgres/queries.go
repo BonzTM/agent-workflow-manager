@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -10,20 +11,7 @@ import (
 	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
-const (
-	defaultCandidateLimit = 32
-	maxQueryLimit         = 512
-	defaultPhase          = "execute"
-
-	candidateStatusPending  = "pending"
-	candidateStatusPromoted = "promoted"
-	candidateStatusRejected = "rejected"
-
-	workItemStatusPending    = core.WorkItemStatusPending
-	workItemStatusInProgress = core.WorkItemStatusInProgress
-	workItemStatusBlocked    = core.WorkItemStatusBlocked
-	workItemStatusComplete   = core.WorkItemStatusComplete
-)
+const defaultCandidateLimit = 32
 
 type sqlArgs struct {
 	values []any
@@ -37,7 +25,7 @@ func (a *sqlArgs) add(v any) string {
 func buildCandidatePointersQuery(input core.CandidatePointerQuery) (string, []any, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 
 	args := &sqlArgs{}
@@ -83,11 +71,11 @@ ORDER BY p.pointer_key ASC`)
 func buildFetchReceiptScopeQuery(input core.ReceiptScopeQuery) (string, []any, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return "", nil, fmt.Errorf("receipt_id is required")
+		return "", nil, errors.New("receipt_id is required")
 	}
 
 	return `
@@ -110,11 +98,11 @@ WHERE r.project_id = $1
 func buildLookupFetchStateQuery(input core.FetchLookupQuery) (string, []any, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return "", nil, fmt.Errorf("receipt_id is required")
+		return "", nil, errors.New("receipt_id is required")
 	}
 
 	return `
@@ -140,11 +128,11 @@ WHERE r.project_id = $1
 func buildLookupPointerByKeyQuery(input core.PointerLookupQuery) (string, []any, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	pointerKey := strings.TrimSpace(input.PointerKey)
 	if pointerKey == "" {
-		return "", nil, fmt.Errorf("pointer_key is required")
+		return "", nil, errors.New("pointer_key is required")
 	}
 
 	return `
@@ -169,11 +157,11 @@ WHERE project_id = $1
 func buildListWorkItemsQuery(input core.FetchLookupQuery) (string, []any, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return "", nil, fmt.Errorf("receipt_id is required")
+		return "", nil, errors.New("receipt_id is required")
 	}
 
 	return `
@@ -191,11 +179,11 @@ ORDER BY item_key ASC
 func buildUpsertWorkItemsQuery(input core.WorkItemsUpsertInput) (string, []any, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return "", nil, fmt.Errorf("receipt_id is required")
+		return "", nil, errors.New("receipt_id is required")
 	}
 
 	items, err := normalizeWorkItems(input.Items)
@@ -203,7 +191,7 @@ func buildUpsertWorkItemsQuery(input core.WorkItemsUpsertInput) (string, []any, 
 		return "", nil, err
 	}
 	if len(items) == 0 {
-		return "", nil, fmt.Errorf("work items are required")
+		return "", nil, errors.New("work items are required")
 	}
 
 	args := &sqlArgs{}
@@ -249,11 +237,11 @@ SET
 func buildMarkDeletedPointersStaleQuery(projectID string, deletedPaths []string) (string, []any, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	normalizedPaths := normalizeSyncPaths(deletedPaths)
 	if len(normalizedPaths) == 0 {
-		return "", nil, fmt.Errorf("deleted paths are required")
+		return "", nil, errors.New("deleted paths are required")
 	}
 
 	return `
@@ -271,7 +259,7 @@ WHERE project_id = $1
 func buildMarkMissingPointersStaleQuery(projectID string, presentPaths []string) (string, []any, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	normalizedPaths := normalizeSyncPaths(presentPaths)
 	if len(normalizedPaths) == 0 {
@@ -301,14 +289,14 @@ WHERE project_id = $1
 func buildRefreshPointersQuery(projectID string, paths []core.SyncPath) (string, []any, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	normalizedPaths, err := normalizeSyncPathRows(paths, true)
 	if err != nil {
 		return "", nil, err
 	}
 	if len(normalizedPaths) == 0 {
-		return "", nil, fmt.Errorf("paths are required")
+		return "", nil, errors.New("paths are required")
 	}
 
 	args := &sqlArgs{}
@@ -341,14 +329,14 @@ WHERE p.project_id = ` + projectIDArg + `
 func buildInsertPointerCandidatesQuery(projectID string, paths []core.SyncPath) (string, []any, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return "", nil, fmt.Errorf("project_id is required")
+		return "", nil, errors.New("project_id is required")
 	}
 	normalizedPaths, err := normalizeSyncPathRows(paths, true)
 	if err != nil {
 		return "", nil, err
 	}
 	if len(normalizedPaths) == 0 {
-		return "", nil, fmt.Errorf("paths are required")
+		return "", nil, errors.New("paths are required")
 	}
 
 	args := &sqlArgs{}
@@ -388,35 +376,8 @@ ON CONFLICT (project_id, path) DO NOTHING
 	return query, args.values, nil
 }
 
-func isValidCandidateStatus(status string) bool {
-	switch status {
-	case candidateStatusPending, candidateStatusPromoted, candidateStatusRejected:
-		return true
-	default:
-		return false
-	}
-}
-
-func normalizePhase(value string) string {
-	return storagedomain.NormalizePhase(value)
-}
-
-func normalizeLimit(v int, fallback int) int {
-	if v <= 0 {
-		v = fallback
-	}
-	if v > maxQueryLimit {
-		v = maxQueryLimit
-	}
-	return v
-}
-
 func normalizeStringList(values []string) []string {
 	return storagedomain.NormalizeStringList(values)
-}
-
-func normalizeInt64List(values []int64) []int64 {
-	return storagedomain.NormalizeInt64List(values)
 }
 
 func normalizeStaleBefore(t *time.Time) *time.Time {
@@ -472,7 +433,7 @@ func normalizeSyncPathRows(paths []core.SyncPath, requireHash bool) ([]core.Sync
 	for _, raw := range paths {
 		normalizedPath := normalizeSyncPath(raw.Path)
 		if normalizedPath == "" {
-			return nil, fmt.Errorf("path is required")
+			return nil, errors.New("path is required")
 		}
 		if raw.Deleted {
 			continue

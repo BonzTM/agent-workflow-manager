@@ -1329,7 +1329,10 @@ func TestDecodeAndValidateCommand_ProjectRootOverridesDefaultProjectID(t *testin
 			payload: fmt.Sprintf(`{"project_root":%q}`, projectRoot),
 			assert: func(t *testing.T, payload any) {
 				t.Helper()
-				p := payload.(SyncPayload)
+				p, isTyped := payload.(SyncPayload)
+				if !isTyped {
+					t.Fatalf("unexpected payload type %T", payload)
+				}
 				if got, want := p.ProjectID, "Target-Repo"; got != want {
 					t.Fatalf("unexpected project_id: got %q want %q", got, want)
 				}
@@ -1341,7 +1344,10 @@ func TestDecodeAndValidateCommand_ProjectRootOverridesDefaultProjectID(t *testin
 			payload: fmt.Sprintf(`{"project_root":%q}`, projectRoot),
 			assert: func(t *testing.T, payload any) {
 				t.Helper()
-				p := payload.(HealthPayload)
+				p, isTyped := payload.(HealthPayload)
+				if !isTyped {
+					t.Fatalf("unexpected payload type %T", payload)
+				}
 				if got, want := p.ProjectID, "Target-Repo"; got != want {
 					t.Fatalf("unexpected project_id: got %q want %q", got, want)
 				}
@@ -1353,7 +1359,10 @@ func TestDecodeAndValidateCommand_ProjectRootOverridesDefaultProjectID(t *testin
 			payload: fmt.Sprintf(`{"project_root":%q}`, projectRoot),
 			assert: func(t *testing.T, payload any) {
 				t.Helper()
-				p := payload.(InitPayload)
+				p, isTyped := payload.(InitPayload)
+				if !isTyped {
+					t.Fatalf("unexpected payload type %T", payload)
+				}
 				if got, want := p.ProjectID, "Target-Repo"; got != want {
 					t.Fatalf("unexpected project_id: got %q want %q", got, want)
 				}

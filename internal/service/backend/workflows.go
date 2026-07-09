@@ -4,12 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
-	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"gopkg.in/yaml.v3"
 
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 )
 
@@ -146,7 +145,7 @@ func statWorkflowDefinitionsSource(projectRoot, sourcePath string) (workflowDefi
 		return workflowDefinitionsSource{}, fmt.Errorf("workflow definitions source path is required: %w", err)
 	}
 	stat, err := os.Stat(absolutePath)
-	exists := false
+	var exists bool
 	switch {
 	case err == nil:
 		exists = !stat.IsDir()
@@ -245,26 +244,6 @@ func normalizeWorkflowRequiredTask(sourcePath string, index int, raw workflowReq
 	}, nil
 }
 
-func matchWorkflowRequiredTasks(definitions []workflowRequiredTaskDefinition, selection verifySelectionContext) []string {
-	if len(definitions) == 0 {
-		return nil
-	}
-
-	seen := make(map[string]struct{}, len(definitions))
-	matches := make([]string, 0, len(definitions))
-	for _, definition := range definitions {
-		if !matchWorkflowRequiredTask(definition, selection) {
-			continue
-		}
-		if _, ok := seen[definition.Key]; ok {
-			continue
-		}
-		seen[definition.Key] = struct{}{}
-		matches = append(matches, definition.Key)
-	}
-	return matches
-}
-
 func matchWorkflowRequiredTaskDefinitions(definitions []workflowRequiredTaskDefinition, selection verifySelectionContext) []workflowRequiredTaskDefinition {
 	if len(definitions) == 0 {
 		return nil
@@ -321,12 +300,6 @@ func normalizeCompletionRequiredTaskKeys(keys []string) []string {
 
 func hasConfiguredWorkflowRequiredTasks(source workflowDefinitionsSource, definitions []workflowRequiredTaskDefinition) bool {
 	return source.Exists && len(definitions) > 0
-}
-
-func sortWorkflowRequiredTaskKeys(keys []string) []string {
-	out := append([]string(nil), keys...)
-	sort.Strings(out)
-	return out
 }
 
 func findWorkflowRequiredTaskDefinition(definitions []workflowRequiredTaskDefinition, key string) (workflowRequiredTaskDefinition, bool) {

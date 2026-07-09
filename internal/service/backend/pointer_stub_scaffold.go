@@ -72,8 +72,8 @@ func inferPointerTagsFromPath(filePath, kind string, tagNormalizer canonicalTagN
 	if normalized := tagNormalizer.normalizeTag(baseName); healthTagPattern.MatchString(normalized) {
 		tags = append(tags, normalized)
 	}
-	segments := strings.Split(path.Dir(filePath), "/")
-	for _, segment := range segments {
+	segments := strings.SplitSeq(path.Dir(filePath), "/")
+	for segment := range segments {
 		normalized := tagNormalizer.normalizeTag(segment)
 		if !healthTagPattern.MatchString(normalized) {
 			continue

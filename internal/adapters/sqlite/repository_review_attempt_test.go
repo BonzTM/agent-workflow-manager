@@ -17,13 +17,13 @@ func TestSaveAndListReviewAttempts_RoundTrip(t *testing.T) {
 		t.Fatalf("new repository: %v", err)
 	}
 	t.Cleanup(func() { _ = repo.Close() })
-	if err := repo.UpsertReceiptScope(ctx, core.ReceiptScope{
+	if seedErr := repo.UpsertReceiptScope(ctx, core.ReceiptScope{
 		ProjectID: "project.alpha",
 		ReceiptID: "receipt.abc123",
 		TaskText:  "review receipt seed",
 		Phase:     "review",
-	}); err != nil {
-		t.Fatalf("seed receipt scope: %v", err)
+	}); seedErr != nil {
+		t.Fatalf("seed receipt scope: %v", seedErr)
 	}
 
 	exitCode := 1

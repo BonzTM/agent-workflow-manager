@@ -15,8 +15,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"gopkg.in/yaml.v3"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 )
 
 //go:embed all:bootstrap_templates/**
@@ -28,9 +29,15 @@ const (
 	initTemplateOpCreateOrReplaceIfPristine = "create_or_replace_if_pristine"
 	initTemplateOpReplaceIfPristine         = "replace_if_pristine"
 	initTemplateOpMergeJSON                 = "merge_json"
-	BlankRulesContents                      = "version: awm.rules.v1\nrules: []\n"
-	BlankTestsContents                      = "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n"
-	BlankWorkflowsContents                  = "version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n"
+	// BlankRulesContents is the empty canonical ruleset scaffolded when a
+	// project has no ruleset yet.
+	BlankRulesContents = "version: awm.rules.v1\nrules: []\n"
+	// BlankTestsContents is the empty verify-tests document scaffolded when a
+	// project has no tests file yet.
+	BlankTestsContents = "version: awm.tests.v1\ndefaults:\n  cwd: .\n  timeout_sec: 300\ntests: []\n"
+	// BlankWorkflowsContents is the empty workflow-definitions document
+	// scaffolded when a project has no workflows file yet.
+	BlankWorkflowsContents = "version: awm.workflows.v1\ncompletion:\n  required_tasks: []\n"
 )
 
 type initTemplateManifest struct {
@@ -48,6 +55,8 @@ type initTemplateOperationManifest struct {
 	Pristine []string `yaml:"pristine,omitempty"`
 }
 
+// Template is a resolved init template: a catalog entry identified by ID with
+// the ordered file operations it applies to a project.
 type Template struct {
 	ID         string
 	Summary    string
@@ -67,11 +76,15 @@ type initTemplateContext struct {
 	RepoName  string
 }
 
+// ApplyResult reports the outcome of applying init templates: one result per
+// template plus the normalized repo-relative paths of newly created files.
 type ApplyResult struct {
 	TemplateResults []v1.InitTemplateResult
 	CandidatePaths  []string
 }
 
+// UnknownTemplateError reports a requested init template ID that does not
+// exist in the embedded catalog.
 type UnknownTemplateError struct {
 	TemplateID string
 }
@@ -80,6 +93,10 @@ func (e UnknownTemplateError) Error() string {
 	return fmt.Sprintf("unknown init template %q", e.TemplateID)
 }
 
+// ResolveTemplates looks up the given template IDs in the embedded catalog,
+// deduplicating aliases, and returns them in request order. It returns an
+// UnknownTemplateError for IDs not present in the catalog and nil when no IDs
+// are supplied.
 func ResolveTemplates(templateIDs []string) ([]Template, error) {
 	normalizedIDs := normalizeValues(templateIDs)
 	if len(normalizedIDs) == 0 {
@@ -212,7 +229,7 @@ func requiresInitTemplateSource(opType string) bool {
 func resolveInitTemplateSource(manifestPath, source string) (string, error) {
 	trimmed := strings.TrimSpace(source)
 	if trimmed == "" {
-		return "", fmt.Errorf("source is required")
+		return "", errors.New("source is required")
 	}
 	if strings.HasPrefix(trimmed, "/") || strings.Contains(trimmed, "\\") {
 		return "", fmt.Errorf("source %q is invalid", source)
@@ -246,6 +263,10 @@ func parseInitTemplateMode(raw string) (os.FileMode, error) {
 	return os.FileMode(value), nil
 }
 
+// ApplyTemplates applies each template's operations under projectRoot,
+// rendering assets with projectID and the repo name. It stops at the first
+// operation error and otherwise aggregates per-template results and created
+// paths into an ApplyResult.
 func ApplyTemplates(projectRoot, projectID string, templates []Template) (ApplyResult, error) {
 	if len(templates) == 0 {
 		return ApplyResult{}, nil
@@ -365,8 +386,8 @@ func applyInitTemplateCreateOrReplaceIfPristine(projectRoot string, ctx initTemp
 	existing, err := os.ReadFile(targetPath)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		if err := writeInitTemplateNewFile(targetPath, rendered, operation.Mode); err != nil {
-			return false, err
+		if writeErr := writeInitTemplateNewFile(targetPath, rendered, operation.Mode); writeErr != nil {
+			return false, writeErr
 		}
 		result.Created = append(result.Created, operation.Target)
 		return true, nil
@@ -375,8 +396,8 @@ func applyInitTemplateCreateOrReplaceIfPristine(projectRoot string, ctx initTemp
 	}
 
 	if bytes.Equal(existing, rendered) {
-		if modeUpdated, err := ensureInitTemplateMode(targetPath, operation.Mode); err != nil {
-			return false, err
+		if modeUpdated, modeErr := ensureInitTemplateMode(targetPath, operation.Mode); modeErr != nil {
+			return false, modeErr
 		} else if modeUpdated {
 			result.Updated = append(result.Updated, operation.Target)
 		} else {
@@ -419,8 +440,8 @@ func applyInitTemplateReplaceIfPristine(projectRoot string, ctx initTemplateCont
 		return false, err
 	}
 	if bytes.Equal(existing, rendered) {
-		if modeUpdated, err := ensureInitTemplateMode(targetPath, operation.Mode); err != nil {
-			return false, err
+		if modeUpdated, modeErr := ensureInitTemplateMode(targetPath, operation.Mode); modeErr != nil {
+			return false, modeErr
 		} else if modeUpdated {
 			result.Updated = append(result.Updated, operation.Target)
 		} else {
@@ -455,20 +476,20 @@ func applyInitTemplateMergeJSON(projectRoot string, ctx initTemplateContext, ope
 	}
 
 	var sourceValue any
-	if err := json.Unmarshal(rendered, &sourceValue); err != nil {
-		return false, fmt.Errorf("parse json asset %s: %w", operation.Source, err)
+	if unmarshalErr := json.Unmarshal(rendered, &sourceValue); unmarshalErr != nil {
+		return false, fmt.Errorf("parse json asset %s: %w", operation.Source, unmarshalErr)
 	}
 
 	targetPath := filepath.Join(projectRoot, filepath.FromSlash(operation.Target))
 	existing, err := os.ReadFile(targetPath)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		blob, err := marshalInitTemplateJSON(sourceValue)
-		if err != nil {
-			return false, err
+		blob, marshalErr := marshalInitTemplateJSON(sourceValue)
+		if marshalErr != nil {
+			return false, marshalErr
 		}
-		if err := writeInitTemplateNewFile(targetPath, blob, operation.Mode); err != nil {
-			return false, err
+		if writeErr := writeInitTemplateNewFile(targetPath, blob, operation.Mode); writeErr != nil {
+			return false, writeErr
 		}
 		result.Created = append(result.Created, operation.Target)
 		return true, nil
@@ -477,12 +498,12 @@ func applyInitTemplateMergeJSON(projectRoot string, ctx initTemplateContext, ope
 	}
 
 	var targetValue any
-	if err := json.Unmarshal(existing, &targetValue); err != nil {
+	if unmarshalErr := json.Unmarshal(existing, &targetValue); unmarshalErr != nil {
 		result.SkippedConflicts = append(result.SkippedConflicts, v1.InitTemplateConflict{
 			Path:   operation.Target,
 			Reason: "existing file is not valid JSON",
 		})
-		return false, nil
+		return false, nil //nolint:nilerr // invalid existing JSON is recorded as a conflict, not a failure
 	}
 
 	mergedValue, changed, err := mergeInitJSONValues(targetValue, sourceValue)
@@ -491,11 +512,11 @@ func applyInitTemplateMergeJSON(projectRoot string, ctx initTemplateContext, ope
 			Path:   operation.Target,
 			Reason: err.Error(),
 		})
-		return false, nil
+		return false, nil //nolint:nilerr // merge incompatibilities are recorded as conflicts, not failures
 	}
 	if !changed {
-		if modeUpdated, err := ensureInitTemplateMode(targetPath, operation.Mode); err != nil {
-			return false, err
+		if modeUpdated, modeErr := ensureInitTemplateMode(targetPath, operation.Mode); modeErr != nil {
+			return false, modeErr
 		} else if modeUpdated {
 			result.Updated = append(result.Updated, operation.Target)
 		} else {
@@ -532,8 +553,8 @@ func writeInitTemplateFile(targetPath string, content []byte, mode os.FileMode) 
 	existing, err := os.ReadFile(targetPath)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		if err := writeInitTemplateNewFile(targetPath, content, mode); err != nil {
-			return "", err
+		if writeErr := writeInitTemplateNewFile(targetPath, content, mode); writeErr != nil {
+			return "", writeErr
 		}
 		return "created", nil
 	case err != nil:
@@ -554,7 +575,7 @@ func writeInitTemplateFile(targetPath string, content []byte, mode os.FileMode) 
 }
 
 func writeInitTemplateNewFile(targetPath string, content []byte, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
 		return err
 	}
 	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
@@ -640,9 +661,9 @@ func mergeInitJSONValues(target, source any) (any, bool, error) {
 	case map[string]any:
 		typedTarget, ok := target.(map[string]any)
 		if !ok {
-			return nil, false, fmt.Errorf("existing JSON structure conflicts with template")
+			return nil, false, errors.New("existing JSON structure conflicts with template")
 		}
-		merged := cloneInitJSONValue(typedTarget).(map[string]any)
+		merged := cloneInitJSONMap(typedTarget)
 		changed := false
 		for key, sourceValue := range typedSource {
 			targetValue, exists := merged[key]
@@ -664,9 +685,9 @@ func mergeInitJSONValues(target, source any) (any, bool, error) {
 	case []any:
 		typedTarget, ok := target.([]any)
 		if !ok {
-			return nil, false, fmt.Errorf("existing JSON structure conflicts with template")
+			return nil, false, errors.New("existing JSON structure conflicts with template")
 		}
-		merged := cloneInitJSONValue(typedTarget).([]any)
+		merged := cloneInitJSONArray(typedTarget)
 		changed := false
 		for _, sourceValue := range typedSource {
 			if initJSONArrayContains(merged, sourceValue) {
@@ -680,7 +701,7 @@ func mergeInitJSONValues(target, source any) (any, bool, error) {
 		if reflect.DeepEqual(target, source) {
 			return target, false, nil
 		}
-		return nil, false, fmt.Errorf("existing JSON structure conflicts with template")
+		return nil, false, errors.New("existing JSON structure conflicts with template")
 	}
 }
 
@@ -696,20 +717,28 @@ func initJSONArrayContains(values []any, candidate any) bool {
 func cloneInitJSONValue(value any) any {
 	switch typed := value.(type) {
 	case map[string]any:
-		cloned := make(map[string]any, len(typed))
-		for key, child := range typed {
-			cloned[key] = cloneInitJSONValue(child)
-		}
-		return cloned
+		return cloneInitJSONMap(typed)
 	case []any:
-		cloned := make([]any, 0, len(typed))
-		for _, child := range typed {
-			cloned = append(cloned, cloneInitJSONValue(child))
-		}
-		return cloned
+		return cloneInitJSONArray(typed)
 	default:
 		return typed
 	}
+}
+
+func cloneInitJSONMap(value map[string]any) map[string]any {
+	cloned := make(map[string]any, len(value))
+	for key, child := range value {
+		cloned[key] = cloneInitJSONValue(child)
+	}
+	return cloned
+}
+
+func cloneInitJSONArray(value []any) []any {
+	cloned := make([]any, 0, len(value))
+	for _, child := range value {
+		cloned = append(cloned, cloneInitJSONValue(child))
+	}
+	return cloned
 }
 
 func sortInitTemplateConflicts(conflicts []v1.InitTemplateConflict) {

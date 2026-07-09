@@ -164,7 +164,7 @@ func TestAWMTDDGuardPassesWithCompletedTDDRedForMultiStepPlans(t *testing.T) {
 	}
 }
 
-func runTDDGuardScript(t *testing.T, planByKey map[string]string, extraEnv map[string]string, wantSuccess bool) string {
+func runTDDGuardScript(t *testing.T, planByKey, extraEnv map[string]string, wantSuccess bool) string {
 	t.Helper()
 
 	tempRoot := t.TempDir()

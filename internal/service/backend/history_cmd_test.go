@@ -2,11 +2,12 @@ package backend
 
 import (
 	"context"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestHistorySearch_MapsPlanSummariesAndDefaults(t *testing.T) {

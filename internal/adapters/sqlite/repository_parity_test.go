@@ -42,7 +42,7 @@ func TestRepository_LookupPointerByKey(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = repo.Close() })
 
-	seedPointer(t, ctx, repo, seedPointerRow{
+	seedPointer(ctx, t, repo, seedPointerRow{
 		ProjectID:   projectID,
 		PointerKey:  "pointer.lookup",
 		Path:        "docs/lookup.md",
@@ -179,7 +179,7 @@ type seedPointerRow struct {
 	ContentHash string
 }
 
-func seedPointer(t *testing.T, ctx context.Context, repo *Repository, row seedPointerRow) {
+func seedPointer(ctx context.Context, t *testing.T, repo *Repository, row seedPointerRow) {
 	t.Helper()
 
 	tagsJSON, err := encodeStringList(row.Tags)

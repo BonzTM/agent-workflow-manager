@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"strconv"
 	"strings"
 
 	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
+// Export resolves exactly one selector (context, fetch, history, or status)
+// into an export document and renders it in the requested format.
 func (s *Service) Export(ctx context.Context, payload v1.ExportPayload) (v1.ExportResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.ExportResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -66,10 +70,10 @@ func (s *Service) resolveContextExportDocument(ctx context.Context, projectID st
 		})
 	}
 
-	title := fmt.Sprintf("Context %s", strings.TrimSpace(result.Receipt.Meta.ReceiptID))
+	title := "Context " + strings.TrimSpace(result.Receipt.Meta.ReceiptID)
 	summary := strings.TrimSpace(result.Receipt.Meta.TaskText)
 	if summary == "" {
-		summary = fmt.Sprintf("Context for %s", strings.TrimSpace(projectID))
+		summary = "Context for " + strings.TrimSpace(projectID)
 	}
 
 	return &v1.ExportDocument{
@@ -94,10 +98,10 @@ func (s *Service) resolveFetchExportDocument(ctx context.Context, projectID stri
 
 	requestedKeys := fetchPayloadKeys(fetchPayload)
 	if len(result.NotFound) > 0 || len(result.VersionMismatches) > 0 || len(result.Items) != 1 {
-		return s.resolveFetchBundleDocument(ctx, strings.TrimSpace(projectID), requestedKeys, result)
+		return s.resolveFetchBundleDocument(requestedKeys, result)
 	}
 
-	document, ok, apiErr := s.resolveTypedFetchExportDocument(ctx, strings.TrimSpace(projectID), result.Items[0])
+	document, ok, apiErr := s.resolveTypedFetchExportDocument(result.Items[0])
 	if apiErr != nil {
 		return nil, apiErr
 	}
@@ -105,7 +109,7 @@ func (s *Service) resolveFetchExportDocument(ctx context.Context, projectID stri
 		return document, nil
 	}
 
-	return s.resolveFetchBundleDocument(ctx, strings.TrimSpace(projectID), requestedKeys, result)
+	return s.resolveFetchBundleDocument(requestedKeys, result)
 }
 
 func (s *Service) resolveHistoryExportDocument(ctx context.Context, projectID string, selector *v1.ExportHistorySelector) (*v1.ExportDocument, *core.APIError) {
@@ -122,7 +126,7 @@ func (s *Service) resolveHistoryExportDocument(ctx context.Context, projectID st
 		return nil, apiErr
 	}
 
-	title := fmt.Sprintf("History %s", strings.TrimSpace(string(result.Entity)))
+	title := "History " + strings.TrimSpace(string(result.Entity))
 	if result.Entity == "" {
 		title = "History"
 	}
@@ -154,7 +158,7 @@ func (s *Service) resolveStatusExportDocument(ctx context.Context, projectID str
 		return nil, apiErr
 	}
 
-	title := fmt.Sprintf("Status %s", strings.TrimSpace(result.Project.ProjectID))
+	title := "Status " + strings.TrimSpace(result.Project.ProjectID)
 	summary := fmt.Sprintf("ready=%t missing=%d warnings=%d", result.Summary.Ready, result.Summary.MissingCount, result.Summary.WarningCount)
 
 	return &v1.ExportDocument{
@@ -165,7 +169,7 @@ func (s *Service) resolveStatusExportDocument(ctx context.Context, projectID str
 	}, nil
 }
 
-func (s *Service) resolveTypedFetchExportDocument(ctx context.Context, projectID string, item v1.FetchItem) (*v1.ExportDocument, bool, *core.APIError) {
+func (s *Service) resolveTypedFetchExportDocument(item v1.FetchItem) (*v1.ExportDocument, bool, *core.APIError) {
 	switch strings.TrimSpace(item.Type) {
 	case "plan":
 		document, apiErr := exportPlanDocumentFromFetchItem(item)
@@ -185,7 +189,7 @@ func (s *Service) resolveTypedFetchExportDocument(ctx context.Context, projectID
 		}
 		return &v1.ExportDocument{
 			Kind:    v1.ExportDocumentKindReceipt,
-			Title:   fmt.Sprintf("Receipt %s", document.ReceiptID),
+			Title:   "Receipt " + document.ReceiptID,
 			Summary: firstNonEmpty(item.Summary, document.TaskText, document.ReceiptID),
 			Receipt: document,
 		}, true, nil
@@ -216,10 +220,10 @@ func (s *Service) resolveTypedFetchExportDocument(ctx context.Context, projectID
 	}
 }
 
-func (s *Service) resolveFetchBundleDocument(ctx context.Context, projectID string, requestedKeys []string, result v1.FetchResult) (*v1.ExportDocument, *core.APIError) {
+func (s *Service) resolveFetchBundleDocument(requestedKeys []string, result v1.FetchResult) (*v1.ExportDocument, *core.APIError) {
 	items := make([]v1.ExportBundleItem, 0, len(result.Items))
 	for _, item := range result.Items {
-		exportItem, apiErr := s.resolveExportBundleItem(ctx, projectID, item)
+		exportItem, apiErr := s.resolveExportBundleItem(item)
 		if apiErr != nil {
 			return nil, apiErr
 		}
@@ -247,7 +251,7 @@ func (s *Service) resolveFetchBundleDocument(ctx context.Context, projectID stri
 	}, nil
 }
 
-func (s *Service) resolveExportBundleItem(ctx context.Context, projectID string, item v1.FetchItem) (v1.ExportBundleItem, *core.APIError) {
+func (s *Service) resolveExportBundleItem(item v1.FetchItem) (v1.ExportBundleItem, *core.APIError) {
 	exportItem := v1.ExportBundleItem{
 		Key:     strings.TrimSpace(item.Key),
 		Type:    strings.TrimSpace(item.Type),
@@ -462,7 +466,7 @@ func renderReceiptMarkdown(document *v1.ExportDocument) string {
 
 	if document.Receipt.LatestRun != nil {
 		appendMarkdownHeading(&b, 2, "Latest Run")
-		appendMarkdownKeyValue(&b, "Run ID", fmt.Sprintf("%d", document.Receipt.LatestRun.RunID))
+		appendMarkdownKeyValue(&b, "Run ID", strconv.FormatInt(document.Receipt.LatestRun.RunID, 10))
 		appendMarkdownKeyValue(&b, "Status", strings.TrimSpace(document.Receipt.LatestRun.Status))
 		appendMarkdownKeyValue(&b, "Plan Status", strings.TrimSpace(string(document.Receipt.LatestRun.PlanStatus)))
 		appendTaskSection(&b, 3, "Tasks", document.Receipt.LatestRun.Tasks)
@@ -490,7 +494,7 @@ func renderRunMarkdown(document *v1.ExportDocument) string {
 		return strings.TrimSpace(b.String())
 	}
 
-	appendMarkdownKeyValue(&b, "Run ID", fmt.Sprintf("%d", document.Run.RunID))
+	appendMarkdownKeyValue(&b, "Run ID", strconv.FormatInt(document.Run.RunID, 10))
 	appendMarkdownKeyValue(&b, "Receipt ID", strings.TrimSpace(document.Run.ReceiptID))
 	appendMarkdownKeyValue(&b, "Request ID", strings.TrimSpace(document.Run.RequestID))
 	appendMarkdownKeyValue(&b, "Task", strings.TrimSpace(document.Run.TaskText))
@@ -690,13 +694,13 @@ func appendPlanStages(b *strings.Builder, stages *v1.ExportPlanStages) {
 	}
 	values := make([]string, 0, 3)
 	if strings.TrimSpace(string(stages.SpecOutline)) != "" {
-		values = append(values, fmt.Sprintf("spec_outline=%s", strings.TrimSpace(string(stages.SpecOutline))))
+		values = append(values, "spec_outline="+strings.TrimSpace(string(stages.SpecOutline)))
 	}
 	if strings.TrimSpace(string(stages.RefinedSpec)) != "" {
-		values = append(values, fmt.Sprintf("refined_spec=%s", strings.TrimSpace(string(stages.RefinedSpec))))
+		values = append(values, "refined_spec="+strings.TrimSpace(string(stages.RefinedSpec)))
 	}
 	if strings.TrimSpace(string(stages.ImplementationPlan)) != "" {
-		values = append(values, fmt.Sprintf("implementation_plan=%s", strings.TrimSpace(string(stages.ImplementationPlan))))
+		values = append(values, "implementation_plan="+strings.TrimSpace(string(stages.ImplementationPlan)))
 	}
 	appendMarkdownStringListSection(b, 2, "Stages", values, false)
 }
@@ -832,20 +836,6 @@ func appendMarkdownStringListSection(b *strings.Builder, headingLevel int, title
 	b.WriteString("\n")
 }
 
-func appendMarkdownCodeSection(b *strings.Builder, headingLevel int, title, content string) {
-	trimmed := strings.TrimSpace(content)
-	if trimmed == "" {
-		return
-	}
-	appendMarkdownHeading(b, headingLevel, title)
-	b.WriteString("```text\n")
-	b.WriteString(trimmed)
-	if !strings.HasSuffix(trimmed, "\n") {
-		b.WriteString("\n")
-	}
-	b.WriteString("```\n\n")
-}
-
 func appendMarkdownListItem(b *strings.Builder, value string) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -882,14 +872,14 @@ func markdownInt(value int) string {
 	if value <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d", value)
+	return strconv.Itoa(value)
 }
 
 func markdownInt64(value int64) string {
 	if value <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d", value)
+	return strconv.FormatInt(value, 10)
 }
 
 func cloneStringMap(input map[string]string) map[string]string {
@@ -897,10 +887,6 @@ func cloneStringMap(input map[string]string) map[string]string {
 		return nil
 	}
 	out := make(map[string]string, len(input))
-	for key, value := range input {
-		out[key] = value
-	}
+	maps.Copy(out, input)
 	return out
 }
-
-const timeLayoutRFC3339 = "2006-01-02T15:04:05Z"

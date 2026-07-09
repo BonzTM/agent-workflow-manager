@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -9,9 +10,13 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
+// SyncRulePointers replaces the rule pointers derived from a single source
+// file in one transaction: every supplied pointer is upserted and any rule
+// pointer for that source path not in the input is deleted. It returns the
+// upserted and removed row counts.
 func (r *Repository) SyncRulePointers(ctx context.Context, input core.RulePointerSyncInput) (core.RulePointerSyncResult, error) {
 	if r == nil || r.db == nil {
-		return core.RulePointerSyncResult{}, fmt.Errorf("sqlite db is required")
+		return core.RulePointerSyncResult{}, errors.New("sqlite db is required")
 	}
 
 	normalized, err := normalizeRulePointerSyncInput(input)
@@ -23,7 +28,7 @@ func (r *Repository) SyncRulePointers(ctx context.Context, input core.RulePointe
 	if err != nil {
 		return core.RulePointerSyncResult{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer rollbackTx(tx)
 
 	result := core.RulePointerSyncResult{}
 	for _, pointer := range normalized.Pointers {
@@ -99,6 +104,7 @@ WHERE project_id = ?
 		}
 		result.MarkedStale = int(rowsAffected)
 	} else {
+		//nolint:gosec // G202: placeholders() only emits "?" markers; all values are bound parameters
 		query := `
 DELETE FROM awm_pointers
 WHERE project_id = ?
@@ -131,12 +137,12 @@ WHERE project_id = ?
 func normalizeRulePointerSyncInput(input core.RulePointerSyncInput) (core.RulePointerSyncInput, error) {
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.RulePointerSyncInput{}, fmt.Errorf("project_id is required")
+		return core.RulePointerSyncInput{}, errors.New("project_id is required")
 	}
 
 	sourcePath := normalizeSyncPath(input.SourcePath)
 	if sourcePath == "" {
-		return core.RulePointerSyncInput{}, fmt.Errorf("source_path is required")
+		return core.RulePointerSyncInput{}, errors.New("source_path is required")
 	}
 
 	byKey := make(map[string]core.RulePointer, len(input.Pointers))
@@ -146,7 +152,7 @@ func normalizeRulePointerSyncInput(input core.RulePointerSyncInput) (core.RulePo
 			ruleID = ruleIDFromPointerKey(raw.PointerKey)
 		}
 		if ruleID == "" {
-			return core.RulePointerSyncInput{}, fmt.Errorf("rule_id is required")
+			return core.RulePointerSyncInput{}, errors.New("rule_id is required")
 		}
 
 		pointerKey := strings.TrimSpace(raw.PointerKey)

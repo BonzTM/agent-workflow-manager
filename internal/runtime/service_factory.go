@@ -11,20 +11,31 @@ import (
 	backendsvc "github.com/bonztm/agent-workflow-manager/internal/service/backend"
 )
 
+// CleanupFunc releases the resources (e.g. database connections) backing a
+// service; call it once the service is no longer needed.
 type CleanupFunc func()
 
+// NewServiceFromEnv constructs a service using configuration from the
+// environment and the default runtime logger.
 func NewServiceFromEnv(ctx context.Context) (core.Service, CleanupFunc, error) {
 	return NewServiceFromEnvWithLogger(ctx, NewLogger())
 }
 
+// NewServiceFromEnvWithLogger constructs a service using configuration from
+// the environment and the provided logger.
 func NewServiceFromEnvWithLogger(ctx context.Context, logger logging.Logger) (core.Service, CleanupFunc, error) {
 	return NewServiceWithLogger(ctx, ConfigFromEnv(), logger)
 }
 
+// NewService constructs a service from cfg using the default runtime logger.
 func NewService(ctx context.Context, cfg Config) (core.Service, CleanupFunc, error) {
 	return NewServiceWithLogger(ctx, cfg, NewLogger())
 }
 
+// NewServiceWithLogger constructs a logging-wrapped service from cfg,
+// backed by Postgres when cfg.PostgresConfigured() and SQLite otherwise.
+// The returned CleanupFunc closes the underlying repository; a nil logger
+// is replaced with a discard logger.
 func NewServiceWithLogger(ctx context.Context, cfg Config, logger logging.Logger) (core.Service, CleanupFunc, error) {
 	logger = logging.Normalize(logger)
 

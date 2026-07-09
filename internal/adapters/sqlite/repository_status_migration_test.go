@@ -21,12 +21,12 @@ func TestSQLiteMigrations_ConvertCompletedStatusesToComplete(t *testing.T) {
 		}
 	})
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 	migration_name TEXT PRIMARY KEY,
 	applied_at INTEGER NOT NULL DEFAULT (unixepoch())
-)`); err != nil {
-		t.Fatalf("create schema migrations table: %v", err)
+)`); execErr != nil {
+		t.Fatalf("create schema migrations table: %v", execErr)
 	}
 
 	for _, name := range []string{
@@ -43,12 +43,12 @@ CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 		"0011_awm_receipt_scope_pointer_paths.sql",
 		"0012_awm_initial_scope_and_baselines.sql",
 	} {
-		if _, err := db.ExecContext(ctx, `INSERT INTO awm_schema_migrations (migration_name) VALUES (?)`, name); err != nil {
-			t.Fatalf("record pre-0013 migration %s: %v", name, err)
+		if _, execErr := db.ExecContext(ctx, `INSERT INTO awm_schema_migrations (migration_name) VALUES (?)`, name); execErr != nil {
+			t.Fatalf("record pre-0013 migration %s: %v", name, execErr)
 		}
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 CREATE TABLE awm_receipts (
 	receipt_id TEXT PRIMARY KEY,
 	project_id TEXT NOT NULL,
@@ -63,11 +63,11 @@ CREATE TABLE awm_receipts (
 	memory_ids_json TEXT NOT NULL DEFAULT '[]',
 	summary_json TEXT NOT NULL DEFAULT '{}',
 	created_at INTEGER NOT NULL DEFAULT (unixepoch())
-)`); err != nil {
-		t.Fatalf("create legacy receipt table: %v", err)
+)`); execErr != nil {
+		t.Fatalf("create legacy receipt table: %v", execErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 CREATE TABLE awm_work_items (
 	work_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id TEXT NOT NULL,
@@ -78,11 +78,11 @@ CREATE TABLE awm_work_items (
 	updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
 	UNIQUE (project_id, receipt_id, item_key),
 	FOREIGN KEY (receipt_id) REFERENCES awm_receipts (receipt_id) ON DELETE CASCADE
-)`); err != nil {
-		t.Fatalf("create legacy work items table: %v", err)
+)`); execErr != nil {
+		t.Fatalf("create legacy work items table: %v", execErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 CREATE TABLE awm_work_plans (
 	plan_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id TEXT NOT NULL,
@@ -105,11 +105,11 @@ CREATE TABLE awm_work_plans (
 	external_refs_json TEXT NOT NULL DEFAULT '[]',
 	discovered_paths_json TEXT NOT NULL DEFAULT '[]',
 	UNIQUE (project_id, plan_key)
-)`); err != nil {
-		t.Fatalf("create legacy work plans table: %v", err)
+)`); execErr != nil {
+		t.Fatalf("create legacy work plans table: %v", execErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 CREATE TABLE awm_work_plan_tasks (
 	task_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id TEXT NOT NULL,
@@ -129,11 +129,11 @@ CREATE TABLE awm_work_plan_tasks (
 	external_refs_json TEXT NOT NULL DEFAULT '[]',
 	UNIQUE (project_id, plan_key, task_key),
 	FOREIGN KEY (project_id, plan_key) REFERENCES awm_work_plans (project_id, plan_key) ON DELETE CASCADE
-)`); err != nil {
-		t.Fatalf("create legacy work plan tasks table: %v", err)
+)`); execErr != nil {
+		t.Fatalf("create legacy work plan tasks table: %v", execErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
@@ -149,11 +149,11 @@ INSERT INTO awm_receipts (
 	summary_json,
 	created_at
 ) VALUES (?, ?, ?, ?, '[]', '[]', '[]', '[]', '[]', 0, '[]', '{}', unixepoch())
-`, "receipt.complete", "project.alpha", "seed receipt", "execute"); err != nil {
-		t.Fatalf("seed receipt: %v", err)
+`, "receipt.complete", "project.alpha", "seed receipt", "execute"); execErr != nil {
+		t.Fatalf("seed receipt: %v", execErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 INSERT INTO awm_work_items (
 	project_id,
 	receipt_id,
@@ -162,11 +162,11 @@ INSERT INTO awm_work_items (
 	created_at,
 	updated_at
 ) VALUES (?, ?, ?, 'completed', unixepoch(), unixepoch())
-`, "project.alpha", "receipt.complete", "verify:tests"); err != nil {
-		t.Fatalf("seed completed work item: %v", err)
+`, "project.alpha", "receipt.complete", "verify:tests"); execErr != nil {
+		t.Fatalf("seed completed work item: %v", execErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 INSERT INTO awm_work_plans (
 	project_id,
 	plan_key,
@@ -188,11 +188,11 @@ INSERT INTO awm_work_plans (
 	created_at,
 	updated_at
 ) VALUES (?, ?, ?, ?, ?, 'completed', 'completed', 'completed', 'completed', '[]', '[]', '[]', '[]', '', '', '[]', '[]', unixepoch(), unixepoch())
-`, "project.alpha", "plan:receipt.complete", "receipt.complete", "Complete migration", "Rewrite storage status"); err != nil {
-		t.Fatalf("seed completed work plan: %v", err)
+`, "project.alpha", "plan:receipt.complete", "receipt.complete", "Complete migration", "Rewrite storage status"); execErr != nil {
+		t.Fatalf("seed completed work plan: %v", execErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 INSERT INTO awm_work_plan_tasks (
 	project_id,
 	plan_key,
@@ -210,12 +210,12 @@ INSERT INTO awm_work_plan_tasks (
 	created_at,
 	updated_at
 ) VALUES (?, ?, ?, ?, 'completed', '[]', '[]', '[]', '', '', '[]', '', '[]', unixepoch(), unixepoch())
-`, "project.alpha", "plan:receipt.complete", "verify:tests", "Verification complete"); err != nil {
-		t.Fatalf("seed completed work plan task: %v", err)
+`, "project.alpha", "plan:receipt.complete", "verify:tests", "Verification complete"); execErr != nil {
+		t.Fatalf("seed completed work plan task: %v", execErr)
 	}
 
-	if err := db.Close(); err != nil {
-		t.Fatalf("close pre-migration db: %v", err)
+	if closeErr := db.Close(); closeErr != nil {
+		t.Fatalf("close pre-migration db: %v", closeErr)
 	}
 	db = nil
 

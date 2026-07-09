@@ -13,12 +13,16 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 )
 
+// ToolDef describes one MCP tool as advertised in a tools/list response:
+// its name, human-readable description, and JSON Schema for the input.
 type ToolDef struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	InputSchema map[string]any `json:"inputSchema"`
 }
 
+// ToolDefinitions returns the MCP tool definitions for every v1 command,
+// each with an input schema referencing the shared v1 command schema.
 func ToolDefinitions() []ToolDef {
 	specs := v1.CommandSpecs()
 	defs := make([]ToolDef, 0, len(specs))
@@ -44,10 +48,16 @@ func schemaRef(schemaID, defName string) map[string]any {
 	}
 }
 
+// Invoke executes the named MCP tool against svc with the raw JSON input and
+// returns the command result, without emitting logs. Unknown tools and
+// invalid payloads yield an *core.APIError instead of a result.
 func Invoke(ctx context.Context, svc core.Service, tool string, input []byte) (any, *core.APIError) {
 	return InvokeWithLogger(ctx, svc, tool, input, nil)
 }
 
+// InvokeWithLogger behaves like Invoke while emitting structured ingress,
+// dispatch, and result events to logger (a nil logger is normalized to a
+// no-op).
 func InvokeWithLogger(ctx context.Context, svc core.Service, tool string, input []byte, logger logging.Logger) (any, *core.APIError) {
 	logger = logging.Normalize(logger)
 	logger.Info(ctx, logging.EventMCPIngressRead, "ok", true, "tool", tool, "bytes", len(input))

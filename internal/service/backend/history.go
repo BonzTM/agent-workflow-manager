@@ -12,6 +12,9 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
+// HistorySearch queries stored receipts, plans, and runs by entity, scope,
+// kind, and free-text query, returning at most the normalized limit of
+// matching history items.
 func (s *Service) HistorySearch(ctx context.Context, payload v1.HistorySearchPayload) (v1.HistorySearchResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.HistorySearchResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -156,7 +159,7 @@ func (s *Service) listReceiptHistoryItems(ctx context.Context, projectID, query 
 		}
 		summary := strings.TrimSpace(row.TaskText)
 		if summary == "" {
-			summary = fmt.Sprintf("Receipt %s", receiptID)
+			summary = "Receipt " + receiptID
 		}
 		items = append(items, v1.HistoryItem{
 			Key:       receiptFetchKey(receiptID),

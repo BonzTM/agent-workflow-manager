@@ -16,6 +16,11 @@ import (
 
 var newMCPService = runtime.NewServiceFromEnvWithLogger
 
+// RunMCP is the entry point for the awm-mcp binary. It parses the
+// help/version flags, initializes the service from the environment, and
+// serves MCP JSON-RPC 2.0 over stdio until EOF, wiring nil streams to the
+// process defaults. It returns the process exit code (0 success, 1 runtime
+// failure, 2 usage error).
 func RunMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if stdin == nil {
 		stdin = os.Stdin
@@ -76,10 +81,6 @@ func RunMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	logger.Info(ctx, logging.EventAWMMCP, "stage", "finish", "mode", "stdio", "exit_code", 0)
 	return 0
-}
-
-func usage() {
-	printUsage(os.Stdout)
 }
 
 func printUsage(w io.Writer) {

@@ -80,7 +80,7 @@ func (s *Service) runHealthFixSyncWorkingTree(ctx context.Context, projectID, pr
 		Fixer: v1.HealthFixerSyncWorkingTree,
 		Count: len(paths),
 		Notes: []string{
-			fmt.Sprintf("mode=%s", syncModeWorkingTree),
+			"mode=" + syncModeWorkingTree,
 			fmt.Sprintf("impacted_paths=%d", len(paths)),
 		},
 	}
@@ -191,7 +191,7 @@ func healthFixRulesetNotes(result canonicalRulesetSyncResult) []string {
 			notes = append(notes, fmt.Sprintf("%s rules=%d", source.SourcePath, source.RuleCount))
 			continue
 		}
-		notes = append(notes, fmt.Sprintf("%s missing", source.SourcePath))
+		notes = append(notes, source.SourcePath+" missing")
 	}
 	notes = append(notes, fmt.Sprintf("total_rules=%d", result.TotalRules))
 	return normalizeValues(notes)

@@ -24,29 +24,29 @@ func TestSQLiteMigrations_BackfillReceiptScopeInitialScopePaths(t *testing.T) {
 		}
 	})
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 	migration_name TEXT PRIMARY KEY,
 	applied_at INTEGER NOT NULL DEFAULT (unixepoch())
-)`); err != nil {
-		t.Fatalf("create schema migrations table: %v", err)
+)`); execErr != nil {
+		t.Fatalf("create schema migrations table: %v", execErr)
 	}
 
 	for _, migration := range migrations {
 		if migration.Name == "0011_awm_receipt_scope_pointer_paths.sql" {
 			break
 		}
-		if _, err := db.ExecContext(ctx, migration.SQL); err != nil {
-			t.Fatalf("apply pre-0011 migration %s: %v", migration.Name, err)
+		if _, migErr := db.ExecContext(ctx, migration.SQL); migErr != nil {
+			t.Fatalf("apply pre-0011 migration %s: %v", migration.Name, migErr)
 		}
-		if _, err := db.ExecContext(ctx, `
+		if _, recordErr := db.ExecContext(ctx, `
 INSERT INTO awm_schema_migrations (migration_name) VALUES (?)
-`, migration.Name); err != nil {
-			t.Fatalf("record pre-0011 migration %s: %v", migration.Name, err)
+`, migration.Name); recordErr != nil {
+			t.Fatalf("record pre-0011 migration %s: %v", migration.Name, recordErr)
 		}
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, seedErr := db.ExecContext(ctx, `
 INSERT INTO awm_pointers (
 	project_id,
 	pointer_key,
@@ -59,10 +59,10 @@ INSERT INTO awm_pointers (
 	is_rule,
 	is_stale
 ) VALUES (?, ?, ?, '', 'doc', ?, ?, '[]', 0, 0)
-`, "project.alpha", "pointer.runtime", "docs/runtime.md", "Runtime", "Runtime pointer"); err != nil {
-		t.Fatalf("seed pointer: %v", err)
+`, "project.alpha", "pointer.runtime", "docs/runtime.md", "Runtime", "Runtime pointer"); seedErr != nil {
+		t.Fatalf("seed pointer: %v", seedErr)
 	}
-	if _, err := db.ExecContext(ctx, `
+	if _, seedErr := db.ExecContext(ctx, `
 INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
@@ -74,11 +74,11 @@ INSERT INTO awm_receipts (
 	summary_json,
 	created_at
 ) VALUES (?, ?, ?, ?, '[]', ?, '[]', '{}', unixepoch())
-`, "receipt.alpha", "project.alpha", "seed receipt scope", "execute", `["pointer.runtime"]`); err != nil {
-		t.Fatalf("seed pre-0011 receipt: %v", err)
+`, "receipt.alpha", "project.alpha", "seed receipt scope", "execute", `["pointer.runtime"]`); seedErr != nil {
+		t.Fatalf("seed pre-0011 receipt: %v", seedErr)
 	}
-	if err := db.Close(); err != nil {
-		t.Fatalf("close pre-migration db: %v", err)
+	if closeErr := db.Close(); closeErr != nil {
+		t.Fatalf("close pre-migration db: %v", closeErr)
 	}
 	db = nil
 
@@ -114,29 +114,29 @@ func TestSQLiteMigrations_BackfillInitialScopePathsAndDiscoveredPaths(t *testing
 		}
 	})
 
-	if _, err := db.ExecContext(ctx, `
+	if _, execErr := db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS awm_schema_migrations (
 	migration_name TEXT PRIMARY KEY,
 	applied_at INTEGER NOT NULL DEFAULT (unixepoch())
-)`); err != nil {
-		t.Fatalf("create schema migrations table: %v", err)
+)`); execErr != nil {
+		t.Fatalf("create schema migrations table: %v", execErr)
 	}
 
 	for _, migration := range migrations {
 		if migration.Name == "0012_awm_initial_scope_and_baselines.sql" {
 			break
 		}
-		if _, err := db.ExecContext(ctx, migration.SQL); err != nil {
-			t.Fatalf("apply pre-0012 migration %s: %v", migration.Name, err)
+		if _, migErr := db.ExecContext(ctx, migration.SQL); migErr != nil {
+			t.Fatalf("apply pre-0012 migration %s: %v", migration.Name, migErr)
 		}
-		if _, err := db.ExecContext(ctx, `
+		if _, recordErr := db.ExecContext(ctx, `
 INSERT INTO awm_schema_migrations (migration_name) VALUES (?)
-`, migration.Name); err != nil {
-			t.Fatalf("record pre-0012 migration %s: %v", migration.Name, err)
+`, migration.Name); recordErr != nil {
+			t.Fatalf("record pre-0012 migration %s: %v", migration.Name, recordErr)
 		}
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, seedErr := db.ExecContext(ctx, `
 INSERT INTO awm_receipts (
 	receipt_id,
 	project_id,
@@ -149,11 +149,11 @@ INSERT INTO awm_receipts (
 	summary_json,
 	created_at
 ) VALUES (?, ?, ?, ?, '[]', '[]', ?, '[]', '{}', unixepoch())
-`, "receipt.scope", "project.alpha", "seed initial scope", "execute", `["docs/runtime.md","internal/service/backend/context.go"]`); err != nil {
-		t.Fatalf("seed pre-0012 receipt: %v", err)
+`, "receipt.scope", "project.alpha", "seed initial scope", "execute", `["docs/runtime.md","internal/service/backend/context.go"]`); seedErr != nil {
+		t.Fatalf("seed pre-0012 receipt: %v", seedErr)
 	}
 
-	if _, err := db.ExecContext(ctx, `
+	if _, seedErr := db.ExecContext(ctx, `
 INSERT INTO awm_work_plans (
 	project_id,
 	plan_key,
@@ -174,12 +174,12 @@ INSERT INTO awm_work_plans (
 	created_at,
 	updated_at
 ) VALUES (?, ?, ?, ?, ?, 'in_progress', 'pending', 'pending', 'pending', '[]', '[]', '[]', '[]', '', '', '[]', unixepoch(), unixepoch())
-`, "project.alpha", "plan:receipt.scope", "receipt.scope", "Scope migration", "Verify 0012 migration"); err != nil {
-		t.Fatalf("seed pre-0012 work plan: %v", err)
+`, "project.alpha", "plan:receipt.scope", "receipt.scope", "Scope migration", "Verify 0012 migration"); seedErr != nil {
+		t.Fatalf("seed pre-0012 work plan: %v", seedErr)
 	}
 
-	if err := db.Close(); err != nil {
-		t.Fatalf("close pre-migration db: %v", err)
+	if closeErr := db.Close(); closeErr != nil {
+		t.Fatalf("close pre-migration db: %v", closeErr)
 	}
 	db = nil
 

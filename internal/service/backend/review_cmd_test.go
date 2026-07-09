@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestRunWorkflowReviewCommand_LoadsDotEnvBackedAWMRuntimeEnv(t *testing.T) {
@@ -466,8 +467,14 @@ func TestReview_RunRejectsZeroMaxAttempts(t *testing.T) {
 	if apiErr.Code != "INVALID_INPUT" {
 		t.Fatalf("unexpected error code: %+v", apiErr)
 	}
-	details, _ := apiErr.Details.(map[string]any)
-	detail, _ := details["error"].(string)
+	details, ok := apiErr.Details.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected error details type: %+v", apiErr)
+	}
+	detail, ok := details["error"].(string)
+	if !ok {
+		t.Fatalf("unexpected error detail type: %+v", apiErr)
+	}
 	if !strings.Contains(detail, "max_attempts must be 1..16 when provided") {
 		t.Fatalf("unexpected error details: %+v", apiErr)
 	}

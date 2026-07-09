@@ -2,14 +2,16 @@ package backend
 
 import (
 	"encoding/json"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func candidate(key, path string, isRule bool, tags []string) core.CandidatePointer {
@@ -34,28 +36,7 @@ func initTemplateResultByID(results []v1.InitTemplateResult, templateID string) 
 }
 
 func containsString(values []string, target string) bool {
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
-}
-
-func pointerKeys(receipt *v1.ContextReceipt) []string {
-	if receipt == nil {
-		return nil
-	}
-
-	keys := make(map[string]struct{}, len(receipt.Rules))
-	for _, entry := range receipt.Rules {
-		key := strings.TrimSpace(entry.Key)
-		if key == "" {
-			continue
-		}
-		keys[key] = struct{}{}
-	}
-	return mapKeysSorted(keys)
+	return slices.Contains(values, target)
 }
 
 func receiptIndexEntries(receipt *v1.ContextReceipt, index string) []map[string]any {
@@ -147,26 +128,6 @@ func entryString(entry map[string]any, field string) string {
 	return anyToString(entry[field])
 }
 
-func entryStringSlice(entry map[string]any, field string) []string {
-	if entry == nil {
-		return nil
-	}
-	raw := entry[field]
-	values, ok := raw.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(values))
-	for _, value := range values {
-		normalized := strings.TrimSpace(anyToString(value))
-		if normalized == "" {
-			continue
-		}
-		out = append(out, normalized)
-	}
-	return out
-}
-
 func anyToString(value any) string {
 	switch typed := value.(type) {
 	case string:
@@ -183,10 +144,6 @@ func anyToString(value any) string {
 	default:
 		return ""
 	}
-}
-
-func boolPtr(v bool) *bool {
-	return &v
 }
 
 func writeRepoFile(t *testing.T, root, relPath, contents string) {
@@ -210,17 +167,5 @@ func syncPathPaths(paths []core.SyncPath) []string {
 
 func withWorkingDir(t *testing.T, dir string) {
 	t.Helper()
-
-	previous, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir %s: %v", dir, err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(previous); err != nil {
-			t.Fatalf("restore cwd %s: %v", previous, err)
-		}
-	})
+	t.Chdir(dir)
 }

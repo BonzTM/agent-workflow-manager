@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
+
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestInit_DefaultEphemeralAndDeterministicEnumeration(t *testing.T) {
@@ -540,8 +542,8 @@ func TestInit_DoesNotSeedPrimaryTestsFileWhenRootTestsFileExists(t *testing.T) {
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, ".awm", "awm-tests.yaml")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected no primary scaffold when root tests file exists, stat err=%v", err)
+	if _, statErr := os.Stat(filepath.Join(root, ".awm", "awm-tests.yaml")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("expected no primary scaffold when root tests file exists, stat err=%v", statErr)
 	}
 
 	gotRootTestsContent, err := os.ReadFile(filepath.Join(root, "awm-tests.yaml"))
@@ -579,8 +581,8 @@ func TestInit_DoesNotSeedPrimaryWorkflowsFileWhenRootWorkflowsFileExists(t *test
 		t.Fatalf("unexpected API error: %+v", apiErr)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, ".awm", "awm-workflows.yaml")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected no primary scaffold when root workflows file exists, stat err=%v", err)
+	if _, statErr := os.Stat(filepath.Join(root, ".awm", "awm-workflows.yaml")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("expected no primary scaffold when root workflows file exists, stat err=%v", statErr)
 	}
 
 	gotRootWorkflowsContent, err := os.ReadFile(filepath.Join(root, "awm-workflows.yaml"))
@@ -841,6 +843,8 @@ func TestInit_ApplyVerifyProfilesReplacePristineTestsScaffold(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.templateID, func(t *testing.T) {
+			t.Parallel()
+
 			root := t.TempDir()
 			if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("# hello\n"), 0o644); err != nil {
 				t.Fatalf("write README: %v", err)
@@ -1219,14 +1223,14 @@ func TestInit_ClaudeHooksMergesSettingsJSONIdempotently(t *testing.T) {
 	if err := json.Unmarshal(settingsRaw, &parsed); err != nil {
 		t.Fatalf("parse settings.json: %v", err)
 	}
-	if _, ok := parsed["permissions"]; !ok {
+	if _, permOK := parsed["permissions"]; !permOK {
 		t.Fatalf("expected existing settings to remain, got %v", parsed)
 	}
 	hooks, ok := parsed["hooks"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected hooks object, got %T", parsed["hooks"])
 	}
-	if _, ok := hooks["PreToolUse"]; !ok {
+	if _, preOK := hooks["PreToolUse"]; !preOK {
 		t.Fatalf("expected PreToolUse hook to be merged, got %v", hooks)
 	}
 	postHooks, ok := hooks["PostToolUse"].([]any)

@@ -12,10 +12,12 @@ const (
 	workPlanListScopeAll       = storagedomain.WorkPlanListScopeAll
 )
 
-type normalizedRunSummary = storagedomain.NormalizedRunSummary
-type normalizedReceiptScope = storagedomain.NormalizedReceiptScope
-type normalizedVerificationBatch = storagedomain.NormalizedVerificationBatch
-type normalizedReviewAttempt = storagedomain.NormalizedReviewAttempt
+type (
+	normalizedRunSummary        = storagedomain.NormalizedRunSummary
+	normalizedReceiptScope      = storagedomain.NormalizedReceiptScope
+	normalizedVerificationBatch = storagedomain.NormalizedVerificationBatch
+	normalizedReviewAttempt     = storagedomain.NormalizedReviewAttempt
+)
 
 func normalizeWorkPlanMode(raw core.WorkPlanMode) core.WorkPlanMode {
 	return storagedomain.NormalizeWorkPlanMode(raw)
@@ -33,16 +35,8 @@ func normalizeWorkPlanStages(raw core.WorkPlanStages) core.WorkPlanStages {
 	return storagedomain.NormalizeWorkPlanStages(raw)
 }
 
-func normalizeWorkPlanTasks(tasks []core.WorkItem) []core.WorkItem {
-	return storagedomain.NormalizeWorkPlanTasks(tasks)
-}
-
 func buildNextWorkPlanState(current core.WorkPlan, found bool, input core.WorkPlanUpsertInput, mode core.WorkPlanMode) core.WorkPlan {
 	return storagedomain.BuildNextWorkPlanState(current, found, input, mode)
-}
-
-func mergeWorkPlanStages(current, incoming core.WorkPlanStages, mode core.WorkPlanMode) core.WorkPlanStages {
-	return storagedomain.MergeWorkPlanStages(current, incoming, mode)
 }
 
 func normalizeRunReceiptSummary(input core.RunReceiptSummary) (normalizedRunSummary, error) {

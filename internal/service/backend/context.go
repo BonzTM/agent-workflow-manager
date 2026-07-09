@@ -16,6 +16,10 @@ const (
 	contextVersion = "backend.context.v1"
 )
 
+// Context builds a scoped work receipt for a task: it derives canonical tags
+// from the task text, selects the matching rules and pointers, captures a
+// working-tree baseline, and persists the receipt scope for later completion
+// checks.
 func (s *Service) Context(ctx context.Context, payload v1.ContextPayload) (v1.ContextResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.ContextResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -45,7 +49,7 @@ func (s *Service) Context(ctx context.Context, payload v1.ContextPayload) (v1.Co
 	}
 
 	receiptID := deterministicReceiptID(payload, resolvedTags, rules, initialScopePaths, baselinePaths)
-	plans := s.makeContextPlans(ctx, payload.ProjectID, receiptID, false)
+	plans := s.makeContextPlans(ctx, payload.ProjectID, receiptID)
 
 	receipt := v1.ContextReceipt{
 		Rules:             rules,
@@ -174,13 +178,12 @@ func ruleEnforcementFromTags(tags []string) string {
 	return "required"
 }
 
-func (s *Service) makeContextPlans(ctx context.Context, projectID, receiptID string, unbounded bool) []v1.ContextPlan {
+func (s *Service) makeContextPlans(ctx context.Context, projectID, receiptID string) []v1.ContextPlan {
 	if s != nil && s.planRepo != nil {
 		planRows, err := s.planRepo.ListWorkPlans(ctx, core.WorkPlanListQuery{
 			ProjectID: strings.TrimSpace(projectID),
 			Scope:     string(v1.HistoryScopeCurrent),
 			Limit:     8,
-			Unbounded: unbounded,
 		})
 		if err == nil && len(planRows) > 0 {
 			plans := make([]v1.ContextPlan, 0, len(planRows))

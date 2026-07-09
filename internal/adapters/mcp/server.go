@@ -8,6 +8,10 @@ import (
 	"io"
 )
 
+// Serve processes newline-delimited JSON-RPC 2.0 requests from in, writing
+// one compact response per line to out, until EOF (returning nil), a write
+// or read failure, or ctx cancellation (returning the ctx error). A nil ctx
+// is treated as context.Background.
 func (s *Server) Serve(ctx context.Context, in io.Reader, out io.Writer) error {
 	if ctx == nil {
 		ctx = context.Background()

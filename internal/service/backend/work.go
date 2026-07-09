@@ -10,6 +10,9 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
+// Work upserts a work plan and/or its task items for a receipt: it validates
+// the plan key and task payloads, persists the updates, and returns the
+// resulting plan snapshot with derived status.
 func (s *Service) Work(ctx context.Context, payload v1.WorkPayload) (v1.WorkResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.WorkResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -343,23 +346,6 @@ func runForFetch(run core.RunHistorySummary) map[string]any {
 		content["updated_at"] = run.UpdatedAt.UTC().Format(time.RFC3339)
 	}
 	return content
-}
-
-func workItemsFromPaths(paths []string) []core.WorkItem {
-	normalizedPaths := normalizeCompletionPaths(paths)
-	if len(normalizedPaths) == 0 {
-		return nil
-	}
-
-	items := make([]core.WorkItem, 0, len(normalizedPaths))
-	for _, itemKey := range normalizedPaths {
-		items = append(items, core.WorkItem{
-			ItemKey: itemKey,
-			Status:  core.WorkItemStatusComplete,
-		})
-	}
-
-	return normalizeWorkItems(items)
 }
 
 func normalizeWorkItems(items []core.WorkItem) []core.WorkItem {

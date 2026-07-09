@@ -2,6 +2,7 @@ package repositorycontract
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -10,12 +11,18 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
+// ContractRepository is the full repository surface a backend must implement
+// to be exercised by the parity contract suite.
 type ContractRepository interface {
 	core.Repository
 	core.WorkPlanRepository
 	core.HistoryRepository
 }
 
+// ContractConfig configures RunRepositoryParity: a label identifying the
+// backend, an optional fixed project ID (a unique one is generated when
+// blank), the repository under test, and whether to also run the end-to-end
+// service flows.
 type ContractConfig struct {
 	BackendLabel        string
 	ProjectID           string
@@ -23,6 +30,9 @@ type ContractConfig struct {
 	IncludeServiceFlows bool
 }
 
+// RunRepositoryParity runs the shared repository contract suite against
+// cfg.Repo as subtests, so every backend exhibits identical behavior. It
+// fails t when cfg.Repo is nil or any contract expectation is violated.
 func RunRepositoryParity(t *testing.T, cfg ContractConfig) {
 	t.Helper()
 
@@ -252,7 +262,6 @@ func runLookupRoundTrip(t *testing.T, projectID string, repo ContractRepository)
 	if !reflect.DeepEqual(pointer.Tags, []string{"fetch", "lookup"}) {
 		t.Fatalf("unexpected pointer tags: %+v", pointer.Tags)
 	}
-
 }
 
 func runStaleLookupHidden(t *testing.T, projectID string, repo ContractRepository) {
@@ -285,7 +294,7 @@ func runStaleLookupHidden(t *testing.T, projectID string, repo ContractRepositor
 	if err == nil {
 		t.Fatal("expected stale pointer lookup to be hidden")
 	}
-	if err != core.ErrPointerLookupNotFound {
+	if !errors.Is(err, core.ErrPointerLookupNotFound) {
 		t.Fatalf("expected ErrPointerLookupNotFound, got %v", err)
 	}
 }
@@ -509,11 +518,11 @@ func runRulePointerSyncRoundTrip(t *testing.T, projectID string, repo ContractRe
 		t.Fatalf("unexpected first sync result: %+v", firstResult)
 	}
 
-	if _, err := repo.LookupPointerByKey(ctx, core.PointerLookupQuery{ProjectID: projectID, PointerKey: firstPointers[0].PointerKey}); err != nil {
-		t.Fatalf("lookup first active rule pointer: %v", err)
+	if _, lookupErr := repo.LookupPointerByKey(ctx, core.PointerLookupQuery{ProjectID: projectID, PointerKey: firstPointers[0].PointerKey}); lookupErr != nil {
+		t.Fatalf("lookup first active rule pointer: %v", lookupErr)
 	}
-	if _, err := repo.LookupPointerByKey(ctx, core.PointerLookupQuery{ProjectID: projectID, PointerKey: firstPointers[1].PointerKey}); err != nil {
-		t.Fatalf("lookup second active rule pointer: %v", err)
+	if _, lookupErr := repo.LookupPointerByKey(ctx, core.PointerLookupQuery{ProjectID: projectID, PointerKey: firstPointers[1].PointerKey}); lookupErr != nil {
+		t.Fatalf("lookup second active rule pointer: %v", lookupErr)
 	}
 
 	secondResult, err := repo.SyncRulePointers(ctx, core.RulePointerSyncInput{
@@ -556,7 +565,7 @@ func runRulePointerSyncRoundTrip(t *testing.T, projectID string, repo ContractRe
 	if err == nil {
 		t.Fatal("expected stale rule pointer lookup to be hidden")
 	}
-	if err != core.ErrPointerLookupNotFound {
+	if !errors.Is(err, core.ErrPointerLookupNotFound) {
 		t.Fatalf("expected ErrPointerLookupNotFound, got %v", err)
 	}
 }

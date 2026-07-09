@@ -172,7 +172,7 @@ func TestServerServe_MalformedJSONReturnsParseError(t *testing.T) {
 	server := NewServer(mcpMainFakeService{}, logging.NewRecorder())
 	var out bytes.Buffer
 
-	err := server.Serve(nil, strings.NewReader("{\n"), &out)
+	err := server.Serve(nil, strings.NewReader("{\n"), &out) //nolint:staticcheck // SA1012: deliberately passes a nil context to exercise Serve's documented nil-context fallback
 	if err != nil {
 		t.Fatalf("unexpected serve error: %v", err)
 	}

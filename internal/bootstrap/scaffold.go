@@ -12,7 +12,10 @@ import (
 )
 
 const (
-	DefaultProjectRoot              = "."
+	// DefaultProjectRoot is the project root used when none is provided.
+	DefaultProjectRoot = "."
+	// DefaultInitCandidatesPath is the repo-relative path where init candidate
+	// lists are persisted when no explicit output path is given.
 	DefaultInitCandidatesPath       = ".awm/init_candidates.json"
 	canonicalRulesPrimarySourcePath = ".awm/awm-rules.yaml"
 	canonicalRulesSecondaryPath     = "awm-rules.yaml"
@@ -22,6 +25,8 @@ const (
 	workflowSecondarySourcePath     = "awm-workflows.yaml"
 )
 
+// NormalizeProjectRoot converts projectRoot to a cleaned absolute path,
+// defaulting to DefaultProjectRoot when blank.
 func NormalizeProjectRoot(projectRoot string) string {
 	trimmed := strings.TrimSpace(projectRoot)
 	if trimmed == "" {
@@ -34,8 +39,12 @@ func NormalizeProjectRoot(projectRoot string) string {
 	return filepath.Clean(absRoot)
 }
 
+// EnsureProjectScaffold creates the .awm directory and the baseline runtime
+// files (.gitignore entries, .env.example, blank tests/workflows scaffolds)
+// under projectRoot, plus a blank canonical ruleset when rulesFile is blank
+// and no ruleset exists yet. Existing files are left untouched.
 func EnsureProjectScaffold(projectRoot, rulesFile string) error {
-	if err := os.MkdirAll(filepath.Join(projectRoot, ".awm"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(projectRoot, ".awm"), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
 		return err
 	}
 	if err := ensureRuntimeFiles(projectRoot); err != nil {
@@ -60,6 +69,10 @@ func EnsureProjectScaffold(projectRoot, rulesFile string) error {
 	)
 }
 
+// ResolveOutputPath resolves where init candidates should be written. An
+// explicit path wins (made absolute against projectRoot when relative);
+// otherwise the default path is used when persistCandidates is true. The
+// boolean reports whether anything should be written at all.
 func ResolveOutputPath(projectRoot, explicitOutputPath string, persistCandidates bool) (string, bool) {
 	if trimmed := strings.TrimSpace(explicitOutputPath); trimmed != "" {
 		if filepath.IsAbs(trimmed) {
@@ -73,6 +86,9 @@ func ResolveOutputPath(projectRoot, explicitOutputPath string, persistCandidates
 	return filepath.Clean(filepath.Join(projectRoot, DefaultInitCandidatesPath)), true
 }
 
+// WriteCandidates writes the candidate paths as an indented JSON document
+// ({"candidates": [...]}) to outputPath, creating parent directories and
+// overwriting any existing file.
 func WriteCandidates(outputPath string, paths []string) error {
 	payload := struct {
 		Candidates []string `json:"candidates"`
@@ -84,20 +100,22 @@ func WriteCandidates(outputPath string, paths []string) error {
 		return fmt.Errorf("marshal candidates: %w", err)
 	}
 	blob = append(blob, '\n')
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
 		return fmt.Errorf("create output directory: %w", err)
 	}
-	if err := os.WriteFile(outputPath, blob, 0o644); err != nil {
+	if err := os.WriteFile(outputPath, blob, 0o644); err != nil { //nolint:gosec // G306: scaffolded repo file, standard world-readable permissions by design
 		return fmt.Errorf("write candidate output: %w", err)
 	}
 	return nil
 }
 
+// WriteScaffoldFile creates targetPath with content, creating parent
+// directories as needed. It is a no-op when the file already exists.
 func WriteScaffoldFile(targetPath string, content []byte) error {
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil { //nolint:gosec // G301: scaffolded repo directory, standard world-readable permissions by design
 		return err
 	}
-	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec // G302: scaffolded repo file, standard world-readable permissions by design
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return nil
@@ -167,7 +185,7 @@ func ensureEnvExample(projectRoot string) error {
 		return nil
 	}
 
-	file, err := os.OpenFile(envExamplePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o644)
+	file, err := os.OpenFile(envExamplePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o644) //nolint:gosec // G302: .env.example is a committed repo file, world-readable by design
 	if err != nil {
 		return err
 	}

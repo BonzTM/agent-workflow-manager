@@ -17,10 +17,16 @@ type loggingService struct {
 
 var _ Service = (*loggingService)(nil)
 
+// WithLogging wraps next so every Service operation emits start and finish
+// log events (with duration and error code) via logger, using time.Now as
+// the clock.
 func WithLogging(next Service, logger logging.Logger) Service {
 	return WithLoggingClock(next, logger, time.Now)
 }
 
+// WithLoggingClock is WithLogging with an injectable clock for duration
+// measurement. It returns nil when next is nil and falls back to time.Now
+// when now is nil.
 func WithLoggingClock(next Service, logger logging.Logger, now func() time.Time) Service {
 	if next == nil {
 		return nil
@@ -52,7 +58,6 @@ func (s *loggingService) Export(ctx context.Context, payload v1.ExportPayload) (
 		return s.next.Export(ctx, payload)
 	})
 }
-
 
 func (s *loggingService) Review(ctx context.Context, payload v1.ReviewPayload) (v1.ReviewResult, *APIError) {
 	return withOperation(ctx, s.now, s.logger, logging.OperationReview, payload.ProjectID, func() (v1.ReviewResult, *APIError) {
@@ -119,10 +124,7 @@ func withOperation[T any](ctx context.Context, now func() time.Time, logger logg
 	logger.Info(ctx, logging.EventServiceOperationStart, startFields...)
 
 	result, apiErr := run()
-	durationMS := now().Sub(startedAt).Milliseconds()
-	if durationMS < 0 {
-		durationMS = 0
-	}
+	durationMS := max(now().Sub(startedAt).Milliseconds(), 0)
 
 	finishFields := []any{
 		"operation", operation,

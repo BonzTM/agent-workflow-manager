@@ -31,6 +31,9 @@ var statusTemplateIDs = []string{
 	"verify-ts",
 }
 
+// Status reports project readiness: which configuration sources (rules, tags,
+// tests, workflows) exist and load cleanly, what is missing, how the storage
+// backend was resolved, and — given a task — which tests and gates would run.
 func (s *Service) Status(ctx context.Context, payload v1.StatusPayload) (v1.StatusResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.StatusResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -61,7 +64,7 @@ func (s *Service) Status(ctx context.Context, payload v1.StatusPayload) (v1.Stat
 
 	ruleSources, ruleMissing := s.statusRules(projectRoot, payload.RulesFile, payload.TagsFile, payload.ProjectID)
 	tagSource, tagMissing := s.statusTags(projectRoot, payload.TagsFile)
-	testSource, testMissing := s.statusTests(projectRoot, payload.TestsFile, payload.TagsFile, payload.ProjectID)
+	testSource, testMissing := s.statusTests(projectRoot, payload.TestsFile, payload.TagsFile)
 	workflowSource, workflowMissing := s.statusWorkflows(projectRoot, payload.WorkflowsFile, payload.TagsFile)
 
 	result.Sources = append(result.Sources, ruleSources...)
@@ -178,7 +181,7 @@ func (s *Service) statusRules(projectRoot, rulesFile, tagsFile, projectID string
 			}
 			missing = append(missing, v1.StatusMissingItem{
 				Code:    "rules_missing",
-				Message: fmt.Sprintf("no canonical rules files were found at %s", strings.Join(paths, " or ")),
+				Message: "no canonical rules files were found at " + strings.Join(paths, " or "),
 			})
 		}
 	}
@@ -208,7 +211,7 @@ func (s *Service) statusTags(projectRoot, tagsFile string) (v1.StatusSource, []v
 	if !source.Exists {
 		return item, []v1.StatusMissingItem{{
 			Code:    "tags_missing",
-			Message: fmt.Sprintf("repo-local canonical tags file is missing at %s", source.SourcePath),
+			Message: "repo-local canonical tags file is missing at " + source.SourcePath,
 		}}
 	}
 
@@ -225,7 +228,7 @@ func (s *Service) statusTags(projectRoot, tagsFile string) (v1.StatusSource, []v
 	return item, nil
 }
 
-func (s *Service) statusTests(projectRoot, testsFile, tagsFile, projectID string) (v1.StatusSource, []v1.StatusMissingItem) {
+func (s *Service) statusTests(projectRoot, testsFile, tagsFile string) (v1.StatusSource, []v1.StatusMissingItem) {
 	source, err := discoverVerifyTestsSource(projectRoot, testsFile)
 	if err != nil {
 		return v1.StatusSource{
@@ -247,7 +250,7 @@ func (s *Service) statusTests(projectRoot, testsFile, tagsFile, projectID string
 	if !source.Exists {
 		return item, []v1.StatusMissingItem{{
 			Code:    "tests_missing",
-			Message: fmt.Sprintf("verification definitions file is missing at %s", source.SourcePath),
+			Message: "verification definitions file is missing at " + source.SourcePath,
 		}}
 	}
 
@@ -297,7 +300,7 @@ func (s *Service) statusWorkflows(projectRoot, workflowsFile, tagsFile string) (
 	if !source.Exists {
 		return item, []v1.StatusMissingItem{{
 			Code:    "workflows_missing",
-			Message: fmt.Sprintf("workflow definitions file is missing at %s", source.SourcePath),
+			Message: "workflow definitions file is missing at " + source.SourcePath,
 		}}
 	}
 
@@ -351,7 +354,7 @@ func (s *Service) statusContextPreview(ctx context.Context, payload v1.StatusPay
 		TaskText:  taskText,
 		Phase:     phase,
 	}, resolvedTags, rules, nil, nil)
-	plans := s.makeContextPlans(ctx, payload.ProjectID, receiptID, false)
+	plans := s.makeContextPlans(ctx, payload.ProjectID, receiptID)
 
 	result.Status = "ok"
 	result.ResolvedTags = resolvedTags

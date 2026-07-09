@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path"
@@ -19,6 +20,9 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
+// Sync refreshes the pointer index against the working tree: it collects
+// changed (or all) project paths, applies staleness updates, re-syncs the
+// canonical rulesets, and optionally indexes newly discovered candidates.
 func (s *Service) Sync(ctx context.Context, payload v1.SyncPayload) (v1.SyncResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.SyncResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -45,8 +49,8 @@ func (s *Service) Sync(ctx context.Context, payload v1.SyncPayload) (v1.SyncResu
 		return v1.SyncResult{}, syncInternalError("apply_sync", err)
 	}
 
-	if _, err := s.syncCanonicalRulesets(ctx, projectID, projectRoot, payload.RulesFile, payload.TagsFile, true); err != nil {
-		return v1.SyncResult{}, syncInternalError("sync_ruleset", err)
+	if _, rErr := s.syncCanonicalRulesets(ctx, projectID, projectRoot, payload.RulesFile, payload.TagsFile, true); rErr != nil {
+		return v1.SyncResult{}, syncInternalError("sync_ruleset", rErr)
 	}
 
 	indexedStubs := 0
@@ -70,7 +74,7 @@ func (s *Service) Sync(ctx context.Context, payload v1.SyncPayload) (v1.SyncResu
 func resolveProjectSourcePath(projectRoot, raw string) (string, string, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
-		return "", "", fmt.Errorf("source path is required")
+		return "", "", errors.New("source path is required")
 	}
 
 	root := bootstrapkit.NormalizeProjectRoot(projectRoot)
@@ -82,7 +86,7 @@ func resolveProjectSourcePath(projectRoot, raw string) (string, string, error) {
 
 	relativePath := normalizeCompletionPath(trimmed)
 	if relativePath == "" {
-		return "", "", fmt.Errorf("source path must be repository-relative")
+		return "", "", errors.New("source path must be repository-relative")
 	}
 	absolutePath := filepath.Clean(filepath.Join(root, filepath.FromSlash(relativePath)))
 	return relativePath, absolutePath, nil
@@ -236,8 +240,8 @@ func (s *Service) collectFullSyncPaths(ctx context.Context, projectRoot string) 
 
 func parseChangedNameStatus(output string) ([]syncPathRecord, error) {
 	byPath := make(map[string]syncPathRecord)
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -298,8 +302,8 @@ func addSyncPathRecord(byPath map[string]syncPathRecord, path string, deleted bo
 
 func parseLsTreeHashes(output string) (map[string]string, error) {
 	hashByPath := make(map[string]string)
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -361,9 +365,7 @@ func (s *Service) resolveContentHashes(ctx context.Context, projectRoot, ref str
 			if fallbackErr != nil {
 				return nil, fallbackErr
 			}
-			for key, value := range fallbackHashes {
-				hashes[key] = value
-			}
+			maps.Copy(hashes, fallbackHashes)
 		}
 	}
 

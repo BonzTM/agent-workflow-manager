@@ -9,20 +9,6 @@ import (
 	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
-func normalizePhase(value string) string {
-	return storagedomain.NormalizePhase(value)
-}
-
-func normalizeLimit(v int, fallback int) int {
-	if v <= 0 {
-		v = fallback
-	}
-	if v > maxQueryLimit {
-		v = maxQueryLimit
-	}
-	return v
-}
-
 func normalizeStringList(values []string) []string {
 	return storagedomain.NormalizeStringList(values)
 }

@@ -9,8 +9,14 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/logging"
 )
 
-const LogLevelEnvVar = "AWM_LOG_LEVEL"
-const LogSinkEnvVar = "AWM_LOG_SINK"
+const (
+	// LogLevelEnvVar is the environment variable selecting the log level
+	// (debug, info, warn, error; default info).
+	LogLevelEnvVar = "AWM_LOG_LEVEL"
+	// LogSinkEnvVar is the environment variable selecting the log sink
+	// (stderr, stdout, discard; default stderr).
+	LogSinkEnvVar = "AWM_LOG_SINK"
+)
 
 type loggerSink string
 
@@ -31,6 +37,9 @@ type loggerOutputs struct {
 	discard io.Writer
 }
 
+// NewLogger builds a JSON logger configured from the AWM_LOG_LEVEL and
+// AWM_LOG_SINK environment variables (including .env fallback), writing to
+// the process's standard streams.
 func NewLogger() logging.Logger {
 	return newLoggerFromEnvWithOutputs(runtimeEnvGetenv("", os.LookupEnv), loggerOutputs{
 		stdout:  os.Stdout,
@@ -92,6 +101,8 @@ func selectLoggerWriter(sink loggerSink, outputs loggerOutputs) io.Writer {
 		if outputs.discard != nil {
 			return outputs.discard
 		}
+	case loggerSinkStderr:
+		// Handled by the shared fallback chain below.
 	}
 
 	if outputs.stderr != nil {

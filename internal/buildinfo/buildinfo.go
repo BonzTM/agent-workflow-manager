@@ -12,9 +12,14 @@ var (
 
 var readBuildInfo = debug.ReadBuildInfo
 
+// Version reports the version string displayed to users. It prefers the
+// injected version, then the injected short commit, then VCS build metadata
+// (short revision plus a "-dirty" suffix when modified), then the module
+// version, and finally "dev". Displayed versions never carry a leading "v";
+// that prefix exists only on git tags and is stripped here.
 func Version() string {
 	if v := strings.TrimSpace(version); v != "" {
-		return v
+		return strings.TrimPrefix(v, "v")
 	}
 	if injected := strings.TrimSpace(commitShort); injected != "" {
 		return injected
@@ -28,14 +33,16 @@ func Version() string {
 			}
 			return revision
 		}
-		if version := moduleVersion(info); version != "" {
-			return version
+		if modVersion := moduleVersion(info); modVersion != "" {
+			return strings.TrimPrefix(modVersion, "v")
 		}
 	}
 
 	return "dev"
 }
 
+// Banner formats a one-line version banner as "<binaryName> <version>", or
+// just the version when binaryName is blank.
 func Banner(binaryName string) string {
 	name := strings.TrimSpace(binaryName)
 	if name == "" {
@@ -81,15 +88,15 @@ func moduleVersion(info *debug.BuildInfo) string {
 		return ""
 	}
 
-	version := strings.TrimSpace(info.Main.Version)
-	if version == "" || version == "(devel)" {
+	mainVersion := strings.TrimSpace(info.Main.Version)
+	if mainVersion == "" || mainVersion == "(devel)" {
 		return ""
 	}
 
-	if pseudo := pseudoVersionCommit(version); pseudo != "" {
+	if pseudo := pseudoVersionCommit(mainVersion); pseudo != "" {
 		return pseudo
 	}
-	return version
+	return mainVersion
 }
 
 func pseudoVersionCommit(version string) string {

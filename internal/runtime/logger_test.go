@@ -38,7 +38,6 @@ func TestLoggerConfigFromEnv_BoundedValues(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -86,7 +85,6 @@ func TestNewLoggerFromEnvWithOutputs_WritesToConfiguredSink(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

@@ -19,15 +19,22 @@ import (
 	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
+// Repository is the Postgres-backed implementation of the core repository
+// interfaces. It owns a pgx connection pool and is safe for concurrent use.
 type Repository struct {
 	pool *pgxpool.Pool
 }
 
-var _ core.Repository = (*Repository)(nil)
-var _ core.WorkPlanRepository = (*Repository)(nil)
-var _ core.HistoryRepository = (*Repository)(nil)
-var _ core.VerificationRepository = (*Repository)(nil)
+var (
+	_ core.Repository             = (*Repository)(nil)
+	_ core.WorkPlanRepository     = (*Repository)(nil)
+	_ core.HistoryRepository      = (*Repository)(nil)
+	_ core.VerificationRepository = (*Repository)(nil)
+)
 
+// New connects to Postgres using cfg, verifies the connection with a ping,
+// and applies any pending schema migrations. The returned Repository owns the
+// pool; callers must Close it when done.
 func New(ctx context.Context, cfg Config) (*Repository, error) {
 	poolCfg, err := cfg.PoolConfig()
 	if err != nil {
@@ -38,9 +45,9 @@ func New(ctx context.Context, cfg Config) (*Repository, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create postgres pool: %w", err)
 	}
-	if err := pool.Ping(ctx); err != nil {
+	if pingErr := pool.Ping(ctx); pingErr != nil {
 		pool.Close()
-		return nil, fmt.Errorf("ping postgres: %w", err)
+		return nil, fmt.Errorf("ping postgres: %w", pingErr)
 	}
 
 	repo, err := NewWithPool(pool)
@@ -56,13 +63,26 @@ func New(ctx context.Context, cfg Config) (*Repository, error) {
 	return repo, nil
 }
 
+// NewWithPool wraps an existing pgx pool in a Repository without running
+// migrations. It errors when pool is nil; the caller retains ownership of
+// the pool's lifetime until Close is called.
 func NewWithPool(pool *pgxpool.Pool) (*Repository, error) {
 	if pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 	return &Repository{pool: pool}, nil
 }
 
+// rollbackTx releases tx if it is still open. It is intended for use in defer
+// statements as best-effort cleanup: after a successful Commit, Rollback
+// reports pgx.ErrTxClosed, and any other failure occurs on a path that is
+// already returning an error, so there is nothing further to handle.
+func rollbackTx(ctx context.Context, tx pgx.Tx) {
+	_ = tx.Rollback(ctx) //nolint:errcheck // best-effort rollback in defer; returns pgx.ErrTxClosed after a successful commit
+}
+
+// Close releases the underlying connection pool. It is a no-op on a nil or
+// pool-less repository.
 func (r *Repository) Close() {
 	if r == nil || r.pool == nil {
 		return
@@ -70,16 +90,21 @@ func (r *Repository) Close() {
 	r.pool.Close()
 }
 
+// Migrate applies any pending embedded schema migrations to the connected
+// database.
 func (r *Repository) Migrate(ctx context.Context) error {
 	if r == nil || r.pool == nil {
-		return fmt.Errorf("postgres pool is required")
+		return errors.New("postgres pool is required")
 	}
 	return ApplyMigrations(ctx, r.pool)
 }
 
+// FetchCandidatePointers returns the project's pointers that match the
+// query's tag and staleness filters, ranked and truncated per the query
+// limit. It requires a non-empty project ID.
 func (r *Repository) FetchCandidatePointers(ctx context.Context, input core.CandidatePointerQuery) ([]core.CandidatePointer, error) {
 	if r == nil || r.pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 
 	input.StaleFilter.StaleBefore = normalizeStaleBefore(input.StaleFilter.StaleBefore)
@@ -143,14 +168,16 @@ func (r *Repository) FetchCandidatePointers(ctx context.Context, input core.Cand
 	return storagedomain.SortAndLimitCandidatePointers(results, input, defaultCandidateLimit), nil
 }
 
+// ListPointerInventory returns every indexed pointer for the project,
+// including stale entries, for inventory-style reporting.
 func (r *Repository) ListPointerInventory(ctx context.Context, projectID string) ([]core.PointerInventory, error) {
 	if r == nil || r.pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 
 	rows, err := r.pool.Query(ctx, `
@@ -186,9 +213,12 @@ ORDER BY path ASC
 	return results, nil
 }
 
+// UpsertPointerStubs inserts or refreshes auto-indexed pointer stubs for the
+// project in a single transaction and reports how many rows changed. Stubs
+// with empty paths are skipped; existing pointers are un-staled in place.
 func (r *Repository) UpsertPointerStubs(ctx context.Context, projectID string, stubs []core.PointerStub) (int, error) {
 	if r == nil || r.pool == nil {
-		return 0, fmt.Errorf("postgres pool is required")
+		return 0, errors.New("postgres pool is required")
 	}
 
 	normalized, err := normalizePointerStubs(projectID, stubs)
@@ -203,7 +233,7 @@ func (r *Repository) UpsertPointerStubs(ctx context.Context, projectID string, s
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer rollbackTx(ctx, tx)
 
 	updated := 0
 	for _, stub := range normalized {
@@ -267,9 +297,11 @@ ON CONFLICT (project_id, pointer_key) DO UPDATE SET
 	return updated, nil
 }
 
+// FetchReceiptScope loads the stored scope for a receipt. It returns
+// core.ErrReceiptScopeNotFound when no receipt matches the query.
 func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptScopeQuery) (core.ReceiptScope, error) {
 	if r == nil || r.pool == nil {
-		return core.ReceiptScope{}, fmt.Errorf("postgres pool is required")
+		return core.ReceiptScope{}, errors.New("postgres pool is required")
 	}
 
 	query, args, err := buildFetchReceiptScopeQuery(input)
@@ -288,7 +320,7 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		BaselineCaptured  bool
 		BaselinePathsJSON []byte
 	}
-	if err := r.pool.QueryRow(ctx, query, args...).Scan(
+	if scanErr := r.pool.QueryRow(ctx, query, args...).Scan(
 		&row.ReceiptID,
 		&row.TaskText,
 		&row.Phase,
@@ -298,11 +330,11 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		&row.InitialScopePaths,
 		&row.BaselineCaptured,
 		&row.BaselinePathsJSON,
-	); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	); scanErr != nil {
+		if errors.Is(scanErr, pgx.ErrNoRows) {
 			return core.ReceiptScope{}, core.ErrReceiptScopeNotFound
 		}
-		return core.ReceiptScope{}, fmt.Errorf("query receipt scope: %w", err)
+		return core.ReceiptScope{}, fmt.Errorf("query receipt scope: %w", scanErr)
 	}
 
 	baselinePaths, err := decodeSyncPathsJSON(row.BaselinePathsJSON)
@@ -323,9 +355,12 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 	}, nil
 }
 
+// LookupFetchState resolves a receipt (by ID or latest for the project) into
+// its fetch-time state. It returns core.ErrFetchLookupNotFound when the
+// receipt does not exist.
 func (r *Repository) LookupFetchState(ctx context.Context, input core.FetchLookupQuery) (core.FetchLookup, error) {
 	if r == nil || r.pool == nil {
-		return core.FetchLookup{}, fmt.Errorf("postgres pool is required")
+		return core.FetchLookup{}, errors.New("postgres pool is required")
 	}
 
 	query, args, err := buildLookupFetchStateQuery(input)
@@ -339,16 +374,16 @@ func (r *Repository) LookupFetchState(ctx context.Context, input core.FetchLooku
 		RunStatus string
 		UpdatedAt time.Time
 	}
-	if err := r.pool.QueryRow(ctx, query, args...).Scan(
+	if scanErr := r.pool.QueryRow(ctx, query, args...).Scan(
 		&row.ReceiptID,
 		&row.RunID,
 		&row.RunStatus,
 		&row.UpdatedAt,
-	); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	); scanErr != nil {
+		if errors.Is(scanErr, pgx.ErrNoRows) {
 			return core.FetchLookup{}, core.ErrFetchLookupNotFound
 		}
-		return core.FetchLookup{}, fmt.Errorf("query fetch lookup: %w", err)
+		return core.FetchLookup{}, fmt.Errorf("query fetch lookup: %w", scanErr)
 	}
 
 	workItems, err := r.ListWorkItems(ctx, input)
@@ -367,9 +402,11 @@ func (r *Repository) LookupFetchState(ctx context.Context, input core.FetchLooku
 	}, nil
 }
 
+// LookupPointerByKey fetches a single pointer by its pointer key. It returns
+// core.ErrPointerLookupNotFound when the key is not indexed for the project.
 func (r *Repository) LookupPointerByKey(ctx context.Context, input core.PointerLookupQuery) (core.CandidatePointer, error) {
 	if r == nil || r.pool == nil {
-		return core.CandidatePointer{}, fmt.Errorf("postgres pool is required")
+		return core.CandidatePointer{}, errors.New("postgres pool is required")
 	}
 
 	query, args, err := buildLookupPointerByKeyQuery(input)
@@ -421,9 +458,11 @@ func (r *Repository) LookupPointerByKey(ctx context.Context, input core.PointerL
 	}, nil
 }
 
+// UpsertWorkItems inserts or updates the receipt's work items in a single
+// transaction and reports how many rows changed.
 func (r *Repository) UpsertWorkItems(ctx context.Context, input core.WorkItemsUpsertInput) (int, error) {
 	if r == nil || r.pool == nil {
-		return 0, fmt.Errorf("postgres pool is required")
+		return 0, errors.New("postgres pool is required")
 	}
 
 	query, args, err := buildUpsertWorkItemsQuery(input)
@@ -439,9 +478,11 @@ func (r *Repository) UpsertWorkItems(ctx context.Context, input core.WorkItemsUp
 	return int(tag.RowsAffected()), nil
 }
 
+// ListWorkItems returns the work items recorded for the receipt resolved by
+// the query, in stable item-key order.
 func (r *Repository) ListWorkItems(ctx context.Context, input core.FetchLookupQuery) ([]core.WorkItem, error) {
 	if r == nil || r.pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 
 	query, args, err := buildListWorkItemsQuery(input)
@@ -476,18 +517,22 @@ func (r *Repository) ListWorkItems(ctx context.Context, input core.FetchLookupQu
 	return items, nil
 }
 
+// UpsertWorkPlan creates or updates a work plan and its tasks in a single
+// transaction, honoring the merge/replace mode, deriving the plan status from
+// task states when none is supplied, and returning the stored plan along with
+// the number of task rows changed.
 func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpsertInput) (core.WorkPlanUpsertResult, error) {
 	if r == nil || r.pool == nil {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("postgres pool is required")
+		return core.WorkPlanUpsertResult{}, errors.New("postgres pool is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("project_id is required")
+		return core.WorkPlanUpsertResult{}, errors.New("project_id is required")
 	}
 	planKey := strings.TrimSpace(input.PlanKey)
 	if planKey == "" {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("plan_key is required")
+		return core.WorkPlanUpsertResult{}, errors.New("plan_key is required")
 	}
 	mode := normalizeWorkPlanMode(input.Mode)
 
@@ -495,7 +540,7 @@ func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpse
 	if err != nil {
 		return core.WorkPlanUpsertResult{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer rollbackTx(ctx, tx)
 
 	current, found, err := lookupWorkPlanRowTx(ctx, tx, projectID, planKey)
 	if err != nil {
@@ -509,26 +554,26 @@ func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpse
 	}
 
 	next := buildNextWorkPlanState(current, found, input, mode)
-	if err := upsertWorkPlanRowTx(ctx, tx, next); err != nil {
-		return core.WorkPlanUpsertResult{}, err
+	if upsertErr := upsertWorkPlanRowTx(ctx, tx, next); upsertErr != nil {
+		return core.WorkPlanUpsertResult{}, upsertErr
 	}
 
 	updated := 0
 	normalizedTasks := storagedomain.MergeIncomingWorkPlanTasks(current.Tasks, input.Tasks, mode)
 	if mode == core.WorkPlanModeReplace {
-		tag, err := tx.Exec(ctx, `
+		tag, delErr := tx.Exec(ctx, `
 DELETE FROM awm_work_plan_tasks
 WHERE project_id = $1
 	AND plan_key = $2
 `, projectID, planKey)
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("delete work plan tasks: %w", err)
+		if delErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("delete work plan tasks: %w", delErr)
 		}
 		updated += int(tag.RowsAffected())
 	}
 
 	for _, task := range normalizedTasks {
-		tag, err := tx.Exec(ctx, `
+		tag, taskErr := tx.Exec(ctx, `
 INSERT INTO awm_work_plan_tasks (
 	project_id,
 	plan_key,
@@ -561,30 +606,30 @@ ON CONFLICT(project_id, plan_key, task_key) DO UPDATE SET
 	evidence = EXCLUDED.evidence,
 	updated_at = NOW()
 `, projectID, planKey, task.ItemKey, strings.TrimSpace(task.Summary), storageWorkItemStatus(task.Status), strings.TrimSpace(task.ParentTaskKey), nonNilStringList(task.DependsOn), nonNilStringList(task.AcceptanceCriteria), nonNilStringList(task.References), nonNilStringList(task.ExternalRefs), strings.TrimSpace(task.BlockedReason), strings.TrimSpace(task.Outcome), nonNilStringList(task.Evidence))
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("upsert work plan task: %w", err)
+		if taskErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("upsert work plan task: %w", taskErr)
 		}
 		updated += int(tag.RowsAffected())
 	}
 
 	if strings.TrimSpace(input.Status) == "" {
-		tasks, err := listWorkPlanTasksTx(ctx, tx, projectID, planKey)
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, err
+		tasks, listErr := listWorkPlanTasksTx(ctx, tx, projectID, planKey)
+		if listErr != nil {
+			return core.WorkPlanUpsertResult{}, listErr
 		}
 		derivedStatus := derivePlanStatus(tasks)
-		if _, err := tx.Exec(ctx, `
+		if _, updateErr := tx.Exec(ctx, `
 UPDATE awm_work_plans
 SET status = $3, updated_at = NOW()
 WHERE project_id = $1
 	AND plan_key = $2
-`, projectID, planKey, storageWorkItemStatus(derivedStatus)); err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("update work plan status: %w", err)
+`, projectID, planKey, storageWorkItemStatus(derivedStatus)); updateErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("update work plan status: %w", updateErr)
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("commit tx: %w", err)
+	if commitErr := tx.Commit(ctx); commitErr != nil {
+		return core.WorkPlanUpsertResult{}, fmt.Errorf("commit tx: %w", commitErr)
 	}
 
 	plan, err := r.LookupWorkPlan(ctx, core.WorkPlanLookupQuery{
@@ -601,19 +646,22 @@ WHERE project_id = $1
 	}, nil
 }
 
+// LookupWorkPlan loads a stored work plan and its tasks by plan key (or the
+// project's most recent plan when no key is given). It returns
+// core.ErrWorkPlanNotFound when no matching plan exists.
 func (r *Repository) LookupWorkPlan(ctx context.Context, input core.WorkPlanLookupQuery) (core.WorkPlan, error) {
 	if r == nil || r.pool == nil {
-		return core.WorkPlan{}, fmt.Errorf("postgres pool is required")
+		return core.WorkPlan{}, errors.New("postgres pool is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.WorkPlan{}, fmt.Errorf("project_id is required")
+		return core.WorkPlan{}, errors.New("project_id is required")
 	}
 	planKey := strings.TrimSpace(input.PlanKey)
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if planKey == "" && receiptID == "" {
-		return core.WorkPlan{}, fmt.Errorf("plan_key or receipt_id is required")
+		return core.WorkPlan{}, errors.New("plan_key or receipt_id is required")
 	}
 
 	if planKey == "" {
@@ -649,14 +697,16 @@ LIMIT 1
 	return plan, nil
 }
 
+// ListWorkPlans returns plan summaries (with task counts and active task
+// keys) for the project, filtered by scope and optional search text.
 func (r *Repository) ListWorkPlans(ctx context.Context, input core.WorkPlanListQuery) ([]core.WorkPlanSummary, error) {
 	if r == nil || r.pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	limit := input.Limit
 	if !input.Unbounded && limit <= 0 {
@@ -707,13 +757,13 @@ WHERE p.project_id = $1
 	}
 
 	if trimmedKind := strings.TrimSpace(input.Kind); trimmedKind != "" {
-		query.WriteString(fmt.Sprintf("  AND p.kind = $%d\n", argIndex))
+		fmt.Fprintf(&query, "  AND p.kind = $%d\n", argIndex)
 		args = append(args, trimmedKind)
 		argIndex++
 	}
 
 	if searchPattern != "" {
-		query.WriteString(fmt.Sprintf(`  AND (
+		fmt.Fprintf(&query, `  AND (
 	LOWER(p.plan_key) LIKE $%d ESCAPE '\'
 	OR LOWER(COALESCE(p.receipt_id, '')) LIKE $%d ESCAPE '\'
 	OR LOWER(COALESCE(p.title, '')) LIKE $%d ESCAPE '\'
@@ -733,8 +783,8 @@ WHERE p.project_id = $1
 			)
 	)
 )
-`, argIndex, argIndex+1, argIndex+2, argIndex+3, argIndex+4, argIndex+5, argIndex+6, argIndex+7, argIndex+8, argIndex+9))
-		for i := 0; i < 10; i++ {
+`, argIndex, argIndex+1, argIndex+2, argIndex+3, argIndex+4, argIndex+5, argIndex+6, argIndex+7, argIndex+8, argIndex+9)
+		for range 10 {
 			args = append(args, searchPattern)
 		}
 		argIndex += 10
@@ -745,7 +795,7 @@ GROUP BY p.plan_key, p.receipt_id, p.title, p.objective, p.status, p.kind, p.par
 ORDER BY p.updated_at DESC, p.plan_key ASC
 `)
 	if !input.Unbounded {
-		query.WriteString(fmt.Sprintf("LIMIT $%d\n", argIndex))
+		fmt.Fprintf(&query, "LIMIT $%d\n", argIndex)
 		args = append(args, limit)
 	}
 
@@ -772,7 +822,7 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 			taskCountComplete   int64
 			updatedAt           time.Time
 		)
-		if err := rows.Scan(
+		if scanErr := rows.Scan(
 			&planKey,
 			&receiptID,
 			&title,
@@ -786,8 +836,8 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 			&taskCountBlocked,
 			&taskCountComplete,
 			&updatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan work plan summary: %w", err)
+		); scanErr != nil {
+			return nil, fmt.Errorf("scan work plan summary: %w", scanErr)
 		}
 		planKey = strings.TrimSpace(planKey)
 		if planKey == "" {
@@ -821,8 +871,8 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 			UpdatedAt:           updatedAt.UTC(),
 		})
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate work plans: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("iterate work plans: %w", rowsErr)
 	}
 
 	if len(out) == 0 {
@@ -840,14 +890,16 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 	return out, nil
 }
 
+// ListReceiptHistory returns receipt summaries for the project, newest
+// first, filtered by the query's scope, search text, and limit.
 func (r *Repository) ListReceiptHistory(ctx context.Context, input core.ReceiptHistoryListQuery) ([]core.ReceiptHistorySummary, error) {
 	if r == nil || r.pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	limit := input.Limit
 	if !input.Unbounded && limit <= 0 {
@@ -885,7 +937,7 @@ WHERE r.project_id = $1
 	argIndex := 2
 
 	if searchPattern != "" {
-		query.WriteString(fmt.Sprintf(`  AND (
+		fmt.Fprintf(&query, `  AND (
 	LOWER(r.receipt_id) LIKE $%d ESCAPE '\'
 	OR LOWER(COALESCE(r.task_text, '')) LIKE $%d ESCAPE '\'
 	OR LOWER(COALESCE(r.phase, '')) LIKE $%d ESCAPE '\'
@@ -903,8 +955,8 @@ WHERE r.project_id = $1
 			)
 	)
 )
-`, argIndex, argIndex+1, argIndex+2, argIndex+3, argIndex+4, argIndex+5, argIndex+6, argIndex+7))
-		for i := 0; i < 8; i++ {
+`, argIndex, argIndex+1, argIndex+2, argIndex+3, argIndex+4, argIndex+5, argIndex+6, argIndex+7)
+		for range 8 {
 			args = append(args, searchPattern)
 		}
 		argIndex += 8
@@ -914,7 +966,7 @@ WHERE r.project_id = $1
 ORDER BY updated_at DESC, r.receipt_id ASC
 `)
 	if !input.Unbounded {
-		query.WriteString(fmt.Sprintf("LIMIT $%d\n", argIndex))
+		fmt.Fprintf(&query, "LIMIT $%d\n", argIndex)
 		args = append(args, limit)
 	}
 
@@ -953,14 +1005,16 @@ ORDER BY updated_at DESC, r.receipt_id ASC
 	return out, nil
 }
 
+// ListRunHistory returns run summaries for the project, newest first,
+// filtered by the query's scope, search text, and limit.
 func (r *Repository) ListRunHistory(ctx context.Context, input core.RunHistoryListQuery) ([]core.RunHistorySummary, error) {
 	if r == nil || r.pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	limit := input.Limit
 	if !input.Unbounded && limit <= 0 {
@@ -996,7 +1050,7 @@ WHERE run.project_id = $1
 	argIndex := 2
 
 	if searchPattern != "" {
-		query.WriteString(fmt.Sprintf(`  AND (
+		fmt.Fprintf(&query, `  AND (
 	LOWER(COALESCE(run.request_id, '')) LIKE $%d ESCAPE '\'
 	OR LOWER(COALESCE(run.status, '')) LIKE $%d ESCAPE '\'
 	OR LOWER(COALESCE(run.outcome, '')) LIKE $%d ESCAPE '\'
@@ -1006,8 +1060,8 @@ WHERE run.project_id = $1
 	OR LOWER(COALESCE(r.phase, '')) LIKE $%d ESCAPE '\'
 	OR LOWER(COALESCE(run.receipt_id, '')) LIKE $%d ESCAPE '\'
 )
-`, argIndex, argIndex+1, argIndex+2, argIndex+3, argIndex+4, argIndex+5, argIndex+6, argIndex+7))
-		for i := 0; i < 8; i++ {
+`, argIndex, argIndex+1, argIndex+2, argIndex+3, argIndex+4, argIndex+5, argIndex+6, argIndex+7)
+		for range 8 {
 			args = append(args, searchPattern)
 		}
 		argIndex += 8
@@ -1017,7 +1071,7 @@ WHERE run.project_id = $1
 ORDER BY run.created_at DESC, run.run_id DESC
 `)
 	if !input.Unbounded {
-		query.WriteString(fmt.Sprintf("LIMIT $%d\n", argIndex))
+		fmt.Fprintf(&query, "LIMIT $%d\n", argIndex)
 		args = append(args, limit)
 	}
 
@@ -1061,16 +1115,18 @@ ORDER BY run.created_at DESC, run.run_id DESC
 	return out, nil
 }
 
+// LookupRunHistory loads a single run summary by run or receipt ID. It
+// returns core.ErrFetchLookupNotFound when no matching run exists.
 func (r *Repository) LookupRunHistory(ctx context.Context, input core.RunHistoryLookupQuery) (core.RunHistorySummary, error) {
 	if r == nil || r.pool == nil {
-		return core.RunHistorySummary{}, fmt.Errorf("postgres pool is required")
+		return core.RunHistorySummary{}, errors.New("postgres pool is required")
 	}
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.RunHistorySummary{}, fmt.Errorf("project_id is required")
+		return core.RunHistorySummary{}, errors.New("project_id is required")
 	}
 	if input.RunID <= 0 {
-		return core.RunHistorySummary{}, fmt.Errorf("run_id must be positive")
+		return core.RunHistorySummary{}, errors.New("run_id must be positive")
 	}
 
 	var row core.RunHistorySummary
@@ -1167,9 +1223,12 @@ ORDER BY
 	return out, nil
 }
 
+// SaveRunReceiptSummary persists a completed run and its receipt summary in
+// one transaction, generating any missing run/receipt IDs, and returns the
+// IDs that were stored.
 func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunReceiptSummary) (core.RunReceiptIDs, error) {
 	if r == nil || r.pool == nil {
-		return core.RunReceiptIDs{}, fmt.Errorf("postgres pool is required")
+		return core.RunReceiptIDs{}, errors.New("postgres pool is required")
 	}
 
 	normalized, err := normalizeRunReceiptSummary(input)
@@ -1219,7 +1278,7 @@ func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunRe
 	if err != nil {
 		return core.RunReceiptIDs{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer rollbackTx(ctx, tx)
 
 	_, err = tx.Exec(ctx, `
 INSERT INTO awm_receipts (
@@ -1273,9 +1332,11 @@ RETURNING run_id
 	}, nil
 }
 
+// UpsertReceiptScope stores or replaces the scope snapshot (task, phase,
+// tags, pointer keys, and paths) recorded for a receipt.
 func (r *Repository) UpsertReceiptScope(ctx context.Context, input core.ReceiptScope) error {
 	if r == nil || r.pool == nil {
-		return fmt.Errorf("postgres pool is required")
+		return errors.New("postgres pool is required")
 	}
 
 	normalized, err := normalizeReceiptScope(input)
@@ -1320,9 +1381,11 @@ SET
 	return nil
 }
 
+// SaveReviewAttempt appends a review attempt for a receipt and returns the
+// attempt number assigned to it.
 func (r *Repository) SaveReviewAttempt(ctx context.Context, input core.ReviewAttempt) (int64, error) {
 	if r == nil || r.pool == nil {
-		return 0, fmt.Errorf("postgres pool is required")
+		return 0, errors.New("postgres pool is required")
 	}
 
 	normalized, err := normalizeReviewAttempt(input)
@@ -1362,18 +1425,20 @@ RETURNING attempt_id
 	return attemptID, nil
 }
 
+// ListReviewAttempts returns the review attempts recorded for a receipt in
+// ascending attempt order.
 func (r *Repository) ListReviewAttempts(ctx context.Context, input core.ReviewAttemptListQuery) ([]core.ReviewAttempt, error) {
 	if r == nil || r.pool == nil {
-		return nil, fmt.Errorf("postgres pool is required")
+		return nil, errors.New("postgres pool is required")
 	}
 	if strings.TrimSpace(input.ProjectID) == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	if strings.TrimSpace(input.ReceiptID) == "" {
-		return nil, fmt.Errorf("receipt_id is required")
+		return nil, errors.New("receipt_id is required")
 	}
 	if strings.TrimSpace(input.ReviewKey) == "" {
-		return nil, fmt.Errorf("review_key is required")
+		return nil, errors.New("review_key is required")
 	}
 
 	rows, err := r.pool.Query(ctx, `
@@ -1458,9 +1523,11 @@ ORDER BY created_at ASC, attempt_id ASC
 	return out, nil
 }
 
+// SaveVerificationBatch stores the verification results for a receipt in a
+// single transaction, replacing any batch previously saved for it.
 func (r *Repository) SaveVerificationBatch(ctx context.Context, input core.VerificationBatch) error {
 	if r == nil || r.pool == nil {
-		return fmt.Errorf("postgres pool is required")
+		return errors.New("postgres pool is required")
 	}
 
 	normalized, err := normalizeVerificationBatch(input)
@@ -1472,7 +1539,7 @@ func (r *Repository) SaveVerificationBatch(ctx context.Context, input core.Verif
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer rollbackTx(ctx, tx)
 
 	_, err = tx.Exec(ctx, `
 INSERT INTO awm_verification_batches (
@@ -1527,9 +1594,13 @@ INSERT INTO awm_verification_results (
 	return nil
 }
 
+// ApplySync reconciles the pointer index with a working-tree snapshot in one
+// transaction: deleted paths are marked stale, present paths get refreshed
+// content hashes, and (optionally) unindexed paths become new candidates. It
+// returns counts of each change applied.
 func (r *Repository) ApplySync(ctx context.Context, input core.SyncApplyInput) (core.SyncApplyResult, error) {
 	if r == nil || r.pool == nil {
-		return core.SyncApplyResult{}, fmt.Errorf("postgres pool is required")
+		return core.SyncApplyResult{}, errors.New("postgres pool is required")
 	}
 
 	normalized, err := normalizeSyncApplyInput(input)
@@ -1553,7 +1624,7 @@ func (r *Repository) ApplySync(ctx context.Context, input core.SyncApplyInput) (
 	if err != nil {
 		return core.SyncApplyResult{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer rollbackTx(ctx, tx)
 
 	result := core.SyncApplyResult{}
 
@@ -1615,7 +1686,7 @@ func (r *Repository) ApplySync(ctx context.Context, input core.SyncApplyInput) (
 func normalizePointerStubs(projectID string, stubs []core.PointerStub) ([]core.PointerStub, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	if len(stubs) == 0 {
 		return nil, nil

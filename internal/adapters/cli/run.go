@@ -18,10 +18,17 @@ const (
 	commandWork  = v1.CommandWork
 )
 
+// Run reads one v1 command envelope from in, executes it against svc, and
+// writes the result envelope to out without emitting logs. It returns the
+// process exit code: 0 on success, 1 on any read, validation, or dispatch
+// failure.
 func Run(ctx context.Context, svc core.Service, in io.Reader, out io.Writer, now func() time.Time) int {
 	return RunWithLogger(ctx, svc, in, out, now, nil)
 }
 
+// RunWithLogger behaves like Run while emitting structured ingress, dispatch,
+// and result events to logger (a nil logger is normalized to a no-op). Every
+// outcome, including failures, is reported as a JSON result envelope on out.
 func RunWithLogger(ctx context.Context, svc core.Service, in io.Reader, out io.Writer, now func() time.Time, logger logging.Logger) int {
 	logger = logging.Normalize(logger)
 
@@ -29,7 +36,7 @@ func RunWithLogger(ctx context.Context, svc core.Service, in io.Reader, out io.W
 	if err != nil {
 		logger.Error(ctx, logging.EventCLIIngressRead, "ok", false, "error_code", v1.ErrCodeReadFailed)
 		logger.Error(ctx, logging.EventCLIFailure, "stage", "read", "error_code", v1.ErrCodeReadFailed)
-		writeEnvelope(out, v1.ResultEnvelope{
+		writeEnvelope(ctx, logger, out, v1.ResultEnvelope{
 			Version:   v1.Version,
 			Command:   "",
 			RequestID: "",
@@ -47,7 +54,7 @@ func RunWithLogger(ctx context.Context, svc core.Service, in io.Reader, out io.W
 	if valErr != nil {
 		logger.Error(ctx, logging.EventCLIIngressValidate, "ok", false, "command", string(env.Command), "request_id", env.RequestID, "error_code", valErr.Code)
 		logger.Error(ctx, logging.EventCLIFailure, "stage", "validate", "command", string(env.Command), "request_id", env.RequestID, "error_code", valErr.Code)
-		writeEnvelope(out, v1.ResultEnvelope{
+		writeEnvelope(ctx, logger, out, v1.ResultEnvelope{
 			Version:   v1.Version,
 			Command:   env.Command,
 			RequestID: env.RequestID,
@@ -77,7 +84,7 @@ func RunWithLogger(ctx context.Context, svc core.Service, in io.Reader, out io.W
 		}
 		logger.Error(ctx, logging.EventCLIDispatch, dispatchFailFields...)
 		logger.Error(ctx, logging.EventCLIFailure, "stage", "dispatch", "command", string(env.Command), "request_id", env.RequestID, "error_code", apiErr.Code)
-		writeEnvelope(out, v1.ResultEnvelope{
+		writeEnvelope(ctx, logger, out, v1.ResultEnvelope{
 			Version:   v1.Version,
 			Command:   env.Command,
 			RequestID: env.RequestID,
@@ -98,7 +105,7 @@ func RunWithLogger(ctx context.Context, svc core.Service, in io.Reader, out io.W
 	}
 	logger.Info(ctx, logging.EventCLIDispatch, dispatchFinishFields...)
 
-	writeEnvelope(out, v1.ResultEnvelope{
+	writeEnvelope(ctx, logger, out, v1.ResultEnvelope{
 		Version:   v1.Version,
 		Command:   env.Command,
 		RequestID: env.RequestID,
@@ -125,10 +132,14 @@ func dispatch(ctx context.Context, svc core.Service, command v1.Command, payload
 	return commands.Dispatch(ctx, svc, command, payload)
 }
 
-func writeEnvelope(out io.Writer, env v1.ResultEnvelope) {
+func writeEnvelope(ctx context.Context, logger logging.Logger, out io.Writer, env v1.ResultEnvelope) {
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")
-	_ = enc.Encode(env)
+	if err := enc.Encode(env); err != nil {
+		// The result envelope could not be delivered (e.g. closed stdout);
+		// the exit code is the only signal left, so record the failure.
+		logging.Normalize(logger).Error(ctx, logging.EventCLIFailure, "stage", "write", "error_code", v1.ErrCodeWriteFailed)
+	}
 }
 
 func projectIDFromPayload(payload any) string {

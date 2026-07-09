@@ -25,7 +25,7 @@ func cleanAWMEnv(overrides ...string) []string {
 	return filtered
 }
 
-func runFeaturePlanValidator(t *testing.T, awmScript string, overrides ...string) (string, error) {
+func runFeaturePlanValidator(t *testing.T, awmScript string) (string, error) {
 	t.Helper()
 
 	tempRoot := t.TempDir()
@@ -41,7 +41,6 @@ func runFeaturePlanValidator(t *testing.T, awmScript string, overrides ...string
 		"AWM_PROJECT_ID=agent-workflow-manager",
 		"AWM_RECEIPT_ID=receipt-test",
 	}
-	env = append(env, overrides...)
 
 	cmd := exec.Command("python3", "scripts/awm-feature-plan-validate.py")
 	cmd.Dir = repoRoot(t)

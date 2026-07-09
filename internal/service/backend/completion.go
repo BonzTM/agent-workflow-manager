@@ -12,6 +12,9 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
+// Done closes out a run receipt: it verifies the changed files against the
+// receipt scope, evaluates definition-of-done requirements, and records a run
+// summary when the closeout is accepted (or rejects it in strict scope mode).
 func (s *Service) Done(ctx context.Context, payload v1.DonePayload) (v1.DoneResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.DoneResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -62,10 +65,8 @@ func (s *Service) Done(ctx context.Context, payload v1.DonePayload) (v1.DoneResu
 		return v1.DoneResult{}, reportCompletionInternalError("list_work_items", err)
 	}
 	if plan != nil {
-		if updatedPlan, _, apiErr := s.syncTerminalWorkPlanStatus(ctx, payload.ProjectID, receiptID, *plan, workItems); apiErr != nil {
-			return v1.DoneResult{}, apiErr
-		} else {
-			plan = &updatedPlan
+		if _, _, syncErr := s.syncTerminalWorkPlanStatus(ctx, payload.ProjectID, receiptID, *plan, workItems); syncErr != nil {
+			return v1.DoneResult{}, syncErr
 		}
 	}
 
@@ -199,8 +200,8 @@ func (s *Service) evaluateDefinitionOfDoneIssues(ctx context.Context, projectID,
 			continue
 		}
 		if !definition.RerunRequiresNewFingerprint {
-			attempt, ok := latestReviewAttempt(attempts)
-			if !ok || !attempt.Passed {
+			attempt, found := latestReviewAttempt(attempts)
+			if !found || !attempt.Passed {
 				issues = append(issues, missingReviewExecutionIssue(definition.Key))
 			}
 			continue
@@ -230,9 +231,9 @@ func (s *Service) evaluateDefinitionOfDoneIssues(ctx context.Context, projectID,
 
 func missingCompletionWorkItemIssue(requiredKey string) string {
 	if requiredKey == requiredVerifyTestsKey {
-		return fmt.Sprintf("required verification work item is missing: %s", requiredKey)
+		return "required verification work item is missing: " + requiredKey
 	}
-	return fmt.Sprintf("required workflow work item is missing: %s", requiredKey)
+	return "required workflow work item is missing: " + requiredKey
 }
 
 func incompleteCompletionWorkItemIssue(requiredKey, status string) string {
@@ -243,11 +244,11 @@ func incompleteCompletionWorkItemIssue(requiredKey, status string) string {
 }
 
 func staleReviewCompletionWorkItemIssue(requiredKey string) string {
-	return fmt.Sprintf("required workflow review is stale for the current scoped fingerprint: %s", requiredKey)
+	return "required workflow review is stale for the current scoped fingerprint: " + requiredKey
 }
 
 func missingReviewExecutionIssue(requiredKey string) string {
-	return fmt.Sprintf("required workflow review has no passing execution: %s", requiredKey)
+	return "required workflow review has no passing execution: " + requiredKey
 }
 
 func reportCompletionInternalError(operation string, err error) *core.APIError {

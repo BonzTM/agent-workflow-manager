@@ -3,14 +3,16 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestVerify_DryRunSelectsDeterministicallyWithoutPersistence(t *testing.T) {
@@ -275,7 +277,7 @@ func TestVerify_WorkEvidenceIsCapped(t *testing.T) {
 	}
 
 	results := make([]v1.VerifyTestResult, 0, 256)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		results = append(results, v1.VerifyTestResult{TestID: fmt.Sprintf("test-%03d", i)})
 	}
 
@@ -334,9 +336,7 @@ tests:
 	var gotEnv map[string]string
 	svc.runVerifyCommand = func(_ context.Context, _ string, _ verifyTestDefinition, extraEnv map[string]string) verifyCommandRun {
 		gotEnv = make(map[string]string, len(extraEnv))
-		for key, value := range extraEnv {
-			gotEnv[key] = value
-		}
+		maps.Copy(gotEnv, extraEnv)
 		exitCode := 0
 		now := time.Now().UTC()
 		return verifyCommandRun{

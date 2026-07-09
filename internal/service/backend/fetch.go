@@ -14,6 +14,9 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
+// Fetch resolves the requested keys (plan:, receipt:, task:, run:, or pointer
+// keys) into their current content, reporting keys that were not found and any
+// mismatches against the caller's expected versions.
 func (s *Service) Fetch(ctx context.Context, payload v1.FetchPayload) (v1.FetchResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.FetchResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -85,13 +88,6 @@ func (s *Service) Fetch(ctx context.Context, payload v1.FetchPayload) (v1.FetchR
 	}
 
 	return result, nil
-}
-
-func fetchLookupVersion(lookup core.FetchLookup) string {
-	if lookup.RunID <= 0 {
-		return ""
-	}
-	return fmt.Sprintf("%d", lookup.RunID)
 }
 
 func fetchPayloadKeys(payload v1.FetchPayload) []string {
@@ -240,9 +236,9 @@ func (s *Service) fetchPlanItem(ctx context.Context, projectID, key, receiptID s
 		if planSummary == "" {
 			planSummary = fmt.Sprintf("Plan %s is %s", strings.TrimSpace(plan.PlanKey), planStatus)
 		}
-		contentJSON, err := json.Marshal(planForFetch(plan))
-		if err != nil {
-			return v1.FetchItem{}, false, err
+		contentJSON, mErr := json.Marshal(planForFetch(plan))
+		if mErr != nil {
+			return v1.FetchItem{}, false, mErr
 		}
 
 		version := indexEntryVersion(plan.PlanKey, planStatus, plan.UpdatedAt.UTC().String(), string(contentJSON))
@@ -259,10 +255,7 @@ func (s *Service) fetchPlanItem(ctx context.Context, projectID, key, receiptID s
 	if errors.Is(err, core.ErrWorkPlanNotFound) {
 		return v1.FetchItem{}, false, nil
 	}
-	if err != nil {
-		return v1.FetchItem{}, false, wrapFetchOperationError("lookup_work_plan", err)
-	}
-	return v1.FetchItem{}, false, nil
+	return v1.FetchItem{}, false, wrapFetchOperationError("lookup_work_plan", err)
 }
 
 func (s *Service) fetchReceiptItem(ctx context.Context, projectID, key, receiptID string) (v1.FetchItem, bool, error) {
@@ -309,7 +302,7 @@ func (s *Service) fetchReceiptItem(ctx context.Context, projectID, key, receiptI
 
 	summary := strings.TrimSpace(scope.TaskText)
 	if summary == "" {
-		summary = fmt.Sprintf("Receipt %s", normalizedReceiptID)
+		summary = "Receipt " + normalizedReceiptID
 	}
 	status := ""
 	versionUpdatedAt := ""
@@ -371,7 +364,7 @@ func (s *Service) fetchRunItem(ctx context.Context, projectID, key string, runID
 		Content: string(contentJSON),
 		Status:  strings.TrimSpace(row.Status),
 		Version: indexEntryVersion(
-			fmt.Sprintf("%d", row.RunID),
+			strconv.FormatInt(row.RunID, 10),
 			strings.TrimSpace(row.RequestID),
 			strings.TrimSpace(row.Status),
 			row.UpdatedAt.UTC().String(),
@@ -403,9 +396,9 @@ func (s *Service) fetchTaskItem(ctx context.Context, projectID, key string, ref 
 				if summary == "" {
 					summary = fmt.Sprintf("Task %s in %s is %s", normalizedTaskKey, normalizedPlanKey, taskStatus)
 				}
-				contentJSON, err := json.Marshal(workTaskForFetch(plan.PlanKey, task))
-				if err != nil {
-					return v1.FetchItem{}, false, err
+				contentJSON, mErr := json.Marshal(workTaskForFetch(plan.PlanKey, task))
+				if mErr != nil {
+					return v1.FetchItem{}, false, mErr
 				}
 
 				version := indexEntryVersion(
@@ -498,12 +491,13 @@ func (s *Service) fetchPointerItem(ctx context.Context, projectID, key string) (
 		Version: versionSeed,
 	}
 	content, err := s.readPointerFetchContent(pointer.Path)
-	if err == nil {
+	switch {
+	case err == nil:
 		item.Content = content
 		item.Version = indexEntryVersion(versionSeed, content)
-	} else if errors.Is(err, os.ErrNotExist) {
+	case errors.Is(err, os.ErrNotExist):
 		return v1.FetchItem{}, false, nil
-	} else {
+	default:
 		return v1.FetchItem{}, false, err
 	}
 

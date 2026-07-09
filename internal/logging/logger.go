@@ -16,10 +16,13 @@ type slogLogger struct {
 	base *slog.Logger
 }
 
+// NewJSONLogger returns a Logger that writes JSON log lines to out at Info level.
 func NewJSONLogger(out io.Writer) Logger {
 	return NewJSONLoggerWithLevel(out, slog.LevelInfo)
 }
 
+// NewJSONLoggerWithLevel returns a Logger that writes JSON log lines to out,
+// emitting only records at or above level. A nil out discards all output.
 func NewJSONLoggerWithLevel(out io.Writer, level slog.Level) Logger {
 	if out == nil {
 		out = io.Discard
@@ -28,10 +31,13 @@ func NewJSONLoggerWithLevel(out io.Writer, level slog.Level) Logger {
 	return &slogLogger{base: slog.New(handler)}
 }
 
+// NewDiscardLogger returns a Logger that silently drops every record.
 func NewDiscardLogger() Logger {
 	return NewJSONLogger(io.Discard)
 }
 
+// Normalize returns logger unchanged if it is non-nil, otherwise a discard
+// Logger, so callers can log without nil checks.
 func Normalize(logger Logger) Logger {
 	if logger == nil {
 		return NewDiscardLogger()

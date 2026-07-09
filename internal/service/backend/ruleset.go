@@ -82,7 +82,7 @@ type canonicalRulesetSyncResult struct {
 func (s *Service) syncCanonicalRulesets(ctx context.Context, projectID, projectRoot, rulesFile, tagsFile string, apply bool) (canonicalRulesetSyncResult, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return canonicalRulesetSyncResult{}, fmt.Errorf("project_id is required")
+		return canonicalRulesetSyncResult{}, errors.New("project_id is required")
 	}
 
 	tagNormalizer, err := s.loadCanonicalTagNormalizer(projectRoot, tagsFile)
@@ -150,7 +150,7 @@ func discoverCanonicalRulesetSources(projectRoot, rulesFile string) ([]canonical
 			return nil, fmt.Errorf("stat canonical ruleset %s: %w", strings.TrimSpace(rawPath), err)
 		}
 		stat, err := os.Stat(absolutePath)
-		exists := false
+		var exists bool
 		switch {
 		case err == nil:
 			exists = !stat.IsDir()
@@ -297,7 +297,7 @@ func normalizeRuleEnforcement(raw string) (string, error) {
 	case "hard", "soft":
 		return value, nil
 	default:
-		return "", fmt.Errorf("enforcement must be hard|soft")
+		return "", errors.New("enforcement must be hard|soft")
 	}
 }
 

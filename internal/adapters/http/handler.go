@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -26,7 +27,7 @@ func New(svc core.Service, projectID string, static http.FileSystem) http.Handle
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
+		writeBody(w, []byte(`{"ok":true}`))
 	})
 
 	// Static assets (HTML, JS, CSS) — no-cache during development.
@@ -105,24 +106,42 @@ func (h *handler) getStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		http.Error(w, `{"error":"internal_error","message":"failed to encode response"}`, http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	_ = enc.Encode(v)
+	writeBody(w, buf.Bytes())
 }
 
 func writeAPIError(w http.ResponseWriter, apiErr *core.APIError) {
 	status := http.StatusInternalServerError
-	if apiErr.Code == v1.ErrCodeNotFound {
+	switch apiErr.Code {
+	case v1.ErrCodeNotFound:
 		status = http.StatusNotFound
-	} else if apiErr.Code == v1.ErrCodeValidationError || apiErr.Code == v1.ErrCodeInvalidPayload {
+	case v1.ErrCodeValidationError, v1.ErrCodeInvalidPayload:
 		status = http.StatusBadRequest
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	body, err := json.Marshal(map[string]string{
 		"error":   apiErr.Code,
 		"message": apiErr.Message,
 	})
+	if err != nil {
+		http.Error(w, `{"error":"internal_error","message":"failed to encode error response"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	writeBody(w, append(body, '\n'))
+}
+
+// writeBody sends an already-encoded response body to the client. By this
+// point the status line and headers are committed, so a write failure (the
+// client disconnected mid-response) has no recovery path and is dropped.
+func writeBody(w http.ResponseWriter, body []byte) {
+	_, _ = w.Write(body) //nolint:errcheck // response already committed; client write failures have no recovery path
 }

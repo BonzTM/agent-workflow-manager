@@ -8,6 +8,10 @@ import (
 	"unicode/utf8"
 )
 
+// FromRoot derives a project identifier from the base name of projectRoot,
+// normalized to 2-64 ASCII alphanumeric/"._-" characters starting with an
+// alphanumeric (falling back to a hash-based id when normalization fails).
+// It returns "" for a blank, "." or separator-only root.
 func FromRoot(projectRoot string) string {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {

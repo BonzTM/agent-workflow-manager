@@ -65,8 +65,8 @@ func TestEnsureProjectScaffoldAndWriteCandidates(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(projectRoot, "out", "candidates.json")
-	if err := WriteCandidates(outputPath, []string{"README.md", "internal/bootstrap/scaffold.go"}); err != nil {
-		t.Fatalf("write candidates: %v", err)
+	if writeErr := WriteCandidates(outputPath, []string{"README.md", "internal/bootstrap/scaffold.go"}); writeErr != nil {
+		t.Fatalf("write candidates: %v", writeErr)
 	}
 
 	var payload struct {

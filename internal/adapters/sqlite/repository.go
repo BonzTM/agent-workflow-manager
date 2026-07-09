@@ -14,36 +14,30 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" // registers the pure-Go "sqlite" database/sql driver
 
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 	storagedomain "github.com/bonztm/agent-workflow-manager/internal/storage/domain"
 )
 
-const (
-	defaultCandidateLimit = 32
-	maxQueryLimit         = 512
-	defaultPhase          = "execute"
+const defaultCandidateLimit = 32
 
-	candidateStatusPending  = "pending"
-	candidateStatusPromoted = "promoted"
-	candidateStatusRejected = "rejected"
-
-	workItemStatusPending    = core.WorkItemStatusPending
-	workItemStatusInProgress = core.WorkItemStatusInProgress
-	workItemStatusBlocked    = core.WorkItemStatusBlocked
-	workItemStatusComplete   = core.WorkItemStatusComplete
-)
-
+// Repository is the SQLite-backed implementation of the core repository
+// interfaces. It owns a *sql.DB handle and is safe for concurrent use.
 type Repository struct {
 	db *sql.DB
 }
 
-var _ core.Repository = (*Repository)(nil)
-var _ core.WorkPlanRepository = (*Repository)(nil)
-var _ core.HistoryRepository = (*Repository)(nil)
-var _ core.VerificationRepository = (*Repository)(nil)
+var (
+	_ core.Repository             = (*Repository)(nil)
+	_ core.WorkPlanRepository     = (*Repository)(nil)
+	_ core.HistoryRepository      = (*Repository)(nil)
+	_ core.VerificationRepository = (*Repository)(nil)
+)
 
+// New opens (creating if necessary) the SQLite database at cfg.Path, applies
+// any pending schema migrations, and enables WAL journaling. The returned
+// Repository owns the connection; callers must Close it when done.
 func New(ctx context.Context, cfg Config) (*Repository, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -90,7 +84,7 @@ func sqliteDSN(dbPath string) string {
 
 func enableWAL(ctx context.Context, db *sql.DB) error {
 	if db == nil {
-		return fmt.Errorf("sqlite db is required")
+		return errors.New("sqlite db is required")
 	}
 	if _, err := db.ExecContext(ctx, `PRAGMA journal_mode=WAL`); err != nil {
 		return err
@@ -98,6 +92,16 @@ func enableWAL(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+// rollbackTx releases tx if it is still open. It is intended for use in defer
+// statements as best-effort cleanup: after a successful Commit, Rollback
+// reports sql.ErrTxDone, and any other failure occurs on a path that is
+// already returning an error, so there is nothing further to handle.
+func rollbackTx(tx *sql.Tx) {
+	_ = tx.Rollback() //nolint:errcheck // best-effort rollback in defer; returns sql.ErrTxDone after a successful commit
+}
+
+// Close releases the underlying database handle. It is a no-op on a nil or
+// already-unopened repository.
 func (r *Repository) Close() error {
 	if r == nil || r.db == nil {
 		return nil
@@ -105,19 +109,22 @@ func (r *Repository) Close() error {
 	return r.db.Close()
 }
 
-func (r *Repository) FetchCandidatePointers(_ context.Context, input core.CandidatePointerQuery) ([]core.CandidatePointer, error) {
+// FetchCandidatePointers returns the project's pointers that match the
+// query's tag and staleness filters, ranked and truncated per the query
+// limit. It requires a non-empty project ID.
+func (r *Repository) FetchCandidatePointers(ctx context.Context, input core.CandidatePointerQuery) ([]core.CandidatePointer, error) {
 	if r == nil || r.db == nil {
-		return nil, fmt.Errorf("sqlite db is required")
+		return nil, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 
 	input.StaleFilter.StaleBefore = normalizeStaleBefore(input.StaleFilter.StaleBefore)
 
-	rows, err := r.db.Query(`
+	rows, err := r.db.QueryContext(ctx, `
 SELECT
 	pointer_key,
 	path,
@@ -191,14 +198,16 @@ WHERE project_id = ?
 	return storagedomain.SortAndLimitCandidatePointers(candidates, input, defaultCandidateLimit), nil
 }
 
+// ListPointerInventory returns every indexed pointer for the project,
+// including stale entries, for inventory-style reporting.
 func (r *Repository) ListPointerInventory(ctx context.Context, projectID string) ([]core.PointerInventory, error) {
 	if r == nil || r.db == nil {
-		return nil, fmt.Errorf("sqlite db is required")
+		return nil, errors.New("sqlite db is required")
 	}
 
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
@@ -239,9 +248,12 @@ ORDER BY path ASC
 	return results, nil
 }
 
+// UpsertPointerStubs inserts or refreshes auto-indexed pointer stubs for the
+// project in a single transaction and reports how many rows changed. Stubs
+// with empty paths are skipped; existing pointers are un-staled in place.
 func (r *Repository) UpsertPointerStubs(ctx context.Context, projectID string, stubs []core.PointerStub) (int, error) {
 	if r == nil || r.db == nil {
-		return 0, fmt.Errorf("sqlite db is required")
+		return 0, errors.New("sqlite db is required")
 	}
 
 	normalized, err := normalizePointerStubs(projectID, stubs)
@@ -256,7 +268,7 @@ func (r *Repository) UpsertPointerStubs(ctx context.Context, projectID string, s
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer rollbackTx(tx)
 
 	updated := 0
 	for _, stub := range normalized {
@@ -315,18 +327,20 @@ ON CONFLICT(project_id, pointer_key) DO UPDATE SET
 	return updated, nil
 }
 
+// FetchReceiptScope loads the stored scope for a receipt. It returns
+// core.ErrReceiptScopeNotFound when no receipt matches the query.
 func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptScopeQuery) (core.ReceiptScope, error) {
 	if r == nil || r.db == nil {
-		return core.ReceiptScope{}, fmt.Errorf("sqlite db is required")
+		return core.ReceiptScope{}, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.ReceiptScope{}, fmt.Errorf("project_id is required")
+		return core.ReceiptScope{}, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return core.ReceiptScope{}, fmt.Errorf("receipt_id is required")
+		return core.ReceiptScope{}, errors.New("receipt_id is required")
 	}
 
 	var (
@@ -365,8 +379,8 @@ WHERE project_id = ?
 	if err != nil {
 		return core.ReceiptScope{}, fmt.Errorf("decode pointer_keys: %w", err)
 	}
-	if _, err := decodeInt64List(memoryIDsJSON); err != nil {
-		return core.ReceiptScope{}, fmt.Errorf("decode memory_ids: %w", err)
+	if _, decodeErr := decodeInt64List(memoryIDsJSON); decodeErr != nil {
+		return core.ReceiptScope{}, fmt.Errorf("decode memory_ids: %w", decodeErr)
 	}
 	initialScopePaths, err := decodeStringList(initialScopePathsJSON)
 	if err != nil {
@@ -390,18 +404,21 @@ WHERE project_id = ?
 	}, nil
 }
 
+// LookupFetchState resolves a receipt (by ID or latest for the project) into
+// its fetch-time state. It returns core.ErrFetchLookupNotFound when the
+// receipt does not exist.
 func (r *Repository) LookupFetchState(ctx context.Context, input core.FetchLookupQuery) (core.FetchLookup, error) {
 	if r == nil || r.db == nil {
-		return core.FetchLookup{}, fmt.Errorf("sqlite db is required")
+		return core.FetchLookup{}, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.FetchLookup{}, fmt.Errorf("project_id is required")
+		return core.FetchLookup{}, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return core.FetchLookup{}, fmt.Errorf("receipt_id is required")
+		return core.FetchLookup{}, errors.New("receipt_id is required")
 	}
 
 	var (
@@ -454,18 +471,20 @@ WHERE r.project_id = ?
 	}, nil
 }
 
+// LookupPointerByKey fetches a single pointer by its pointer key. It returns
+// core.ErrPointerLookupNotFound when the key is not indexed for the project.
 func (r *Repository) LookupPointerByKey(ctx context.Context, input core.PointerLookupQuery) (core.CandidatePointer, error) {
 	if r == nil || r.db == nil {
-		return core.CandidatePointer{}, fmt.Errorf("sqlite db is required")
+		return core.CandidatePointer{}, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.CandidatePointer{}, fmt.Errorf("project_id is required")
+		return core.CandidatePointer{}, errors.New("project_id is required")
 	}
 	pointerKey := strings.TrimSpace(input.PointerKey)
 	if pointerKey == "" {
-		return core.CandidatePointer{}, fmt.Errorf("pointer_key is required")
+		return core.CandidatePointer{}, errors.New("pointer_key is required")
 	}
 
 	var (
@@ -529,18 +548,20 @@ WHERE project_id = ?
 	}, nil
 }
 
+// UpsertWorkItems inserts or updates the receipt's work items in a single
+// transaction and reports how many rows changed.
 func (r *Repository) UpsertWorkItems(ctx context.Context, input core.WorkItemsUpsertInput) (int, error) {
 	if r == nil || r.db == nil {
-		return 0, fmt.Errorf("sqlite db is required")
+		return 0, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return 0, fmt.Errorf("project_id is required")
+		return 0, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return 0, fmt.Errorf("receipt_id is required")
+		return 0, errors.New("receipt_id is required")
 	}
 
 	items, err := normalizeWorkItems(input.Items)
@@ -548,14 +569,14 @@ func (r *Repository) UpsertWorkItems(ctx context.Context, input core.WorkItemsUp
 		return 0, err
 	}
 	if len(items) == 0 {
-		return 0, fmt.Errorf("work items are required")
+		return 0, errors.New("work items are required")
 	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer rollbackTx(tx)
 
 	updated := 0
 	for _, item := range items {
@@ -589,18 +610,20 @@ ON CONFLICT(project_id, receipt_id, item_key) DO UPDATE SET
 	return updated, nil
 }
 
+// ListWorkItems returns the work items recorded for the receipt resolved by
+// the query, in stable item-key order.
 func (r *Repository) ListWorkItems(ctx context.Context, input core.FetchLookupQuery) ([]core.WorkItem, error) {
 	if r == nil || r.db == nil {
-		return nil, fmt.Errorf("sqlite db is required")
+		return nil, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if receiptID == "" {
-		return nil, fmt.Errorf("receipt_id is required")
+		return nil, errors.New("receipt_id is required")
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
@@ -644,18 +667,22 @@ ORDER BY item_key ASC
 	return items, nil
 }
 
+// UpsertWorkPlan creates or updates a work plan and its tasks in a single
+// transaction, honoring the merge/replace mode, deriving the plan status from
+// task states when none is supplied, and returning the stored plan along with
+// the number of task rows changed.
 func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpsertInput) (core.WorkPlanUpsertResult, error) {
 	if r == nil || r.db == nil {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("sqlite db is required")
+		return core.WorkPlanUpsertResult{}, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("project_id is required")
+		return core.WorkPlanUpsertResult{}, errors.New("project_id is required")
 	}
 	planKey := strings.TrimSpace(input.PlanKey)
 	if planKey == "" {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("plan_key is required")
+		return core.WorkPlanUpsertResult{}, errors.New("plan_key is required")
 	}
 	mode := normalizeWorkPlanMode(input.Mode)
 
@@ -663,7 +690,7 @@ func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpse
 	if err != nil {
 		return core.WorkPlanUpsertResult{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer rollbackTx(tx)
 
 	current, found, err := lookupWorkPlanTx(ctx, tx, projectID, planKey)
 	if err != nil {
@@ -676,20 +703,20 @@ func (r *Repository) UpsertWorkPlan(ctx context.Context, input core.WorkPlanUpse
 		}
 	}
 	next := buildNextWorkPlanState(current, found, input, mode)
-	if err := upsertWorkPlanRowTx(ctx, tx, next); err != nil {
-		return core.WorkPlanUpsertResult{}, err
+	if upsertErr := upsertWorkPlanRowTx(ctx, tx, next); upsertErr != nil {
+		return core.WorkPlanUpsertResult{}, upsertErr
 	}
 
 	updated := 0
 	normalizedTasks := storagedomain.MergeIncomingWorkPlanTasks(current.Tasks, input.Tasks, mode)
 	if mode == core.WorkPlanModeReplace {
-		tag, err := tx.ExecContext(ctx, `
+		tag, delErr := tx.ExecContext(ctx, `
 DELETE FROM awm_work_plan_tasks
 WHERE project_id = ?
 	AND plan_key = ?
 `, projectID, planKey)
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("delete work plan tasks: %w", err)
+		if delErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("delete work plan tasks: %w", delErr)
 		}
 		rowsAffected, rowsErr := tag.RowsAffected()
 		if rowsErr != nil {
@@ -699,28 +726,28 @@ WHERE project_id = ?
 	}
 
 	for _, task := range normalizedTasks {
-		dependsJSON, err := encodeStringList(nonNilStringList(task.DependsOn))
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task depends_on: %w", err)
+		dependsJSON, taskErr := encodeStringList(nonNilStringList(task.DependsOn))
+		if taskErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task depends_on: %w", taskErr)
 		}
-		acceptanceJSON, err := encodeStringList(nonNilStringList(task.AcceptanceCriteria))
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task acceptance criteria: %w", err)
+		acceptanceJSON, taskErr := encodeStringList(nonNilStringList(task.AcceptanceCriteria))
+		if taskErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task acceptance criteria: %w", taskErr)
 		}
-		referencesJSON, err := encodeStringList(nonNilStringList(task.References))
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task references: %w", err)
+		referencesJSON, taskErr := encodeStringList(nonNilStringList(task.References))
+		if taskErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task references: %w", taskErr)
 		}
-		externalRefsJSON, err := encodeStringList(nonNilStringList(task.ExternalRefs))
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task external refs: %w", err)
+		externalRefsJSON, taskErr := encodeStringList(nonNilStringList(task.ExternalRefs))
+		if taskErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task external refs: %w", taskErr)
 		}
-		evidenceJSON, err := encodeStringList(nonNilStringList(task.Evidence))
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task evidence: %w", err)
+		evidenceJSON, taskErr := encodeStringList(nonNilStringList(task.Evidence))
+		if taskErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("encode task evidence: %w", taskErr)
 		}
 
-		tag, err := tx.ExecContext(ctx, `
+		tag, taskErr := tx.ExecContext(ctx, `
 INSERT INTO awm_work_plan_tasks (
 	project_id,
 	plan_key,
@@ -753,8 +780,8 @@ ON CONFLICT(project_id, plan_key, task_key) DO UPDATE SET
 	evidence_json = excluded.evidence_json,
 	updated_at = unixepoch()
 `, projectID, planKey, task.ItemKey, strings.TrimSpace(task.Summary), storageWorkItemStatus(task.Status), strings.TrimSpace(task.ParentTaskKey), dependsJSON, acceptanceJSON, referencesJSON, externalRefsJSON, strings.TrimSpace(task.BlockedReason), strings.TrimSpace(task.Outcome), evidenceJSON)
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("upsert work plan task: %w", err)
+		if taskErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("upsert work plan task: %w", taskErr)
 		}
 		rowsAffected, rowsErr := tag.RowsAffected()
 		if rowsErr != nil {
@@ -764,23 +791,23 @@ ON CONFLICT(project_id, plan_key, task_key) DO UPDATE SET
 	}
 
 	if strings.TrimSpace(input.Status) == "" {
-		tasks, err := listWorkPlanTasksTx(ctx, tx, projectID, planKey)
-		if err != nil {
-			return core.WorkPlanUpsertResult{}, err
+		tasks, listErr := listWorkPlanTasksTx(ctx, tx, projectID, planKey)
+		if listErr != nil {
+			return core.WorkPlanUpsertResult{}, listErr
 		}
 		derivedStatus := derivePlanStatus(tasks)
-		if _, err := tx.ExecContext(ctx, `
+		if _, updateErr := tx.ExecContext(ctx, `
 UPDATE awm_work_plans
 SET status = ?, updated_at = unixepoch()
 WHERE project_id = ?
 	AND plan_key = ?
-`, storageWorkItemStatus(derivedStatus), projectID, planKey); err != nil {
-			return core.WorkPlanUpsertResult{}, fmt.Errorf("update work plan status: %w", err)
+`, storageWorkItemStatus(derivedStatus), projectID, planKey); updateErr != nil {
+			return core.WorkPlanUpsertResult{}, fmt.Errorf("update work plan status: %w", updateErr)
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return core.WorkPlanUpsertResult{}, fmt.Errorf("commit tx: %w", err)
+	if commitErr := tx.Commit(); commitErr != nil {
+		return core.WorkPlanUpsertResult{}, fmt.Errorf("commit tx: %w", commitErr)
 	}
 
 	plan, err := r.LookupWorkPlan(ctx, core.WorkPlanLookupQuery{
@@ -796,19 +823,22 @@ WHERE project_id = ?
 	}, nil
 }
 
+// LookupWorkPlan loads a stored work plan and its tasks by plan key (or the
+// project's most recent plan when no key is given). It returns
+// core.ErrWorkPlanNotFound when no matching plan exists.
 func (r *Repository) LookupWorkPlan(ctx context.Context, input core.WorkPlanLookupQuery) (core.WorkPlan, error) {
 	if r == nil || r.db == nil {
-		return core.WorkPlan{}, fmt.Errorf("sqlite db is required")
+		return core.WorkPlan{}, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.WorkPlan{}, fmt.Errorf("project_id is required")
+		return core.WorkPlan{}, errors.New("project_id is required")
 	}
 	planKey := strings.TrimSpace(input.PlanKey)
 	receiptID := strings.TrimSpace(input.ReceiptID)
 	if planKey == "" && receiptID == "" {
-		return core.WorkPlan{}, fmt.Errorf("plan_key or receipt_id is required")
+		return core.WorkPlan{}, errors.New("plan_key or receipt_id is required")
 	}
 
 	if planKey == "" {
@@ -843,14 +873,16 @@ LIMIT 1
 	return plan, nil
 }
 
+// ListWorkPlans returns plan summaries (with task counts and active task
+// keys) for the project, filtered by scope and optional search text.
 func (r *Repository) ListWorkPlans(ctx context.Context, input core.WorkPlanListQuery) ([]core.WorkPlanSummary, error) {
 	if r == nil || r.db == nil {
-		return nil, fmt.Errorf("sqlite db is required")
+		return nil, errors.New("sqlite db is required")
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	limit := input.Limit
 	if !input.Unbounded && limit <= 0 {
@@ -923,7 +955,7 @@ WHERE p.project_id = ?
 	)
 )
 `)
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			args = append(args, searchPattern)
 		}
 	}
@@ -960,7 +992,7 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 			taskCountComplete   int64
 			updatedAt           int64
 		)
-		if err := rows.Scan(
+		if scanErr := rows.Scan(
 			&planKey,
 			&receiptID,
 			&title,
@@ -974,8 +1006,8 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 			&taskCountBlocked,
 			&taskCountComplete,
 			&updatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan work plan summary: %w", err)
+		); scanErr != nil {
+			return nil, fmt.Errorf("scan work plan summary: %w", scanErr)
 		}
 		planKey = strings.TrimSpace(planKey)
 		if planKey == "" {
@@ -1009,8 +1041,8 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 			UpdatedAt:           unixTime(updatedAt),
 		})
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate work plans: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("iterate work plans: %w", rowsErr)
 	}
 
 	if len(out) == 0 {
@@ -1028,13 +1060,15 @@ ORDER BY p.updated_at DESC, p.plan_key ASC
 	return out, nil
 }
 
+// ListReceiptHistory returns receipt summaries for the project, newest
+// first, filtered by the query's scope, search text, and limit.
 func (r *Repository) ListReceiptHistory(ctx context.Context, input core.ReceiptHistoryListQuery) ([]core.ReceiptHistorySummary, error) {
 	if r == nil || r.db == nil {
-		return nil, fmt.Errorf("sqlite db is required")
+		return nil, errors.New("sqlite db is required")
 	}
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	limit := input.Limit
 	if !input.Unbounded && limit <= 0 {
@@ -1087,7 +1121,7 @@ WHERE r.project_id = ?
 	)
 )
 `)
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			args = append(args, searchPattern)
 		}
 	}
@@ -1139,13 +1173,15 @@ ORDER BY updated_at DESC, r.receipt_id ASC
 	return out, nil
 }
 
+// ListRunHistory returns run summaries for the project, newest first,
+// filtered by the query's scope, search text, and limit.
 func (r *Repository) ListRunHistory(ctx context.Context, input core.RunHistoryListQuery) ([]core.RunHistorySummary, error) {
 	if r == nil || r.db == nil {
-		return nil, fmt.Errorf("sqlite db is required")
+		return nil, errors.New("sqlite db is required")
 	}
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	limit := input.Limit
 	if !input.Unbounded && limit <= 0 {
@@ -1188,7 +1224,7 @@ WHERE run.project_id = ?
 	OR LOWER(COALESCE(run.receipt_id, '')) LIKE ? ESCAPE '\'
 )
 `)
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			args = append(args, searchPattern)
 		}
 	}
@@ -1250,16 +1286,18 @@ ORDER BY run.created_at DESC, run.run_id DESC
 	return out, nil
 }
 
+// LookupRunHistory loads a single run summary by run or receipt ID. It
+// returns core.ErrFetchLookupNotFound when no matching run exists.
 func (r *Repository) LookupRunHistory(ctx context.Context, input core.RunHistoryLookupQuery) (core.RunHistorySummary, error) {
 	if r == nil || r.db == nil {
-		return core.RunHistorySummary{}, fmt.Errorf("sqlite db is required")
+		return core.RunHistorySummary{}, errors.New("sqlite db is required")
 	}
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
-		return core.RunHistorySummary{}, fmt.Errorf("project_id is required")
+		return core.RunHistorySummary{}, errors.New("project_id is required")
 	}
 	if input.RunID <= 0 {
-		return core.RunHistorySummary{}, fmt.Errorf("run_id must be positive")
+		return core.RunHistorySummary{}, errors.New("run_id must be positive")
 	}
 
 	var (
@@ -1372,9 +1410,12 @@ ORDER BY
 	return out, nil
 }
 
+// SaveRunReceiptSummary persists a completed run and its receipt summary in
+// one transaction, generating any missing run/receipt IDs, and returns the
+// IDs that were stored.
 func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunReceiptSummary) (core.RunReceiptIDs, error) {
 	if r == nil || r.db == nil {
-		return core.RunReceiptIDs{}, fmt.Errorf("sqlite db is required")
+		return core.RunReceiptIDs{}, errors.New("sqlite db is required")
 	}
 
 	normalized, err := normalizeRunReceiptSummary(input)
@@ -1442,7 +1483,7 @@ func (r *Repository) SaveRunReceiptSummary(ctx context.Context, input core.RunRe
 	if err != nil {
 		return core.RunReceiptIDs{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer rollbackTx(tx)
 
 	_, err = tx.ExecContext(ctx, `
 INSERT INTO awm_receipts (
@@ -1516,9 +1557,11 @@ INSERT INTO awm_runs (
 	}, nil
 }
 
+// UpsertReceiptScope stores or replaces the scope snapshot (task, phase,
+// tags, pointer keys, and paths) recorded for a receipt.
 func (r *Repository) UpsertReceiptScope(ctx context.Context, input core.ReceiptScope) error {
 	if r == nil || r.db == nil {
-		return fmt.Errorf("sqlite db is required")
+		return errors.New("sqlite db is required")
 	}
 
 	normalized, err := normalizeReceiptScope(input)
@@ -1591,9 +1634,11 @@ SET
 	return nil
 }
 
+// SaveReviewAttempt appends a review attempt for a receipt and returns the
+// attempt number assigned to it.
 func (r *Repository) SaveReviewAttempt(ctx context.Context, input core.ReviewAttempt) (int64, error) {
 	if r == nil || r.db == nil {
-		return 0, fmt.Errorf("sqlite db is required")
+		return 0, errors.New("sqlite db is required")
 	}
 
 	normalized, err := normalizeReviewAttempt(input)
@@ -1657,18 +1702,20 @@ INSERT INTO awm_review_attempts (
 	return attemptID, nil
 }
 
+// ListReviewAttempts returns the review attempts recorded for a receipt in
+// ascending attempt order.
 func (r *Repository) ListReviewAttempts(ctx context.Context, input core.ReviewAttemptListQuery) ([]core.ReviewAttempt, error) {
 	if r == nil || r.db == nil {
-		return nil, fmt.Errorf("sqlite db is required")
+		return nil, errors.New("sqlite db is required")
 	}
 	if strings.TrimSpace(input.ProjectID) == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	if strings.TrimSpace(input.ReceiptID) == "" {
-		return nil, fmt.Errorf("receipt_id is required")
+		return nil, errors.New("receipt_id is required")
 	}
 	if strings.TrimSpace(input.ReviewKey) == "" {
-		return nil, fmt.Errorf("review_key is required")
+		return nil, errors.New("review_key is required")
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
@@ -1766,9 +1813,11 @@ ORDER BY created_at ASC, attempt_id ASC
 	return out, nil
 }
 
+// SaveVerificationBatch stores the verification results for a receipt in a
+// single transaction, replacing any batch previously saved for it.
 func (r *Repository) SaveVerificationBatch(ctx context.Context, input core.VerificationBatch) error {
 	if r == nil || r.db == nil {
-		return fmt.Errorf("sqlite db is required")
+		return errors.New("sqlite db is required")
 	}
 
 	normalized, err := normalizeVerificationBatch(input)
@@ -1785,7 +1834,7 @@ func (r *Repository) SaveVerificationBatch(ctx context.Context, input core.Verif
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer rollbackTx(tx)
 
 	_, err = tx.ExecContext(ctx, `
 INSERT INTO awm_verification_batches (
@@ -1875,9 +1924,13 @@ INSERT INTO awm_verification_results (
 	return nil
 }
 
+// ApplySync reconciles the pointer index with a working-tree snapshot in one
+// transaction: deleted paths are marked stale, present paths get refreshed
+// content hashes, and (optionally) unindexed paths become new candidates. It
+// returns counts of each change applied.
 func (r *Repository) ApplySync(ctx context.Context, input core.SyncApplyInput) (core.SyncApplyResult, error) {
 	if r == nil || r.db == nil {
-		return core.SyncApplyResult{}, fmt.Errorf("sqlite db is required")
+		return core.SyncApplyResult{}, errors.New("sqlite db is required")
 	}
 
 	normalized, err := normalizeSyncApplyInput(input)
@@ -1901,10 +1954,11 @@ func (r *Repository) ApplySync(ctx context.Context, input core.SyncApplyInput) (
 	if err != nil {
 		return core.SyncApplyResult{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer rollbackTx(tx)
 
 	out := core.SyncApplyResult{}
 	if len(deletedPaths) > 0 {
+		//nolint:gosec // G202: placeholders() only emits "?" markers; all values are bound parameters
 		query := `
 UPDATE awm_pointers
 SET
@@ -2043,103 +2097,10 @@ WHERE NOT EXISTS (
 	return out, nil
 }
 
-type pointerRow struct {
-	Key         string
-	Path        string
-	Anchor      string
-	Kind        string
-	Label       string
-	Description string
-	Tags        []string
-	IsRule      bool
-	IsStale     bool
-	staleAt     time.Time
-	UpdatedAt   time.Time
-}
-
-func (r *Repository) loadPointersByKey(projectID string, keys []string) (map[string]pointerRow, error) {
-	if len(keys) == 0 {
-		return map[string]pointerRow{}, nil
-	}
-
-	query := `
-SELECT
-	pointer_key,
-	path,
-	anchor,
-	kind,
-	label,
-	description,
-	tags_json,
-	is_rule,
-	is_stale,
-	stale_at,
-	updated_at
-FROM awm_pointers
-WHERE project_id = ?
-	AND pointer_key IN (` + placeholders(len(keys)) + `)
-`
-
-	args := make([]any, 0, len(keys)+1)
-	args = append(args, projectID)
-	for _, key := range keys {
-		args = append(args, key)
-	}
-
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query pointers by key: %w", err)
-	}
-	defer rows.Close()
-
-	out := make(map[string]pointerRow)
-	for rows.Next() {
-		var (
-			item       pointerRow
-			tagsJSON   string
-			isRuleInt  int64
-			isStaleInt int64
-			staleAtSec sql.NullInt64
-			updatedAt  int64
-		)
-		if err := rows.Scan(
-			&item.Key,
-			&item.Path,
-			&item.Anchor,
-			&item.Kind,
-			&item.Label,
-			&item.Description,
-			&tagsJSON,
-			&isRuleInt,
-			&isStaleInt,
-			&staleAtSec,
-			&updatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan pointer by key: %w", err)
-		}
-		tags, err := decodeStringList(tagsJSON)
-		if err != nil {
-			return nil, fmt.Errorf("decode pointer tags: %w", err)
-		}
-		item.Tags = tags
-		item.IsRule = isRuleInt != 0
-		item.IsStale = isStaleInt != 0
-		if staleAtSec.Valid {
-			item.staleAt = unixTime(staleAtSec.Int64)
-		}
-		item.UpdatedAt = unixTime(updatedAt)
-		out[item.Key] = item
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate pointers by key: %w", err)
-	}
-	return out, nil
-}
-
 func normalizePointerStubs(projectID string, stubs []core.PointerStub) ([]core.PointerStub, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
+		return nil, errors.New("project_id is required")
 	}
 	if len(stubs) == 0 {
 		return nil, nil
@@ -2227,7 +2188,7 @@ func ensureParentDirectory(dbPath string) error {
 	if parent == "." || parent == "" {
 		return nil
 	}
-	if err := os.MkdirAll(parent, 0o755); err != nil {
+	if err := os.MkdirAll(parent, 0o750); err != nil {
 		return fmt.Errorf("create sqlite parent directory: %w", err)
 	}
 	return nil
@@ -2242,10 +2203,6 @@ func placeholders(n int) string {
 		parts[i] = "?"
 	}
 	return strings.Join(parts, ", ")
-}
-
-func overlapCount(values, targets []string) int {
-	return storagedomain.CandidateTagOverlap(values, targets)
 }
 
 func matchesStaleFilter(isStale bool, staleAt *time.Time, filter core.StaleFilter) bool {
@@ -2376,13 +2333,6 @@ func nonNilStringList(values []string) []string {
 func nonNilStringListPreserveOrder(values []string) []string {
 	if len(values) == 0 {
 		return []string{}
-	}
-	return values
-}
-
-func nonNilInt64List(values []int64) []int64 {
-	if len(values) == 0 {
-		return []int64{}
 	}
 	return values
 }
@@ -2671,16 +2621,4 @@ func workPlanSummaryKeys(rows []core.WorkPlanSummary) []string {
 		keys = append(keys, planKey)
 	}
 	return keys
-}
-
-func mapKeysSorted(values map[string]struct{}) []string {
-	if len(values) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(values))
-	for key := range values {
-		out = append(out, key)
-	}
-	sort.Strings(out)
-	return out
 }

@@ -3,24 +3,31 @@ package logging
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 )
 
+// Entry is a single log record captured by a Recorder: its level, event
+// name, and structured fields.
 type Entry struct {
 	Level  string
 	Event  string
 	Fields map[string]any
 }
 
+// Recorder is a concurrency-safe Logger implementation that captures log
+// records in memory for inspection, primarily in tests.
 type Recorder struct {
 	mu      sync.Mutex
 	entries []Entry
 }
 
+// NewRecorder returns an empty Recorder ready to capture log records.
 func NewRecorder() *Recorder {
 	return &Recorder{entries: make([]Entry, 0)}
 }
 
+// Info records event and its key/value fields at level "info".
 func (r *Recorder) Info(_ context.Context, event string, fields ...any) {
 	r.append("info", event, fields...)
 }
@@ -29,6 +36,8 @@ func (r *Recorder) Error(_ context.Context, event string, fields ...any) {
 	r.append("error", event, fields...)
 }
 
+// Entries returns a deep copy of all captured records in the order they
+// were logged; mutating the result does not affect the Recorder.
 func (r *Recorder) Entries() []Entry {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -44,6 +53,7 @@ func (r *Recorder) Entries() []Entry {
 	return out
 }
 
+// Reset discards all captured records.
 func (r *Recorder) Reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -89,8 +99,6 @@ func cloneFields(in map[string]any) map[string]any {
 		return map[string]any{}
 	}
 	out := make(map[string]any, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
+	maps.Copy(out, in)
 	return out
 }

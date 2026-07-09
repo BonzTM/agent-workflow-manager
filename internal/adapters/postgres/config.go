@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -18,6 +19,9 @@ const (
 	defaultConnMaxIdleTime = 5 * time.Minute
 )
 
+// Config holds the settings needed to open a Postgres-backed repository.
+// Only DSN is required; zero values for the pool fields select the package
+// defaults.
 type Config struct {
 	DSN             string
 	MaxConns        int32
@@ -26,15 +30,18 @@ type Config struct {
 	ConnMaxIdleTime time.Duration
 }
 
+// Validate reports an error when the config cannot produce a usable pool:
+// a missing DSN, negative sizes or durations, or min_conns exceeding the
+// effective max_conns.
 func (c Config) Validate() error {
 	if strings.TrimSpace(c.DSN) == "" {
-		return fmt.Errorf("postgres dsn is required")
+		return errors.New("postgres dsn is required")
 	}
 	if c.MaxConns < 0 {
-		return fmt.Errorf("max_conns must be >= 0")
+		return errors.New("max_conns must be >= 0")
 	}
 	if c.MinConns < 0 {
-		return fmt.Errorf("min_conns must be >= 0")
+		return errors.New("min_conns must be >= 0")
 	}
 	maxConns := c.MaxConns
 	if maxConns == 0 {
@@ -42,17 +49,19 @@ func (c Config) Validate() error {
 	}
 	minConns := c.MinConns
 	if minConns > maxConns {
-		return fmt.Errorf("min_conns must be <= max_conns")
+		return errors.New("min_conns must be <= max_conns")
 	}
 	if c.ConnMaxLifetime < 0 {
-		return fmt.Errorf("conn_max_lifetime must be >= 0")
+		return errors.New("conn_max_lifetime must be >= 0")
 	}
 	if c.ConnMaxIdleTime < 0 {
-		return fmt.Errorf("conn_max_idle_time must be >= 0")
+		return errors.New("conn_max_idle_time must be >= 0")
 	}
 	return nil
 }
 
+// PoolConfig validates the config and converts it into a pgxpool.Config,
+// applying the package defaults for any pool setting left at its zero value.
 func (c Config) PoolConfig() (*pgxpool.Config, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err

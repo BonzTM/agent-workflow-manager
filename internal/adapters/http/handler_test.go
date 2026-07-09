@@ -7,10 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	adapthttp "github.com/bonztm/agent-workflow-manager/internal/adapters/http"
 	v1 "github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"github.com/bonztm/agent-workflow-manager/internal/core"
-
-	adapthttp "github.com/bonztm/agent-workflow-manager/internal/adapters/http"
 )
 
 // mockService implements core.Service. Only HistorySearch, Export, and Status
@@ -38,27 +37,35 @@ func (m *mockService) Status(ctx context.Context, p v1.StatusPayload) (v1.Status
 func (m *mockService) Context(context.Context, v1.ContextPayload) (v1.ContextResult, *core.APIError) {
 	panic("unexpected call to Context")
 }
+
 func (m *mockService) Fetch(context.Context, v1.FetchPayload) (v1.FetchResult, *core.APIError) {
 	panic("unexpected call to Fetch")
 }
+
 func (m *mockService) Review(context.Context, v1.ReviewPayload) (v1.ReviewResult, *core.APIError) {
 	panic("unexpected call to Review")
 }
+
 func (m *mockService) Work(context.Context, v1.WorkPayload) (v1.WorkResult, *core.APIError) {
 	panic("unexpected call to Work")
 }
+
 func (m *mockService) Done(context.Context, v1.DonePayload) (v1.DoneResult, *core.APIError) {
 	panic("unexpected call to Done")
 }
+
 func (m *mockService) Sync(context.Context, v1.SyncPayload) (v1.SyncResult, *core.APIError) {
 	panic("unexpected call to Sync")
 }
+
 func (m *mockService) Health(context.Context, v1.HealthPayload) (v1.HealthResult, *core.APIError) {
 	panic("unexpected call to Health")
 }
+
 func (m *mockService) Verify(context.Context, v1.VerifyPayload) (v1.VerifyResult, *core.APIError) {
 	panic("unexpected call to Verify")
 }
+
 func (m *mockService) Init(context.Context, v1.InitPayload) (v1.InitResult, *core.APIError) {
 	panic("unexpected call to Init")
 }

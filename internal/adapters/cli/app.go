@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -30,6 +31,11 @@ var automationEntryPoints = []helpCommand{
 	},
 }
 
+// RunCLI is the entry point for the awm binary. It dispatches args to the
+// run/validate envelope commands, the convenience subcommands, or the
+// version/help printers, wiring nil streams to the process defaults, and
+// returns the process exit code (0 success, 1 execution failure, 2 usage
+// error).
 func RunCLI(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if stdin == nil {
 		stdin = os.Stdin
@@ -90,7 +96,7 @@ func runWithIO(ctx context.Context, logger logging.Logger, args []string, stdin 
 	fs.SetOutput(stderr)
 	inPath := fs.String("in", "-", "input request file path or '-' for stdin")
 	if err := fs.Parse(args); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		logger.Error(ctx, logging.EventAWMRun, "stage", "parse_flags", "subcommand", "run", "ok", false, "error_code", v1.ErrCodeInvalidFlags)
@@ -128,7 +134,7 @@ func validateWithIO(ctx context.Context, logger logging.Logger, args []string, s
 	fs.SetOutput(stderr)
 	inPath := fs.String("in", "-", "input request file path or '-' for stdin")
 	if err := fs.Parse(args); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		logger.Error(ctx, logging.EventAWMRun, "stage", "parse_flags", "subcommand", "validate", "ok", false, "error_code", v1.ErrCodeInvalidFlags)
@@ -171,7 +177,7 @@ func run(ctx context.Context, logger logging.Logger, args []string) int {
 	configureRunUsage(fs)
 	inPath := fs.String("in", "-", "input request file path or '-' for stdin")
 	if err := fs.Parse(args); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		logger.Error(ctx, logging.EventAWMRun, "stage", "parse_flags", "subcommand", "run", "ok", false, "error_code", v1.ErrCodeInvalidFlags)
@@ -208,7 +214,7 @@ func validate(ctx context.Context, logger logging.Logger, args []string) int {
 	configureValidateUsage(fs)
 	inPath := fs.String("in", "-", "input request file path or '-' for stdin")
 	if err := fs.Parse(args); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		logger.Error(ctx, logging.EventAWMRun, "stage", "parse_flags", "subcommand", "validate", "ok", false, "error_code", v1.ErrCodeInvalidFlags)
@@ -268,10 +274,6 @@ func openInputWithStdin(path string, stdin io.Reader) (io.Reader, func(), error)
 		return nil, nil, err
 	}
 	return f, func() { _ = f.Close() }, nil
-}
-
-func usage() {
-	printMainUsage(os.Stdout)
 }
 
 func printVersion(w io.Writer, binaryName string) {

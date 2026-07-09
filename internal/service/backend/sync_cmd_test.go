@@ -3,13 +3,14 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestSync_ChangedDefaultsAndDeterministicProcessedPaths(t *testing.T) {
@@ -124,7 +125,7 @@ func TestSync_ExplicitInsertNewCandidatesFalseHonored(t *testing.T) {
 		ProjectID:           "project.alpha",
 		Mode:                "changed",
 		GitRange:            "base..main",
-		InsertNewCandidates: boolPtr(false),
+		InsertNewCandidates: new(false),
 	})
 	if apiErr != nil {
 		t.Fatalf("unexpected API error: %+v", apiErr)

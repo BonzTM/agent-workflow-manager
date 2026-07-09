@@ -19,8 +19,9 @@ func TestEmbeddedTemplateManifestsUseInitTemplateVersion(t *testing.T) {
 	}
 
 	for _, manifestPath := range manifestPaths {
-		manifestPath := manifestPath
 		t.Run(filepath.Base(filepath.Dir(manifestPath)), func(t *testing.T) {
+			t.Parallel()
+
 			raw, err := initTemplateFS.ReadFile(filepath.ToSlash(manifestPath))
 			if err != nil {
 				t.Fatalf("read manifest %s: %v", manifestPath, err)
@@ -480,6 +481,7 @@ func TestDetailedPlanningTemplateDocsMentionUnmaterializedReceiptContexts(t *tes
 		t.Fatalf("embedded feature-plan docs must mention unmaterialized receipt contexts")
 	}
 }
+
 func TestInitTemplateDocsListCodexPack(t *testing.T) {
 	t.Parallel()
 

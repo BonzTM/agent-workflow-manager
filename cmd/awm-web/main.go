@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -13,13 +14,12 @@ import (
 	"syscall"
 	"time"
 
+	awmhttp "github.com/bonztm/agent-workflow-manager/internal/adapters/http"
 	"github.com/bonztm/agent-workflow-manager/internal/buildinfo"
 	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"github.com/bonztm/agent-workflow-manager/internal/logging"
 	"github.com/bonztm/agent-workflow-manager/internal/runtime"
 	"github.com/bonztm/agent-workflow-manager/web"
-
-	awmhttp "github.com/bonztm/agent-workflow-manager/internal/adapters/http"
 )
 
 func main() {
@@ -59,7 +59,7 @@ func serve(ctx context.Context, logger logging.Logger, args []string) int {
 		args = []string{}
 	}
 	if err := fset.Parse(args); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
 		fmt.Fprintf(os.Stderr, "invalid flags: %v\n", err)
@@ -118,11 +118,13 @@ func serve(ctx context.Context, logger logging.Logger, args []string) int {
 }
 
 func printBanner(addr, projectID string) {
-	host, port, _ := net.SplitHostPort(addr)
-	if host == "" {
-		host = "localhost"
+	url := "http://" + addr
+	if host, port, err := net.SplitHostPort(addr); err == nil {
+		if host == "" {
+			host = "localhost"
+		}
+		url = fmt.Sprintf("http://%s:%s", host, port)
 	}
-	url := fmt.Sprintf("http://%s:%s", host, port)
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "  awm-web ready")

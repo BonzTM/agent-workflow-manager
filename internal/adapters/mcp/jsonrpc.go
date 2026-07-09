@@ -8,6 +8,9 @@ import (
 
 const jsonRPCVersion = "2.0"
 
+// JSONRPCRequest is a single (non-batch) JSON-RPC 2.0 request. It tracks
+// whether an "id" member was present so notifications can be distinguished
+// from calls with a null id.
 type JSONRPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      any             `json:"id,omitempty"`
@@ -17,6 +20,8 @@ type JSONRPCRequest struct {
 	hasID bool
 }
 
+// JSONRPCResponse is a JSON-RPC 2.0 response carrying either a Result or an
+// Error, never both.
 type JSONRPCResponse struct {
 	JSONRPC string        `json:"jsonrpc"`
 	ID      any           `json:"id"`
@@ -24,12 +29,14 @@ type JSONRPCResponse struct {
 	Error   *JSONRPCError `json:"error,omitempty"`
 }
 
+// JSONRPCError is the error object of a JSON-RPC 2.0 response.
 type JSONRPCError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
 }
 
+// Standard JSON-RPC 2.0 error codes.
 const (
 	JSONRPCParseError     = -32700
 	JSONRPCInvalidRequest = -32600
@@ -38,6 +45,9 @@ const (
 	JSONRPCInternalError  = -32603
 )
 
+// UnmarshalJSON decodes a request while recording whether the "id" member
+// was present in the raw JSON, which the JSON-RPC 2.0 spec requires to tell
+// notifications apart from calls.
 func (r *JSONRPCRequest) UnmarshalJSON(data []byte) error {
 	type requestAlias JSONRPCRequest
 	var raw map[string]json.RawMessage
@@ -53,17 +63,25 @@ func (r *JSONRPCRequest) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (r JSONRPCRequest) IsNotification() bool {
+// IsNotification reports whether the request is a notification: it carries
+// no id (or an explicit null id) and therefore must not receive a response.
+func (r *JSONRPCRequest) IsNotification() bool {
 	return !r.hasID || r.ID == nil
 }
 
-func (r JSONRPCRequest) ResponseID() any {
+// ResponseID returns the id to echo in the response, or nil when the request
+// carried no id.
+func (r *JSONRPCRequest) ResponseID() any {
 	if !r.hasID {
 		return nil
 	}
 	return r.ID
 }
 
+// ParseJSONRPCRequest decodes and validates a single JSON-RPC 2.0 request.
+// It rejects empty input, batch (array) requests, non-object payloads, wrong
+// protocol versions, missing methods, and non-string/number ids, returning
+// the matching JSON-RPC error object instead of a Go error.
 func ParseJSONRPCRequest(data []byte) (JSONRPCRequest, *JSONRPCError) {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
@@ -91,14 +109,18 @@ func ParseJSONRPCRequest(data []byte) (JSONRPCRequest, *JSONRPCError) {
 	return req, nil
 }
 
+// SerializeJSONRPCResponse encodes resp as a single-line JSON document.
 func SerializeJSONRPCResponse(resp JSONRPCResponse) ([]byte, error) {
 	return json.Marshal(resp)
 }
 
-func NewJSONRPCResultResponse(id any, result any) JSONRPCResponse {
+// NewJSONRPCResultResponse builds a successful JSON-RPC 2.0 response for id.
+func NewJSONRPCResultResponse(id, result any) JSONRPCResponse {
 	return JSONRPCResponse{JSONRPC: jsonRPCVersion, ID: id, Result: result}
 }
 
+// NewJSONRPCErrorResponse builds an error JSON-RPC 2.0 response for id with
+// the given code, trimmed message, and optional data payload.
 func NewJSONRPCErrorResponse(id any, code int, message string, data any) JSONRPCResponse {
 	return JSONRPCResponse{
 		JSONRPC: jsonRPCVersion,

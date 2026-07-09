@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -939,26 +940,10 @@ func migrateLegacyAcmSchema(ctx context.Context, db *sql.DB) error {
 		return nil
 	}
 
-	rows, err := db.QueryContext(ctx,
-		`SELECT name FROM sqlite_master
-		 WHERE type='table' AND name LIKE 'acm\_%' ESCAPE '\' AND name NOT LIKE 'sqlite_%'`)
+	names, err := listLegacyAcmTables(ctx, db)
 	if err != nil {
-		return fmt.Errorf("list legacy tables: %w", err)
+		return err
 	}
-	var names []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			_ = rows.Close()
-			return fmt.Errorf("scan legacy table: %w", err)
-		}
-		names = append(names, name)
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return fmt.Errorf("iterate legacy tables: %w", err)
-	}
-	_ = rows.Close()
 
 	for _, name := range names {
 		newName := "awm_" + strings.TrimPrefix(name, "acm_")
@@ -976,9 +961,35 @@ func migrateLegacyAcmSchema(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+// listLegacyAcmTables returns the names of all user tables still using the
+// pre-rename "acm_" prefix. The result set is fully drained and closed before
+// returning so callers can safely run schema-altering statements afterwards.
+func listLegacyAcmTables(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT name FROM sqlite_master
+		 WHERE type='table' AND name LIKE 'acm\_%' ESCAPE '\' AND name NOT LIKE 'sqlite_%'`)
+	if err != nil {
+		return nil, fmt.Errorf("list legacy tables: %w", err)
+	}
+	defer rows.Close()
+
+	var names []string
+	for rows.Next() {
+		var name string
+		if scanErr := rows.Scan(&name); scanErr != nil {
+			return nil, fmt.Errorf("scan legacy table: %w", scanErr)
+		}
+		names = append(names, name)
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("iterate legacy tables: %w", rowsErr)
+	}
+	return names, nil
+}
+
 func applyMigrations(ctx context.Context, db *sql.DB) error {
 	if db == nil {
-		return fmt.Errorf("sqlite db is required")
+		return errors.New("sqlite db is required")
 	}
 
 	if err := migrateLegacyAcmSchema(ctx, db); err != nil {

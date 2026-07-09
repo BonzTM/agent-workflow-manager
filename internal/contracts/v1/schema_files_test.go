@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -68,17 +69,18 @@ func TestCommandSchema_DoneRequiresReceiptOrPlanSelection(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s.properties missing or invalid", defName)
 		}
-		if _, ok := properties["receipt_id"]; !ok {
+		if _, exists := properties["receipt_id"]; !exists {
 			t.Fatalf("%s missing receipt_id property", defName)
 		}
-		if _, ok := properties["plan_key"]; !ok {
+		if _, exists := properties["plan_key"]; !exists {
 			t.Fatalf("%s missing plan_key property", defName)
 		}
 
-		required, _ := def["required"].([]any)
-		for _, value := range required {
-			if value == "receipt_id" {
-				t.Fatalf("%s should not require receipt_id directly once plan_key is supported", defName)
+		if required, isList := def["required"].([]any); isList {
+			for _, value := range required {
+				if value == "receipt_id" {
+					t.Fatalf("%s should not require receipt_id directly once plan_key is supported", defName)
+				}
 			}
 		}
 
@@ -159,7 +161,7 @@ func TestSharedAndResultSchemasExposeSupersededStatusesAndStatusWarnings(t *test
 	if !ok {
 		t.Fatal("statusSummary.properties missing or invalid")
 	}
-	if _, ok := properties["warning_count"]; !ok {
+	if _, exists := properties["warning_count"]; !exists {
 		t.Fatal("statusSummary missing warning_count property")
 	}
 
@@ -193,8 +195,12 @@ func TestSharedAndResultSchemasExposeSupersededStatusesAndStatusWarnings(t *test
 			t.Fatalf("%s.plan_status enum missing or invalid", defName)
 		}
 		values := make([]string, 0, len(enumValues))
-		for _, value := range enumValues {
-			values = append(values, value.(string))
+		for _, rawValue := range enumValues {
+			value, isString := rawValue.(string)
+			if !isString {
+				t.Fatalf("%s.plan_status enum contains non-string value %v", defName, rawValue)
+			}
+			values = append(values, value)
 		}
 		if !containsString(values, "superseded") {
 			t.Fatalf("%s.plan_status enum missing superseded: %v", defName, values)
@@ -234,7 +240,7 @@ func TestCommandSchema_ExportPayloadIncludesSelectorAndFormatGuards(t *testing.T
 		t.Fatal("exportPayload.properties missing or invalid")
 	}
 	for _, selector := range []string{"context", "fetch", "history", "status"} {
-		if _, ok := properties[selector]; !ok {
+		if _, exists := properties[selector]; !exists {
 			t.Fatalf("exportPayload missing %s selector", selector)
 		}
 	}
@@ -317,7 +323,7 @@ func TestResultSchema_ExportDefinitionsMatchRuntimeEnums(t *testing.T) {
 		t.Fatal("exportResult.properties missing or invalid")
 	}
 	for _, property := range []string{"format", "document", "content"} {
-		if _, ok := properties[property]; !ok {
+		if _, exists := properties[property]; !exists {
 			t.Fatalf("exportResult missing %s property", property)
 		}
 	}
@@ -353,16 +359,14 @@ func TestSharedAndResultSchemasRejectMemoryResidueInCurrentSurfaces(t *testing.T
 }
 
 func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, want)
 }
 
 func stringSliceFromAny(raw any) []string {
-	items, _ := raw.([]any)
+	items, isList := raw.([]any)
+	if !isList {
+		return []string{}
+	}
 	values := make([]string, 0, len(items))
 	for _, item := range items {
 		if value, ok := item.(string); ok {

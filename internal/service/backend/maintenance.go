@@ -16,6 +16,9 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
+// Health inspects project state and reports findings. When fix-mode inputs
+// (fixers, apply, or file overrides) are present it runs the fixers and
+// returns their outcome; otherwise it runs read-only health checks.
 func (s *Service) Health(ctx context.Context, payload v1.HealthPayload) (v1.HealthResult, *core.APIError) {
 	isFixMode := len(payload.Fixers) > 0 || payload.Apply != nil || strings.TrimSpace(payload.ProjectRoot) != "" || strings.TrimSpace(payload.RulesFile) != "" || strings.TrimSpace(payload.TagsFile) != ""
 	if isFixMode {
@@ -75,6 +78,9 @@ func (s *Service) healthCheck(ctx context.Context, payload v1.HealthPayload) (v1
 	}, nil
 }
 
+// Init bootstraps a project for awm: it scaffolds the .awm files, seeds the
+// canonical tags document, applies any requested templates, syncs rulesets,
+// indexes pointer stubs, and optionally persists the candidate path list.
 func (s *Service) Init(ctx context.Context, payload v1.InitPayload) (v1.InitResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.InitResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -85,8 +91,7 @@ func (s *Service) Init(ctx context.Context, payload v1.InitPayload) (v1.InitResu
 	excludedPaths := initManagedRelativePaths(projectRoot, outputPath, payload.RulesFile, payload.TagsFile)
 	templates, err := bootstrapkit.ResolveTemplates(payload.ApplyTemplates)
 	if err != nil {
-		var unknown bootstrapkit.UnknownTemplateError
-		if errors.As(err, &unknown) {
+		if unknown, ok := errors.AsType[bootstrapkit.UnknownTemplateError](err); ok {
 			return v1.InitResult{}, backendError(v1.ErrCodeInvalidInput, "unknown init template", map[string]any{"template_id": unknown.TemplateID})
 		}
 		return v1.InitResult{}, initInternalError("load_templates", err)
@@ -97,18 +102,18 @@ func (s *Service) Init(ctx context.Context, payload v1.InitPayload) (v1.InitResu
 		return v1.InitResult{}, initInternalError("collect_project_paths", err)
 	}
 
-	if err := bootstrapkit.EnsureProjectScaffold(projectRoot, payload.RulesFile); err != nil {
-		return v1.InitResult{}, initInternalError("seed_scaffold", err)
+	if sErr := bootstrapkit.EnsureProjectScaffold(projectRoot, payload.RulesFile); sErr != nil {
+		return v1.InitResult{}, initInternalError("seed_scaffold", sErr)
 	}
-	if err := syncInitCanonicalTagsFile(projectRoot, payload.TagsFile, paths); err != nil {
-		return v1.InitResult{}, initInternalError("seed_tags", err)
+	if tErr := syncInitCanonicalTagsFile(projectRoot, payload.TagsFile, paths); tErr != nil {
+		return v1.InitResult{}, initInternalError("seed_tags", tErr)
 	}
 
 	templateResults := []v1.InitTemplateResult(nil)
 	if len(templates) > 0 {
-		appliedTemplates, err := bootstrapkit.ApplyTemplates(projectRoot, payload.ProjectID, templates)
-		if err != nil {
-			return v1.InitResult{}, initInternalError("apply_templates", err)
+		appliedTemplates, tplErr := bootstrapkit.ApplyTemplates(projectRoot, payload.ProjectID, templates)
+		if tplErr != nil {
+			return v1.InitResult{}, initInternalError("apply_templates", tplErr)
 		}
 		templateResults = appliedTemplates.TemplateResults
 		paths = mergeInitTemplateCandidatePaths(paths, appliedTemplates.CandidatePaths, excludedPaths)
@@ -328,7 +333,7 @@ func collectInitCandidatePathsFromWalk(ctx context.Context, projectRoot string) 
 	err := filepath.WalkDir(projectRoot, func(current string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			if len(warnings) < maxInitWalkErrorSamples {
-				warnings = append(warnings, fmt.Sprintf("skip:%s", normalizeWalkWarningPath(projectRoot, current)))
+				warnings = append(warnings, "skip:"+normalizeWalkWarningPath(projectRoot, current))
 			}
 			return nil
 		}
@@ -353,7 +358,7 @@ func collectInitCandidatePathsFromWalk(ctx context.Context, projectRoot string) 
 		relative, relErr := filepath.Rel(projectRoot, current)
 		if relErr != nil {
 			if len(warnings) < maxInitWalkErrorSamples {
-				warnings = append(warnings, fmt.Sprintf("skip:%s", normalizeWalkWarningPath(projectRoot, current)))
+				warnings = append(warnings, "skip:"+normalizeWalkWarningPath(projectRoot, current))
 			}
 			return nil
 		}
@@ -430,7 +435,7 @@ func initManagedRelativePath(projectRoot, rawPath string) string {
 	return normalizeCompletionPath(trimmed)
 }
 
-func filterInitCandidatePaths(paths []string, excludedPaths []string) []string {
+func filterInitCandidatePaths(paths, excludedPaths []string) []string {
 	excluded := map[string]struct{}{}
 	for _, excludedPath := range excludedPaths {
 		if trimmedExcludedPath := strings.TrimSpace(excludedPath); trimmedExcludedPath != "" {
@@ -451,7 +456,7 @@ func filterInitCandidatePaths(paths []string, excludedPaths []string) []string {
 	return filtered
 }
 
-func mergeInitTemplateCandidatePaths(existing []string, additional []string, excluded []string) []string {
+func mergeInitTemplateCandidatePaths(existing, additional, excluded []string) []string {
 	merged := append([]string(nil), existing...)
 	merged = append(merged, additional...)
 	return filterInitCandidatePaths(normalizeCompletionPaths(merged), excluded)

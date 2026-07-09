@@ -15,12 +15,19 @@ import (
 	backendsvc "github.com/bonztm/agent-workflow-manager/internal/service/backend"
 )
 
+// ServiceFlowConfig configures RunServiceFlows: a label identifying the
+// backend under test, an optional fixed project ID (a unique one is generated
+// when blank), and the repository implementation to exercise.
 type ServiceFlowConfig struct {
 	BackendLabel string
 	ProjectID    string
 	Repo         core.Repository
 }
 
+// RunServiceFlows exercises end-to-end backend service flows (context, work,
+// verify, done, pointer renames) against the configured repository inside a
+// scratch git repo, failing t on any contract violation. All repository
+// implementations are expected to pass identically.
 func RunServiceFlows(t *testing.T, cfg ServiceFlowConfig) {
 	t.Helper()
 
@@ -96,15 +103,15 @@ func RunServiceFlows(t *testing.T, cfg ServiceFlowConfig) {
 		t.Fatalf("unexpected stored initial scope paths before rename: got %v want %v", scopeBeforeRename.InitialScopePaths, []string{"docs/runtime.md"})
 	}
 
-	if _, err := cfg.Repo.UpsertPointerStubs(ctx, projectID, []core.PointerStub{{
+	if _, renameErr := cfg.Repo.UpsertPointerStubs(ctx, projectID, []core.PointerStub{{
 		PointerKey:  "pointer.runtime.default",
 		Path:        "docs/runtime-renamed.md",
 		Kind:        "doc",
 		Label:       "Runtime default backend",
 		Description: "Runtime default backend path renamed after receipt creation",
 		Tags:        []string{"runtime", cfg.BackendLabel},
-	}}); err != nil {
-		t.Fatalf("rename runtime pointer: %v", err)
+	}}); renameErr != nil {
+		t.Fatalf("rename runtime pointer: %v", renameErr)
 	}
 
 	scopeAfterRename, err := cfg.Repo.FetchReceiptScope(ctx, core.ReceiptScopeQuery{
@@ -235,9 +242,9 @@ func setupGitRepo(t *testing.T, files map[string]string) string {
 	t.Helper()
 
 	root := t.TempDir()
-	runCommand(t, root, "git", "init")
-	runCommand(t, root, "git", "config", "user.email", "repository-contract@example.com")
-	runCommand(t, root, "git", "config", "user.name", "Repository Contract")
+	runGit(t, root, "init")
+	runGit(t, root, "config", "user.email", "repository-contract@example.com")
+	runGit(t, root, "config", "user.name", "Repository Contract")
 
 	paths := make([]string, 0, len(files))
 	for p := range files {
@@ -246,26 +253,26 @@ func setupGitRepo(t *testing.T, files map[string]string) string {
 	sort.Strings(paths)
 	for _, p := range paths {
 		abs := filepath.Join(root, filepath.FromSlash(p))
-		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(abs), 0o750); err != nil {
 			t.Fatalf("mkdir %q: %v", abs, err)
 		}
-		if err := os.WriteFile(abs, []byte(files[p]), 0o644); err != nil {
+		if err := os.WriteFile(abs, []byte(files[p]), 0o600); err != nil {
 			t.Fatalf("write file %q: %v", abs, err)
 		}
 	}
 
-	runCommand(t, root, "git", "add", ".")
-	runCommand(t, root, "git", "commit", "-m", "seed")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-m", "seed")
 	return root
 }
 
-func runCommand(t *testing.T, dir string, name string, args ...string) {
+func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(t.Context(), "git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("run %s %v: %v\n%s", name, args, err, string(out))
+		t.Fatalf("run git %v: %v\n%s", args, err, string(out))
 	}
 }

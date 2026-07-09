@@ -3,11 +3,12 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
-	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
+	"github.com/bonztm/agent-workflow-manager/internal/core"
 )
 
 func TestWork_PersistsCompletedWorkItemsAndDerivesPlanStatus(t *testing.T) {
@@ -569,7 +570,7 @@ func TestMakeContextPlans_UsesStoredPlanSummariesWhenAvailable(t *testing.T) {
 		t.Fatalf("new service: %v", err)
 	}
 
-	plans := svc.makeContextPlans(context.Background(), "project.alpha", "receipt.abc123", false)
+	plans := svc.makeContextPlans(context.Background(), "project.alpha", "receipt.abc123")
 	if len(plans) != 1 {
 		t.Fatalf("expected one persisted context plan, got %+v", plans)
 	}
@@ -600,7 +601,7 @@ func TestMakeContextPlans_UsesPlanOnlyFetchKeys(t *testing.T) {
 		t.Fatalf("new service: %v", err)
 	}
 
-	plans := svc.makeContextPlans(context.Background(), "project.alpha", "receipt.abc123", false)
+	plans := svc.makeContextPlans(context.Background(), "project.alpha", "receipt.abc123")
 	if len(plans) != 1 {
 		t.Fatalf("expected one persisted context plan, got %+v", plans)
 	}

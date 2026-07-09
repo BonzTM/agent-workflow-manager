@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"hash"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,6 +30,10 @@ type reviewPlanState struct {
 	Task       *core.WorkItem
 }
 
+// Review records a review gate result for a work item. Without run=true it
+// stores the caller-provided status as a snapshot; with run=true it executes
+// the configured workflow review command, enforcing fingerprint-based skip
+// rules and the gate's max-attempts budget before persisting the attempt.
 func (s *Service) Review(ctx context.Context, payload v1.ReviewPayload) (v1.ReviewResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.ReviewResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -58,7 +64,7 @@ func (s *Service) Review(ctx context.Context, payload v1.ReviewPayload) (v1.Revi
 		}
 
 		evidence := mergeReviewTaskEvidence(state.Task, normalized.Evidence, latestReviewAttemptRef(attempts))
-		workResult, apiErr := s.Work(ctx, v1.WorkPayload{
+		workResult, workErr := s.Work(ctx, v1.WorkPayload{
 			ProjectID: normalized.ProjectID,
 			PlanKey:   normalized.PlanKey,
 			ReceiptID: normalized.ReceiptID,
@@ -71,8 +77,8 @@ func (s *Service) Review(ctx context.Context, payload v1.ReviewPayload) (v1.Revi
 				Evidence:      evidence,
 			}},
 		})
-		if apiErr != nil {
-			return v1.ReviewResult{}, apiErr
+		if workErr != nil {
+			return v1.ReviewResult{}, workErr
 		}
 		return v1.ReviewResultFromWork(normalized, workResult, normalized.Status, attemptsRun, 0, passingRuns, "", "", nil), nil
 	}
@@ -120,9 +126,9 @@ func (s *Service) Review(ctx context.Context, payload v1.ReviewPayload) (v1.Revi
 			if !reviewAttemptEligibleForFingerprintSkip(prior) {
 				goto executeReview
 			}
-			workResult, apiErr := s.updateReviewSnapshot(ctx, normalized, state, reviewSummary, reviewStatusFromAttempt(prior), prior.Outcome, latestReviewAttemptRef([]core.ReviewAttempt{prior}))
-			if apiErr != nil {
-				return v1.ReviewResult{}, apiErr
+			workResult, snapErr := s.updateReviewSnapshot(ctx, normalized, state, reviewSummary, reviewStatusFromAttempt(prior), prior.Outcome, latestReviewAttemptRef([]core.ReviewAttempt{prior}))
+			if snapErr != nil {
+				return v1.ReviewResult{}, snapErr
 			}
 			return v1.ReviewResultFromWork(
 				normalized,
@@ -140,9 +146,9 @@ func (s *Service) Review(ctx context.Context, payload v1.ReviewPayload) (v1.Revi
 
 	if definition.MaxAttempts > 0 && attemptsRun >= definition.MaxAttempts {
 		outcome := fmt.Sprintf("Review gate blocked: max_attempts=%d exhausted after %d passing run(s).", definition.MaxAttempts, passingRuns)
-		workResult, apiErr := s.updateReviewSnapshot(ctx, normalized, state, reviewSummary, v1.WorkItemStatusBlocked, outcome, latestReviewAttemptRef(attempts))
-		if apiErr != nil {
-			return v1.ReviewResult{}, apiErr
+		workResult, snapErr := s.updateReviewSnapshot(ctx, normalized, state, reviewSummary, v1.WorkItemStatusBlocked, outcome, latestReviewAttemptRef(attempts))
+		if snapErr != nil {
+			return v1.ReviewResult{}, snapErr
 		}
 		return v1.ReviewResultFromWork(
 			normalized,
@@ -571,39 +577,44 @@ func collectReviewFingerprintEntries(projectRoot string, scopePaths []string) ([
 func collectReviewDirectoryFingerprintEntries(projectRoot, rootRelative string) ([]reviewFingerprintEntry, *core.APIError) {
 	rootAbsolute := filepath.Join(projectRoot, filepath.FromSlash(rootRelative))
 	entries := make([]reviewFingerprintEntry, 0)
-	err := filepath.Walk(rootAbsolute, func(current string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
+	err := func() error {
+		dirRoot, openErr := os.OpenRoot(rootAbsolute)
+		if openErr != nil {
+			return openErr
 		}
-		if info.IsDir() {
-			if current == rootAbsolute {
+		defer dirRoot.Close()
+		rootFS := dirRoot.FS()
+		return fs.WalkDir(rootFS, ".", func(current string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() {
+				if current == "." {
+					return nil
+				}
+				if entry.Name() == ".git" {
+					return fs.SkipDir
+				}
 				return nil
 			}
-			if info.Name() == ".git" {
-				return filepath.SkipDir
+			if !entry.Type().IsRegular() {
+				return nil
 			}
-			return nil
-		}
-		if !info.Mode().IsRegular() {
-			return nil
-		}
 
-		relativePath, relErr := filepath.Rel(projectRoot, current)
-		if relErr != nil {
-			return relErr
-		}
-		normalizedPath := normalizeCompletionPath(filepath.ToSlash(relativePath))
-		if normalizedPath == "" {
+			relativePath := filepath.ToSlash(filepath.Join(filepath.FromSlash(rootRelative), filepath.FromSlash(current)))
+			normalizedPath := normalizeCompletionPath(relativePath)
+			if normalizedPath == "" {
+				return nil
+			}
+			blob, readErr := fs.ReadFile(rootFS, current)
+			if readErr != nil {
+				return readErr
+			}
+			sum := sha256.Sum256(blob)
+			entries = append(entries, reviewFingerprintEntry{Path: normalizedPath, Kind: "file", Hash: hex.EncodeToString(sum[:])})
 			return nil
-		}
-		blob, readErr := os.ReadFile(current)
-		if readErr != nil {
-			return readErr
-		}
-		sum := sha256.Sum256(blob)
-		entries = append(entries, reviewFingerprintEntry{Path: normalizedPath, Kind: "file", Hash: hex.EncodeToString(sum[:])})
-		return nil
-	})
+		})
+	}()
 	if err != nil {
 		return nil, backendError(v1.ErrCodeInternalError, "failed to walk scoped review directory", map[string]any{
 			"path":  rootRelative,
@@ -614,9 +625,13 @@ func collectReviewDirectoryFingerprintEntries(projectRoot, rootRelative string) 
 	return entries, nil
 }
 
-func writeFingerprintPart(w io.Writer, value string) {
-	_, _ = io.WriteString(w, strings.TrimSpace(value))
-	_, _ = io.WriteString(w, "\x00")
+// writeFingerprintPart appends one normalized value plus a NUL separator to
+// the fingerprint hash. hash.Hash.Write is documented to never return an
+// error, so the returns are deliberately not checked (errcheck's
+// std-error-handling exclusions agree).
+func writeFingerprintPart(h hash.Hash, value string) {
+	h.Write([]byte(strings.TrimSpace(value)))
+	h.Write([]byte{0})
 }
 
 func findWorkItemByKey(items []core.WorkItem, reviewKey string) (core.WorkItem, bool) {
@@ -681,9 +696,9 @@ func latestReviewAttempt(attempts []core.ReviewAttempt) (core.ReviewAttempt, boo
 
 func latestReviewAttemptByFingerprint(attempts []core.ReviewAttempt, fingerprint string) (core.ReviewAttempt, bool) {
 	needle := strings.TrimSpace(fingerprint)
-	for i := len(attempts) - 1; i >= 0; i-- {
-		if strings.TrimSpace(attempts[i].Fingerprint) == needle {
-			return attempts[i], true
+	for _, attempt := range slices.Backward(attempts) {
+		if strings.TrimSpace(attempt.Fingerprint) == needle {
+			return attempt, true
 		}
 	}
 	return core.ReviewAttempt{}, false

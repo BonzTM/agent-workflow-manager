@@ -8,8 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -33,19 +33,6 @@ type convenienceBuildResult struct {
 type rawOutputOptions struct {
 	OutFile string
 	Force   bool
-}
-
-func runConvenience(ctx context.Context, logger logging.Logger, subcommand string, args []string) int {
-	return runConvenienceWithDeps(
-		ctx,
-		logger,
-		subcommand,
-		args,
-		os.Stdout,
-		time.Now,
-		runtime.NewServiceFromEnvWithLogger,
-		RunWithLogger,
-	)
 }
 
 func runConvenienceWithDeps(
@@ -109,7 +96,9 @@ func runConvenienceWithDeps(
 	code := runAdapter(ctx, svc, bytes.NewReader(request), adapterOut, now, logger)
 	if requestSpec.RawOutput != nil {
 		if code != 0 {
-			_, _ = io.Copy(out, &rawBuffer)
+			if _, copyErr := io.Copy(out, &rawBuffer); copyErr != nil {
+				logger.Error(ctx, logging.EventAWMRun, "stage", "raw_output_copy", "subcommand", subcommand, "ok", false, "error_code", v1.ErrCodeWriteFailed)
+			}
 			logger.Info(ctx, logging.EventAWMRun, "stage", "finish", "subcommand", subcommand, "exit_code", code)
 			return code
 		}
@@ -146,14 +135,6 @@ func buildConvenienceRequest(subcommand string, args []string, now func() time.T
 	return route.Build(args, now)
 }
 
-func buildContextEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
-	request, err := buildContextRequest(args, now)
-	if err != nil {
-		return v1.CommandEnvelope{}, err
-	}
-	return request.Envelope, nil
-}
-
 func buildContextRequest(args []string, now func() time.Time) (convenienceBuildResult, error) {
 	return buildContextCommandRequest(
 		"context",
@@ -163,14 +144,6 @@ func buildContextRequest(args []string, now func() time.Time) (convenienceBuildR
 		args,
 		now,
 	)
-}
-
-func buildContextCommandEnvelope(subcommand, usage, example string, command v1.Command, args []string, now func() time.Time) (v1.CommandEnvelope, error) {
-	request, err := buildContextCommandRequest(subcommand, usage, example, command, args, now)
-	if err != nil {
-		return v1.CommandEnvelope{}, err
-	}
-	return request.Envelope, nil
 }
 
 func buildContextCommandRequest(subcommand, usage, example string, command v1.Command, args []string, now func() time.Time) (convenienceBuildResult, error) {
@@ -193,11 +166,11 @@ func buildContextCommandRequest(subcommand, usage, example string, command v1.Co
 	trimmedTaskText := strings.TrimSpace(*taskText)
 	trimmedTaskFile := strings.TrimSpace(*taskFile)
 	if trimmedTaskText != "" && trimmedTaskFile != "" {
-		return convenienceBuildResult{}, fmt.Errorf("use only one of --task-text or --task-file")
+		return convenienceBuildResult{}, errors.New("use only one of --task-text or --task-file")
 	}
 	if trimmedTaskText == "" {
 		if trimmedTaskFile == "" {
-			return convenienceBuildResult{}, fmt.Errorf("--task-text or --task-file is required")
+			return convenienceBuildResult{}, errors.New("--task-text or --task-file is required")
 		}
 		blob, err := readTextFile(trimmedTaskFile)
 		if err != nil {
@@ -206,7 +179,7 @@ func buildContextCommandRequest(subcommand, usage, example string, command v1.Co
 		trimmedTaskText = strings.TrimSpace(blob)
 	}
 	if trimmedTaskText == "" {
-		return convenienceBuildResult{}, fmt.Errorf("task text must not be empty")
+		return convenienceBuildResult{}, errors.New("task text must not be empty")
 	}
 	if err := exportFlags.Validate(); err != nil {
 		return convenienceBuildResult{}, err
@@ -245,14 +218,6 @@ func buildContextCommandRequest(subcommand, usage, example string, command v1.Co
 		return convenienceBuildResult{}, err
 	}
 	return convenienceBuildResult{Envelope: env}, nil
-}
-
-func buildFetchEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
-	request, err := buildFetchRequest(args, now)
-	if err != nil {
-		return v1.CommandEnvelope{}, err
-	}
-	return request.Envelope, nil
 }
 
 func buildFetchRequest(args []string, now func() time.Time) (convenienceBuildResult, error) {
@@ -300,18 +265,14 @@ func buildFetchRequest(args []string, now func() time.Time) (convenienceBuildRes
 		if err != nil {
 			return convenienceBuildResult{}, err
 		}
-		for k, v := range fileMap {
-			expectedVersions[k] = v
-		}
+		maps.Copy(expectedVersions, fileMap)
 	}
 	if trimmedExpectedVersionsJSON := strings.TrimSpace(*expectedVersionsJSON); trimmedExpectedVersionsJSON != "" {
 		inlineMap, err := readStringMapFromJSON(trimmedExpectedVersionsJSON, "--expected-versions-json")
 		if err != nil {
 			return convenienceBuildResult{}, err
 		}
-		for k, v := range inlineMap {
-			expectedVersions[k] = v
-		}
+		maps.Copy(expectedVersions, inlineMap)
 	}
 	for _, expectedArg := range expects {
 		key, version, err := parseExpectedVersion(expectedArg)
@@ -357,14 +318,6 @@ func buildFetchRequest(args []string, now func() time.Time) (convenienceBuildRes
 	return convenienceBuildResult{Envelope: env}, nil
 }
 
-func buildHistorySearchEnvelope(subcommand string, args []string, now func() time.Time) (v1.CommandEnvelope, error) {
-	request, err := buildHistorySearchRequest(subcommand, args, now)
-	if err != nil {
-		return v1.CommandEnvelope{}, err
-	}
-	return request.Envelope, nil
-}
-
 func buildHistorySearchRequest(subcommand string, args []string, now func() time.Time) (convenienceBuildResult, error) {
 	usageLine := "awm history [--project <id>] [--entity <all|work|receipt|run>] [--query <text>|--query-file <path>] [--scope <current|deferred|completed|all>] [--kind <kind>] [--limit <n>] [--unbounded[=true|false]] [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]"
 	example := "awm history --entity work --scope current --query \"MCP parity\""
@@ -393,7 +346,7 @@ func buildHistorySearchRequest(subcommand string, args []string, now func() time
 	trimmedScope := strings.TrimSpace(*scope)
 	trimmedKind := strings.TrimSpace(*kind)
 	if trimmedQuery != "" && trimmedQueryFile != "" {
-		return convenienceBuildResult{}, fmt.Errorf("use only one of --query or --query-file")
+		return convenienceBuildResult{}, errors.New("use only one of --query or --query-file")
 	}
 	if trimmedQuery == "" && trimmedQueryFile != "" {
 		blob, err := readTextFile(trimmedQueryFile)
@@ -412,12 +365,12 @@ func buildHistorySearchRequest(subcommand string, args []string, now func() time
 	}
 	if trimmedKind != "" {
 		if payload.Entity != v1.HistoryEntityWork {
-			return convenienceBuildResult{}, fmt.Errorf("kind is only supported when entity=work")
+			return convenienceBuildResult{}, errors.New("kind is only supported when entity=work")
 		}
 		payload.Kind = trimmedKind
 	}
 	if trimmedScope != "" && payload.Entity != v1.HistoryEntityWork {
-		return convenienceBuildResult{}, fmt.Errorf("scope is only supported when entity=work")
+		return convenienceBuildResult{}, errors.New("scope is only supported when entity=work")
 	}
 	if *limit > 0 {
 		payload.Limit = *limit
@@ -454,14 +407,6 @@ func buildHistorySearchRequest(subcommand string, args []string, now func() time
 	return convenienceBuildResult{Envelope: env}, nil
 }
 
-func buildStatusEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope, error) {
-	request, err := buildStatusRequest(args, now)
-	if err != nil {
-		return v1.CommandEnvelope{}, err
-	}
-	return request.Envelope, nil
-}
-
 func buildStatusRequest(args []string, now func() time.Time) (convenienceBuildResult, error) {
 	return buildStatusRequestForCommand(
 		"status",
@@ -470,14 +415,6 @@ func buildStatusRequest(args []string, now func() time.Time) (convenienceBuildRe
 		args,
 		now,
 	)
-}
-
-func buildStatusEnvelopeForCommand(commandName, usageLine, example string, args []string, now func() time.Time) (v1.CommandEnvelope, error) {
-	request, err := buildStatusRequestForCommand(commandName, usageLine, example, args, now)
-	if err != nil {
-		return v1.CommandEnvelope{}, err
-	}
-	return request.Envelope, nil
 }
 
 func buildStatusRequestForCommand(commandName, usageLine, example string, args []string, now func() time.Time) (convenienceBuildResult, error) {
@@ -505,7 +442,7 @@ func buildStatusRequestForCommand(commandName, usageLine, example string, args [
 	trimmedTaskText := strings.TrimSpace(*taskText)
 	trimmedTaskFile := strings.TrimSpace(*taskFile)
 	if trimmedTaskText != "" && trimmedTaskFile != "" {
-		return convenienceBuildResult{}, fmt.Errorf("use only one of --task-text or --task-file")
+		return convenienceBuildResult{}, errors.New("use only one of --task-text or --task-file")
 	}
 	if trimmedTaskText == "" && trimmedTaskFile != "" {
 		blob, err := readTextFile(trimmedTaskFile)
@@ -587,7 +524,7 @@ func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 	trimmedPlanFile := strings.TrimSpace(*planFile)
 	trimmedPlanJSON := strings.TrimSpace(*planJSON)
 	if trimmedPlanFile != "" && trimmedPlanJSON != "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("use only one of --plan-file or --plan-json")
+		return v1.CommandEnvelope{}, errors.New("use only one of --plan-file or --plan-json")
 	}
 	if trimmedPlanFile != "" {
 		plan, err := readWorkPlanFromFile(trimmedPlanFile)
@@ -613,7 +550,7 @@ func buildWorkEnvelope(args []string, now func() time.Time) (v1.CommandEnvelope,
 	trimmedTasksFile := strings.TrimSpace(*tasksFile)
 	trimmedTasksJSON := strings.TrimSpace(*tasksJSON)
 	if trimmedTasksFile != "" && trimmedTasksJSON != "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("use only one of --tasks-file or --tasks-json")
+		return v1.CommandEnvelope{}, errors.New("use only one of --tasks-file or --tasks-json")
 	}
 	if trimmedTasksFile != "" {
 		tasks, err := readWorkTasksFromFile(trimmedTasksFile)
@@ -667,17 +604,17 @@ func buildDoneCommandEnvelope(subcommand, usage, example string, command v1.Comm
 		return v1.CommandEnvelope{}, err
 	}
 	if strings.TrimSpace(*receiptID) == "" && strings.TrimSpace(*planKey) == "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("done requires --receipt-id or --plan-key")
+		return v1.CommandEnvelope{}, errors.New("done requires --receipt-id or --plan-key")
 	}
 
 	trimmedOutcome := strings.TrimSpace(*outcome)
 	trimmedOutcomeFile := strings.TrimSpace(*outcomeFile)
 	if trimmedOutcome != "" && trimmedOutcomeFile != "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("use only one of --outcome or --outcome-file")
+		return v1.CommandEnvelope{}, errors.New("use only one of --outcome or --outcome-file")
 	}
 	if trimmedOutcome == "" {
 		if trimmedOutcomeFile == "" {
-			return v1.CommandEnvelope{}, fmt.Errorf("--outcome or --outcome-file is required")
+			return v1.CommandEnvelope{}, errors.New("--outcome or --outcome-file is required")
 		}
 		blob, err := readTextFile(trimmedOutcomeFile)
 		if err != nil {
@@ -686,7 +623,7 @@ func buildDoneCommandEnvelope(subcommand, usage, example string, command v1.Comm
 		trimmedOutcome = strings.TrimSpace(blob)
 	}
 	if trimmedOutcome == "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("outcome must not be empty")
+		return v1.CommandEnvelope{}, errors.New("outcome must not be empty")
 	}
 
 	allFilesChanged := filesChanged.Values()
@@ -705,7 +642,7 @@ func buildDoneCommandEnvelope(subcommand, usage, example string, command v1.Comm
 		allFilesChanged = mergeUnique(allFilesChanged, inlineValues)
 	}
 	if noFileChanges.set && noFileChanges.value && len(allFilesChanged) > 0 {
-		return v1.CommandEnvelope{}, fmt.Errorf("--no-file-changes cannot be combined with changed file inputs")
+		return v1.CommandEnvelope{}, errors.New("--no-file-changes cannot be combined with changed file inputs")
 	}
 
 	payload := v1.DonePayload{
@@ -749,13 +686,13 @@ func buildReviewEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 		return v1.CommandEnvelope{}, err
 	}
 	if strings.TrimSpace(*receiptID) == "" && strings.TrimSpace(*planKey) == "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("review requires --receipt-id or --plan-key")
+		return v1.CommandEnvelope{}, errors.New("review requires --receipt-id or --plan-key")
 	}
 
 	trimmedOutcome := strings.TrimSpace(*outcome)
 	trimmedOutcomeFile := strings.TrimSpace(*outcomeFile)
 	if trimmedOutcome != "" && trimmedOutcomeFile != "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("use only one of --outcome or --outcome-file")
+		return v1.CommandEnvelope{}, errors.New("use only one of --outcome or --outcome-file")
 	}
 	if !*run && trimmedOutcome == "" && trimmedOutcomeFile != "" {
 		blob, err := readTextFile(trimmedOutcomeFile)
@@ -767,7 +704,7 @@ func buildReviewEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 
 	allEvidence := evidence.Values()
 	if strings.TrimSpace(*evidenceFile) != "" && strings.TrimSpace(*evidenceJSON) != "" {
-		return v1.CommandEnvelope{}, fmt.Errorf("use only one of --evidence-file or --evidence-json")
+		return v1.CommandEnvelope{}, errors.New("use only one of --evidence-file or --evidence-json")
 	}
 	if trimmedEvidenceFile := strings.TrimSpace(*evidenceFile); trimmedEvidenceFile != "" {
 		fileValues, err := readStringListFromFile(trimmedEvidenceFile, "--evidence-file")
@@ -785,16 +722,16 @@ func buildReviewEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 	}
 	if *run {
 		if trimmedOutcome != "" || trimmedOutcomeFile != "" {
-			return v1.CommandEnvelope{}, fmt.Errorf("--outcome and --outcome-file are only supported when --run is omitted")
+			return v1.CommandEnvelope{}, errors.New("--outcome and --outcome-file are only supported when --run is omitted")
 		}
 		if strings.TrimSpace(*blockedReason) != "" {
-			return v1.CommandEnvelope{}, fmt.Errorf("--blocked-reason is only supported when --run is omitted")
+			return v1.CommandEnvelope{}, errors.New("--blocked-reason is only supported when --run is omitted")
 		}
 		if len(allEvidence) > 0 {
-			return v1.CommandEnvelope{}, fmt.Errorf("--evidence, --evidence-file, and --evidence-json are only supported when --run is omitted")
+			return v1.CommandEnvelope{}, errors.New("--evidence, --evidence-file, and --evidence-json are only supported when --run is omitted")
 		}
 		if strings.TrimSpace(*status) != "" {
-			return v1.CommandEnvelope{}, fmt.Errorf("--status is only supported when --run is omitted")
+			return v1.CommandEnvelope{}, errors.New("--status is only supported when --run is omitted")
 		}
 	}
 
@@ -922,7 +859,7 @@ func buildVerifyEnvelope(args []string, now func() time.Time) (v1.CommandEnvelop
 		payload.Phase = v1.Phase(trimmedPhase)
 	}
 	if len(payload.TestIDs) == 0 && payload.ReceiptID == "" && payload.PlanKey == "" && payload.Phase == "" && len(payload.FilesChanged) == 0 {
-		return v1.CommandEnvelope{}, fmt.Errorf("verify requires --test-id or selection context (--receipt-id, --plan-key, --phase, or --file-changed)")
+		return v1.CommandEnvelope{}, errors.New("verify requires --test-id or selection context (--receipt-id, --plan-key, --phase, or --file-changed)")
 	}
 
 	return buildEnvelope(v1.CommandVerify, *requestID, payload, now)
@@ -1019,7 +956,7 @@ func (f *readSurfaceExportFlags) Validate() error {
 	outFileValue := strings.TrimSpace(derefString(f.outFile))
 	if formatValue == "" {
 		if outFileValue != "" || f.force.IsSet() {
-			return fmt.Errorf("--out-file and --force require --format")
+			return errors.New("--out-file and --force require --format")
 		}
 		f.Format = ""
 		return nil
@@ -1033,7 +970,7 @@ func (f *readSurfaceExportFlags) Validate() error {
 	}
 
 	if f.force.IsSet() && outFileValue == "" {
-		return fmt.Errorf("--force requires --out-file")
+		return errors.New("--force requires --out-file")
 	}
 	return nil
 }
@@ -1061,7 +998,7 @@ func extractExportContent(raw []byte) (string, error) {
 		return "", err
 	}
 	if !env.OK {
-		return "", fmt.Errorf("export envelope did not report success")
+		return "", errors.New("export envelope did not report success")
 	}
 	var result v1.ExportResult
 	if err := json.Unmarshal(env.Result, &result); err != nil {
@@ -1081,7 +1018,7 @@ func emitRawExportContent(out io.Writer, content string, options rawOutputOption
 func writeRawExportFile(targetPath, content string, force bool) error {
 	cleanPath := filepath.Clean(strings.TrimSpace(targetPath))
 	if cleanPath == "" || cleanPath == "." {
-		return fmt.Errorf("--out-file must not be empty")
+		return errors.New("--out-file must not be empty")
 	}
 	if !force {
 		if _, err := os.Stat(cleanPath); err == nil {
@@ -1181,13 +1118,6 @@ func parseCommandFlags(fs *flag.FlagSet, args []string) error {
 	return nil
 }
 
-func requireFlag(flagName, value string) error {
-	if strings.TrimSpace(value) == "" {
-		return fmt.Errorf("--%s is required", flagName)
-	}
-	return nil
-}
-
 func parseExpectedVersion(raw string) (string, string, error) {
 	parts := strings.SplitN(raw, "=", 2)
 	if len(parts) != 2 {
@@ -1201,7 +1131,7 @@ func parseExpectedVersion(raw string) (string, string, error) {
 	return key, version, nil
 }
 
-func mergeUnique(base []string, additional []string) []string {
+func mergeUnique(base, additional []string) []string {
 	seen := make(map[string]struct{}, len(base)+len(additional))
 	out := make([]string, 0, len(base)+len(additional))
 	for _, raw := range append(append([]string(nil), base...), additional...) {
@@ -1216,40 +1146,6 @@ func mergeUnique(base []string, additional []string) []string {
 		out = append(out, trimmed)
 	}
 	return out
-}
-
-func pointerKeysFromPaths(projectID string, paths []string, flagName string) ([]string, error) {
-	normalizedProjectID := strings.TrimSpace(projectID)
-	if normalizedProjectID == "" {
-		normalizedProjectID = runtime.ConfigFromEnv().EffectiveProjectID()
-	}
-	if normalizedProjectID == "" {
-		return nil, fmt.Errorf("a project id could not be resolved when using --%s", flagName)
-	}
-	keys := make([]string, 0, len(paths))
-	for _, raw := range paths {
-		normalizedPath, err := normalizeRelativeCLIPath(raw)
-		if err != nil {
-			return nil, fmt.Errorf("--%s %q: %w", flagName, raw, err)
-		}
-		keys = append(keys, normalizedProjectID+":"+normalizedPath)
-	}
-	return mergeUnique(nil, keys), nil
-}
-
-func normalizeRelativeCLIPath(raw string) (string, error) {
-	trimmed := strings.TrimSpace(strings.ReplaceAll(raw, "\\", "/"))
-	if trimmed == "" {
-		return "", fmt.Errorf("path must not be empty")
-	}
-	if strings.HasPrefix(trimmed, "/") {
-		return "", fmt.Errorf("path must be repository-relative")
-	}
-	cleaned := path.Clean(trimmed)
-	if cleaned == "." || cleaned == "" || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return "", fmt.Errorf("path must be repository-relative")
-	}
-	return cleaned, nil
 }
 
 func readTextFile(path string) (string, error) {
@@ -1354,9 +1250,7 @@ func cloneStringMap(values map[string]string) map[string]string {
 		return nil
 	}
 	out := make(map[string]string, len(values))
-	for key, value := range values {
-		out[key] = value
-	}
+	maps.Copy(out, values)
 	return out
 }
 
@@ -1415,7 +1309,7 @@ func (f *healthFixCLIFlags) validateIdle() error {
 	if strings.TrimSpace(derefString(f.projectRoot)) == "" && strings.TrimSpace(derefString(f.rulesFile)) == "" && strings.TrimSpace(derefString(f.tagsFile)) == "" {
 		return nil
 	}
-	return fmt.Errorf("use --fix, --apply, or --dry-run when supplying fix-mode flags such as --project-root, --rules-file, or --tags-file")
+	return errors.New("use --fix, --apply, or --dry-run when supplying fix-mode flags such as --project-root, --rules-file, or --tags-file")
 }
 
 func buildHealthPayload(projectID string, includeDetails optionalBoolFlag, maxFindingsPerCheck int, options *healthFixCLIFlags) (v1.HealthPayload, error) {
@@ -1431,7 +1325,7 @@ func buildHealthPayload(projectID string, includeDetails optionalBoolFlag, maxFi
 	}
 	if options.modeRequested() {
 		if includeDetails.IsSet() || maxFindingsPerCheck >= 0 {
-			return v1.HealthPayload{}, fmt.Errorf("health check flags cannot be combined with --fix, --apply, or --dry-run")
+			return v1.HealthPayload{}, errors.New("health check flags cannot be combined with --fix, --apply, or --dry-run")
 		}
 	} else if err := options.validateIdle(); err != nil {
 		return v1.HealthPayload{}, err
@@ -1466,7 +1360,7 @@ func resolveHealthFixApply(applyFlag, dryRunFlag optionalBoolFlag) (*bool, error
 	}
 	dryRunValue := !dryRunFlag.value
 	if applyValue != nil && *applyValue != dryRunValue {
-		return nil, fmt.Errorf("--apply and --dry-run disagree; use one or provide matching values")
+		return nil, errors.New("--apply and --dry-run disagree; use one or provide matching values")
 	}
 	return &dryRunValue, nil
 }
@@ -1498,7 +1392,7 @@ func decodeJSONStrict(data []byte, out any) error {
 	}
 	var extra any
 	if err := decoder.Decode(&extra); err == nil {
-		return fmt.Errorf("unexpected trailing JSON tokens")
+		return errors.New("unexpected trailing JSON tokens")
 	}
 	return nil
 }
@@ -1512,14 +1406,14 @@ func (r *repeatedStringFlag) String() string {
 func (r *repeatedStringFlag) Set(value string) error {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return fmt.Errorf("value must not be empty")
+		return errors.New("value must not be empty")
 	}
 	*r = append(*r, trimmed)
 	return nil
 }
 
-func (r repeatedStringFlag) Values() []string {
-	return append([]string(nil), r...)
+func (r *repeatedStringFlag) Values() []string {
+	return append([]string(nil), *r...)
 }
 
 type optionalBoolFlag struct {

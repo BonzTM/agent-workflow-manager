@@ -9,18 +9,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
-	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"gopkg.in/yaml.v3"
 
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 	"github.com/bonztm/agent-workflow-manager/internal/core"
 	"github.com/bonztm/agent-workflow-manager/internal/workspace"
@@ -134,6 +136,9 @@ type verifyCommandRun struct {
 	Err        error
 }
 
+// Verify selects the verification tests that match the payload's phase, tags,
+// and changed files, executes them (unless dry-run or explain-only), persists
+// the batch results, and updates the linked work items with the outcome.
 func (s *Service) Verify(ctx context.Context, payload v1.VerifyPayload) (v1.VerifyResult, *core.APIError) {
 	if s == nil || s.repo == nil {
 		return v1.VerifyResult{}, backendError(v1.ErrCodeInternalError, "service repository is not configured", nil)
@@ -293,8 +298,8 @@ func (s *Service) loadVerifyDefinitions(projectRoot, testsFile, tagsFile string)
 	decoder.KnownFields(true)
 
 	doc := verifyTestsDocumentV1{}
-	if err := decoder.Decode(&doc); err != nil {
-		return nil, source, fmt.Errorf("parse verification definitions %s: %w", source.SourcePath, err)
+	if dErr := decoder.Decode(&doc); dErr != nil {
+		return nil, source, fmt.Errorf("parse verification definitions %s: %w", source.SourcePath, dErr)
 	}
 	if strings.TrimSpace(doc.Version) != verifyTestsVersionV1 {
 		return nil, source, fmt.Errorf("verification definitions %s have unsupported version %q", source.SourcePath, strings.TrimSpace(doc.Version))
@@ -362,7 +367,7 @@ func statVerifyTestsSource(projectRoot, sourcePath string) (verifyTestsSource, e
 		return verifyTestsSource{}, fmt.Errorf("verification definitions source path is required: %w", err)
 	}
 	stat, err := os.Stat(absolutePath)
-	exists := false
+	var exists bool
 	switch {
 	case err == nil:
 		exists = !stat.IsDir()
@@ -569,12 +574,7 @@ func matchVerifyDefinition(definition verifyTestDefinition, selection verifySele
 }
 
 func containsVerifyPhase(values []v1.Phase, candidate v1.Phase) bool {
-	for _, value := range values {
-		if value == candidate {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, candidate)
 }
 
 func firstVerifyStringIntersection(values, candidates []string) (string, bool) {
@@ -808,7 +808,7 @@ func summarizeVerifyResults(results []v1.VerifyTestResult, passed bool) string {
 
 func normalizeVerifyArgv(raw []string) ([]string, error) {
 	if len(raw) == 0 {
-		return nil, fmt.Errorf("must not be empty")
+		return nil, errors.New("must not be empty")
 	}
 	if len(raw) > maxVerifyArgs {
 		return nil, fmt.Errorf("may include at most %d entries", maxVerifyArgs)
@@ -829,7 +829,7 @@ func normalizeVerifyEnv(raw map[string]string) (map[string]string, error) {
 		return nil, nil
 	}
 	if len(raw) > 64 {
-		return nil, fmt.Errorf("may include at most 64 entries")
+		return nil, errors.New("may include at most 64 entries")
 	}
 	out := make(map[string]string, len(raw))
 	for rawKey, rawValue := range raw {
@@ -851,11 +851,11 @@ func normalizeVerifyWorkingDir(raw string) (string, error) {
 		return ".", nil
 	}
 	if filepath.IsAbs(trimmed) {
-		return "", fmt.Errorf("must be repository-relative")
+		return "", errors.New("must be repository-relative")
 	}
 	normalized := path.Clean(strings.ReplaceAll(trimmed, "\\", "/"))
 	if normalized == ".." || strings.HasPrefix(normalized, "../") {
-		return "", fmt.Errorf("must be repository-relative")
+		return "", errors.New("must be repository-relative")
 	}
 	if normalized == "." {
 		return ".", nil
@@ -892,7 +892,7 @@ func normalizeVerifyPhases(raw []string) ([]v1.Phase, error) {
 		seen[phase] = struct{}{}
 		out = append(out, phase)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out, nil
 }
 
@@ -934,7 +934,7 @@ func verifyDefinitionHash(definition verifyTestDefinition) string {
 		name, value, _ := strings.Cut(pair, "=")
 		env = append(env, envEntry{Key: name, Value: value})
 	}
-	payload, _ := json.Marshal(struct {
+	payload, mErr := json.Marshal(struct {
 		ID               string     `json:"id"`
 		Summary          string     `json:"summary"`
 		Argv             []string   `json:"argv"`
@@ -959,6 +959,11 @@ func verifyDefinitionHash(definition verifyTestDefinition) string {
 		AlwaysRun:        definition.AlwaysRun,
 		ExpectedExitCode: definition.ExpectedExitCode,
 	})
+	if mErr != nil {
+		// Marshaling this fixed shape of strings, ints, and bools cannot fail;
+		// hash a distinct sentinel if it somehow does.
+		payload = []byte("verify-definition-marshal-error: " + mErr.Error())
+	}
 	digest := sha256.Sum256(payload)
 	return "sha256:" + hex.EncodeToString(digest[:])
 }
@@ -984,12 +989,8 @@ func mergeCommandEnv(base, extra map[string]string) map[string]string {
 		return nil
 	}
 	merged := make(map[string]string, len(base)+len(extra))
-	for key, value := range base {
-		merged[key] = value
-	}
-	for key, value := range extra {
-		merged[key] = value
-	}
+	maps.Copy(merged, base)
+	maps.Copy(merged, extra)
 	return merged
 }
 
@@ -1031,13 +1032,13 @@ func resolveConfiguredCommandArgv(projectRoot, cwd string, argv []string) []stri
 	return out
 }
 
-func runConfiguredCommand(ctx context.Context, projectRoot string, argv []string, cwd string, timeoutSec int, runtimeEnv map[string]string, env map[string]string, extraEnv map[string]string) verifyCommandRun {
+func runConfiguredCommand(ctx context.Context, projectRoot string, argv []string, cwd string, timeoutSec int, runtimeEnv, env, extraEnv map[string]string) verifyCommandRun {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
 
 	startedAt := time.Now().UTC()
 	resolvedArgv := resolveConfiguredCommandArgv(projectRoot, cwd, argv)
-	command := exec.CommandContext(timeoutCtx, resolvedArgv[0], resolvedArgv[1:]...)
+	command := exec.CommandContext(timeoutCtx, resolvedArgv[0], resolvedArgv[1:]...) //nolint:gosec // G204: argv comes from the project's own verify/workflow definitions; executing it is this function's purpose
 	command.Dir = filepath.Clean(filepath.Join(projectRoot, filepath.FromSlash(cwd)))
 	commandEnv := mergeCommandEnv(runtimeEnv, env)
 	commandEnv = mergeCommandEnv(commandEnv, extraEnv)
@@ -1061,7 +1062,7 @@ func runConfiguredCommand(ctx context.Context, projectRoot string, argv []string
 	if exitCode == nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) && exitErr.ProcessState != nil {
-			code := exitErr.ProcessState.ExitCode()
+			code := exitErr.ExitCode()
 			if code >= 0 {
 				exitCode = &code
 			}

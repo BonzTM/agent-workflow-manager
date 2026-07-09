@@ -3,10 +3,15 @@ package v1
 import "strings"
 
 const (
+	// DefaultReviewTaskKey is the review task key assumed when a review payload
+	// does not name one.
 	DefaultReviewTaskKey = "review:cross-llm"
 	defaultReviewSummary = "Cross-LLM review"
 )
 
+// ReviewPayload is the input for the review command: it identifies the target
+// receipt or plan, the review task key, and the status, outcome, and evidence
+// to record; Run requests execution of a runnable review gate.
 type ReviewPayload struct {
 	ProjectID     string         `json:"project_id"`
 	ReceiptID     string         `json:"receipt_id,omitempty"`
@@ -21,6 +26,8 @@ type ReviewPayload struct {
 	TagsFile      string         `json:"tags_file,omitempty"`
 }
 
+// ReviewExecution describes one executed review gate command: the workflow
+// source, argv, working directory, timeout, exit outcome, and output excerpts.
 type ReviewExecution struct {
 	SourcePath    string   `json:"source_path,omitempty"`
 	CommandArgv   []string `json:"command_argv,omitempty"`
@@ -32,6 +39,9 @@ type ReviewExecution struct {
 	StderrExcerpt string   `json:"stderr_excerpt,omitempty"`
 }
 
+// ReviewResult is the outcome of the review command: the updated plan state,
+// the recorded review key and status, attempt counters, and execution details
+// when a runnable gate was executed.
 type ReviewResult struct {
 	PlanKey       string           `json:"plan_key"`
 	PlanStatus    string           `json:"plan_status"`
@@ -48,6 +58,10 @@ type ReviewResult struct {
 	Execution     *ReviewExecution `json:"execution,omitempty"`
 }
 
+// NormalizeReviewPayload trims all string fields and applies defaults: Key
+// falls back to DefaultReviewTaskKey, Status to blocked when a blocked reason
+// is present and complete otherwise, and Summary to a key-derived default.
+// Evidence entries are trimmed with empty values dropped.
 func NormalizeReviewPayload(p ReviewPayload) ReviewPayload {
 	normalized := ReviewPayload{
 		ProjectID:     strings.TrimSpace(p.ProjectID),
@@ -87,6 +101,9 @@ func NormalizeReviewPayload(p ReviewPayload) ReviewPayload {
 	return normalized
 }
 
+// ReviewPayloadToWorkPayload converts a review payload into an equivalent
+// merge-mode WorkPayload containing a single task for the normalized review
+// key, so the review gate is recorded through the work tracker.
 func ReviewPayloadToWorkPayload(p ReviewPayload) WorkPayload {
 	normalized := NormalizeReviewPayload(p)
 	return WorkPayload{
@@ -107,6 +124,10 @@ func ReviewPayloadToWorkPayload(p ReviewPayload) WorkPayload {
 	}
 }
 
+// ReviewResultFromWork builds a ReviewResult from the work-tracker outcome and
+// review run metadata. An empty status falls back to the normalized payload
+// status, fingerprint and skipped reason are trimmed, and Executed reflects
+// whether execution details are present.
 func ReviewResultFromWork(p ReviewPayload, work WorkResult, status WorkItemStatus, attemptsRun, maxAttempts, passingRuns int, fingerprint, skippedReason string, execution *ReviewExecution) ReviewResult {
 	normalized := NormalizeReviewPayload(p)
 	if status == "" {

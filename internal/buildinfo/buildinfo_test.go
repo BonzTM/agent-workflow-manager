@@ -22,8 +22,56 @@ func TestVersion_UsesInjectedVersionOverCommitShort(t *testing.T) {
 		return nil, false
 	}
 
-	if got := Version(); got != "v1.2.3" {
-		t.Fatalf("unexpected version: got %q want %q", got, "v1.2.3")
+	if got := Version(); got != "1.2.3" {
+		t.Fatalf("unexpected version: got %q want %q", got, "1.2.3")
+	}
+}
+
+func TestVersion_StripsLeadingVFromInjectedVersion(t *testing.T) {
+	previousVersion := version
+	previousCommit := commitShort
+	previousReader := readBuildInfo
+	t.Cleanup(func() {
+		version = previousVersion
+		commitShort = previousCommit
+		readBuildInfo = previousReader
+	})
+
+	version = "v2.0.0-rc.1"
+	commitShort = ""
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		t.Fatal("readBuildInfo should not be called when version is injected")
+		return nil, false
+	}
+
+	if got := Version(); got != "2.0.0-rc.1" {
+		t.Fatalf("unexpected version: got %q want %q", got, "2.0.0-rc.1")
+	}
+}
+
+func TestVersion_StripsLeadingVFromModuleVersionFallback(t *testing.T) {
+	previousVersion := version
+	previousCommit := commitShort
+	previousReader := readBuildInfo
+	t.Cleanup(func() {
+		version = previousVersion
+		commitShort = previousCommit
+		readBuildInfo = previousReader
+	})
+
+	version = ""
+	commitShort = ""
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Main: debug.Module{
+				Path:    "github.com/bonztm/agent-workflow-manager",
+				Version: "v1.4.0",
+			},
+		}, true
+	}
+
+	if got := Version(); got != "1.4.0" {
+		t.Fatalf("unexpected version: got %q want %q", got, "1.4.0")
 	}
 }
 

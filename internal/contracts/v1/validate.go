@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	pathpkg "path"
 	"regexp"
@@ -18,14 +19,23 @@ var (
 	planKindRe  = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 )
 
+// ValidationDefaults carries fallback values applied while decoding command
+// payloads, such as the project ID used when a payload omits one.
 type ValidationDefaults struct {
 	ProjectID string
 }
 
+// DecodeAndValidateCommand decodes a command envelope plus payload from data
+// and validates it with empty defaults. See
+// DecodeAndValidateCommandWithDefaults.
 func DecodeAndValidateCommand(data []byte) (CommandEnvelope, any, *ErrorPayload) {
 	return DecodeAndValidateCommandWithDefaults(data, ValidationDefaults{})
 }
 
+// DecodeAndValidateCommandWithDefaults strictly decodes data as a versioned
+// command envelope, resolves the command spec, and decodes and validates the
+// payload with the supplied defaults. It returns the envelope and typed
+// payload, or an ErrorPayload describing the first validation failure.
 func DecodeAndValidateCommandWithDefaults(data []byte, defaults ValidationDefaults) (CommandEnvelope, any, *ErrorPayload) {
 	var env CommandEnvelope
 	if err := decodeStrict(data, &env); err != nil {
@@ -59,10 +69,10 @@ func validateContextPayload(p *ContextPayload) error {
 		return err
 	}
 	if strings.TrimSpace(p.TaskText) == "" || len(p.TaskText) > 4000 {
-		return fmt.Errorf("task_text must be 1..4000 chars")
+		return errors.New("task_text must be 1..4000 chars")
 	}
 	if p.Phase != PhasePlan && p.Phase != PhaseExecute && p.Phase != PhaseReview {
-		return fmt.Errorf("phase must be plan|execute|review")
+		return errors.New("phase must be plan|execute|review")
 	}
 	if err := validateTagsFile(p.TagsFile); err != nil {
 		return err
@@ -83,10 +93,10 @@ func validateFetchPayload(p *FetchPayload, fields map[string]json.RawMessage) er
 		return err
 	}
 	if len(p.Keys) == 0 && receiptID == "" {
-		return fmt.Errorf("either keys or receipt_id is required")
+		return errors.New("either keys or receipt_id is required")
 	}
 	if len(p.Keys) > 256 {
-		return fmt.Errorf("keys may include at most 256 entries")
+		return errors.New("keys may include at most 256 entries")
 	}
 	if err := validateUniqueStrings(p.Keys, "keys"); err != nil {
 		return err
@@ -97,13 +107,13 @@ func validateFetchPayload(p *FetchPayload, fields map[string]json.RawMessage) er
 		}
 	}
 	if receiptID != "" && !requestIDRe.MatchString(receiptID) {
-		return fmt.Errorf("receipt_id format is invalid")
+		return errors.New("receipt_id format is invalid")
 	}
 	if len(p.ExpectedVersions) > 256 {
-		return fmt.Errorf("expected_versions may include at most 256 entries")
+		return errors.New("expected_versions may include at most 256 entries")
 	}
 	if len(p.Keys) == 0 && len(p.ExpectedVersions) > 0 {
-		return fmt.Errorf("expected_versions requires keys")
+		return errors.New("expected_versions requires keys")
 	}
 	for key, version := range p.ExpectedVersions {
 		if err := validateBoundedKey(key, 512); err != nil {
@@ -124,7 +134,7 @@ func validateExportPayload(p *ExportPayload, fields map[string]json.RawMessage) 
 	switch p.Format {
 	case ExportFormatJSON, ExportFormatMarkdown:
 	default:
-		return fmt.Errorf("format must be json|markdown")
+		return errors.New("format must be json|markdown")
 	}
 
 	selectorCount := 0
@@ -198,7 +208,7 @@ func validateExportPayload(p *ExportPayload, fields map[string]json.RawMessage) 
 		}
 	}
 	if selectorCount != 1 {
-		return fmt.Errorf("exactly one source selector is required")
+		return errors.New("exactly one source selector is required")
 	}
 	return nil
 }
@@ -211,7 +221,7 @@ func validateDonePayload(p *DonePayload, fields map[string]json.RawMessage) erro
 		return err
 	}
 	if strings.TrimSpace(p.Outcome) == "" || len(p.Outcome) > 1600 {
-		return fmt.Errorf("outcome must be 1..1600 chars")
+		return errors.New("outcome must be 1..1600 chars")
 	}
 	if err := validateScopeMode(p.ScopeMode); err != nil {
 		return err
@@ -220,17 +230,17 @@ func validateDonePayload(p *DonePayload, fields map[string]json.RawMessage) erro
 		return err
 	}
 	if raw, ok := fields["files_changed"]; ok && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-		return fmt.Errorf("files_changed must be an array")
+		return errors.New("files_changed must be an array")
 	}
 	if raw, ok := fields["no_file_changes"]; ok && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-		return fmt.Errorf("no_file_changes must be a boolean")
+		return errors.New("no_file_changes must be a boolean")
 	}
 	if err := validateRelativePathList(p.FilesChanged, 256, "files_changed"); err != nil {
 		return err
 	}
 	if p.NoFileChanges {
 		if _, ok := fields["files_changed"]; ok {
-			return fmt.Errorf("files_changed cannot be combined with no_file_changes")
+			return errors.New("files_changed cannot be combined with no_file_changes")
 		}
 	}
 	return nil
@@ -252,7 +262,7 @@ func validateReviewPayload(p *ReviewPayload, fields map[string]json.RawMessage) 
 	if p.Summary != "" {
 		trimmed := strings.TrimSpace(p.Summary)
 		if trimmed == "" || len(trimmed) > 600 {
-			return fmt.Errorf("summary must be 1..600 chars when provided")
+			return errors.New("summary must be 1..600 chars when provided")
 		}
 	}
 	if p.Status != "" {
@@ -263,20 +273,20 @@ func validateReviewPayload(p *ReviewPayload, fields map[string]json.RawMessage) 
 	if p.BlockedReason != "" {
 		trimmed := strings.TrimSpace(p.BlockedReason)
 		if trimmed == "" || len(trimmed) > 600 {
-			return fmt.Errorf("blocked_reason must be 1..600 chars when provided")
+			return errors.New("blocked_reason must be 1..600 chars when provided")
 		}
 		if p.Status != "" && p.Status != WorkItemStatusBlocked {
-			return fmt.Errorf("blocked_reason requires status=blocked when status is provided")
+			return errors.New("blocked_reason requires status=blocked when status is provided")
 		}
 	}
 	if p.Outcome != "" {
 		trimmed := strings.TrimSpace(p.Outcome)
 		if trimmed == "" || len(trimmed) > 1600 {
-			return fmt.Errorf("outcome must be 1..1600 chars when provided")
+			return errors.New("outcome must be 1..1600 chars when provided")
 		}
 	}
 	if p.Status == WorkItemStatusBlocked && strings.TrimSpace(p.BlockedReason) == "" {
-		return fmt.Errorf("blocked_reason is required when status=blocked")
+		return errors.New("blocked_reason is required when status=blocked")
 	}
 	if err := validateOptionalArrayField(fields, "evidence", len(p.Evidence)); err != nil {
 		return err
@@ -289,16 +299,16 @@ func validateReviewPayload(p *ReviewPayload, fields map[string]json.RawMessage) 
 	}
 	if p.Run {
 		if p.Status != "" {
-			return fmt.Errorf("status must be omitted when run=true")
+			return errors.New("status must be omitted when run=true")
 		}
 		if strings.TrimSpace(p.Outcome) != "" {
-			return fmt.Errorf("outcome must be omitted when run=true")
+			return errors.New("outcome must be omitted when run=true")
 		}
 		if strings.TrimSpace(p.BlockedReason) != "" {
-			return fmt.Errorf("blocked_reason must be omitted when run=true")
+			return errors.New("blocked_reason must be omitted when run=true")
 		}
 		if len(p.Evidence) > 0 {
-			return fmt.Errorf("evidence must be omitted when run=true")
+			return errors.New("evidence must be omitted when run=true")
 		}
 	}
 	return nil
@@ -313,10 +323,10 @@ func validateWorkPayload(p *WorkPayload) error {
 	planKey := strings.TrimSpace(rawPlanKey)
 	receiptID := strings.TrimSpace(p.ReceiptID)
 	if planKey == "" && receiptID == "" {
-		return fmt.Errorf("either plan_key or receipt_id is required")
+		return errors.New("either plan_key or receipt_id is required")
 	}
 	if rawPlanKey != "" && rawPlanKey != planKey {
-		return fmt.Errorf("plan_key must not include surrounding whitespace")
+		return errors.New("plan_key must not include surrounding whitespace")
 	}
 	if planKey != "" {
 		if err := validatePlanKeyFormat(planKey, "plan_key"); err != nil {
@@ -324,38 +334,38 @@ func validateWorkPayload(p *WorkPayload) error {
 		}
 		derivedReceiptID := strings.TrimSpace(planKey[len("plan:"):])
 		if receiptID != "" && receiptID != derivedReceiptID {
-			return fmt.Errorf("plan_key and receipt_id must reference the same receipt")
+			return errors.New("plan_key and receipt_id must reference the same receipt")
 		}
 	}
 	if p.PlanTitle != "" {
 		trimmedTitle := strings.TrimSpace(p.PlanTitle)
 		if trimmedTitle == "" || len(trimmedTitle) > 200 {
-			return fmt.Errorf("plan_title must be 1..200 chars when provided")
+			return errors.New("plan_title must be 1..200 chars when provided")
 		}
 	}
 	if receiptID != "" && !requestIDRe.MatchString(receiptID) {
-		return fmt.Errorf("receipt_id format is invalid")
+		return errors.New("receipt_id format is invalid")
 	}
 	if p.Mode != "" && p.Mode != WorkPlanModeMerge && p.Mode != WorkPlanModeReplace {
-		return fmt.Errorf("mode must be merge|replace")
+		return errors.New("mode must be merge|replace")
 	}
 	if p.Plan != nil {
 		if p.Plan.Title != "" {
 			trimmed := strings.TrimSpace(p.Plan.Title)
 			if trimmed == "" || len(trimmed) > 200 {
-				return fmt.Errorf("plan.title must be 1..200 chars when provided")
+				return errors.New("plan.title must be 1..200 chars when provided")
 			}
 		}
 		if p.Plan.Objective != "" {
 			trimmed := strings.TrimSpace(p.Plan.Objective)
 			if trimmed == "" || len(trimmed) > 2000 {
-				return fmt.Errorf("plan.objective must be 1..2000 chars when provided")
+				return errors.New("plan.objective must be 1..2000 chars when provided")
 			}
 		}
 		if p.Plan.Kind != "" {
 			trimmed := strings.TrimSpace(p.Plan.Kind)
 			if !planKindRe.MatchString(trimmed) {
-				return fmt.Errorf("plan.kind must match ^[a-z][a-z0-9_-]{0,63}$")
+				return errors.New("plan.kind must match ^[a-z][a-z0-9_-]{0,63}$")
 			}
 		}
 		if p.Plan.ParentPlanKey != "" {
@@ -405,7 +415,7 @@ func validateWorkPayload(p *WorkPayload) error {
 		}
 	}
 	if len(p.Tasks) > 256 {
-		return fmt.Errorf("tasks may include at most 256 entries")
+		return errors.New("tasks may include at most 256 entries")
 	}
 	for i, task := range p.Tasks {
 		prefix := fmt.Sprintf("tasks[%d]", i)
@@ -493,10 +503,10 @@ func validateSyncPayload(p *SyncPayload) error {
 		return err
 	}
 	if p.Mode != "" && p.Mode != "changed" && p.Mode != "full" && p.Mode != "working_tree" {
-		return fmt.Errorf("mode must be changed|full|working_tree")
+		return errors.New("mode must be changed|full|working_tree")
 	}
 	if p.GitRange != "" && len(p.GitRange) > 200 {
-		return fmt.Errorf("git_range too long")
+		return errors.New("git_range too long")
 	}
 	if err := validateOptionalProjectRoot(p.ProjectRoot); err != nil {
 		return err
@@ -519,36 +529,36 @@ func validateHistorySearchPayload(p *HistorySearchPayload) error {
 		p.Entity != HistoryEntityWork &&
 		p.Entity != HistoryEntityReceipt &&
 		p.Entity != HistoryEntityRun {
-		return fmt.Errorf("entity must be all|work|receipt|run")
+		return errors.New("entity must be all|work|receipt|run")
 	}
 	if strings.TrimSpace(p.Query) != "" && len(strings.TrimSpace(p.Query)) > 4000 {
-		return fmt.Errorf("query must be 1..4000 chars when provided")
+		return errors.New("query must be 1..4000 chars when provided")
 	}
 	entity := normalizeHistoryEntityValue(p.Entity)
 	if p.Scope != "" {
 		if entity != HistoryEntityWork {
-			return fmt.Errorf("scope is only supported when entity=work")
+			return errors.New("scope is only supported when entity=work")
 		}
 		if p.Scope != HistoryScopeCurrent &&
 			p.Scope != HistoryScopeDeferred &&
 			p.Scope != HistoryScopeCompleted &&
 			p.Scope != HistoryScopeAll {
-			return fmt.Errorf("scope must be current|deferred|completed|all")
+			return errors.New("scope must be current|deferred|completed|all")
 		}
 	}
 	if strings.TrimSpace(p.Kind) != "" {
 		if entity != HistoryEntityWork {
-			return fmt.Errorf("kind is only supported when entity=work")
+			return errors.New("kind is only supported when entity=work")
 		}
 		if len(strings.TrimSpace(p.Kind)) > 64 {
-			return fmt.Errorf("kind must be 1..64 chars when provided")
+			return errors.New("kind must be 1..64 chars when provided")
 		}
 		if !planKindRe.MatchString(strings.TrimSpace(p.Kind)) {
-			return fmt.Errorf("kind format is invalid")
+			return errors.New("kind format is invalid")
 		}
 	}
 	if p.Limit != 0 && (p.Limit < 1 || p.Limit > 100) {
-		return fmt.Errorf("limit must be between 1 and 100")
+		return errors.New("limit must be between 1 and 100")
 	}
 	return nil
 }
@@ -558,13 +568,13 @@ func validateHealthPayload(p *HealthPayload, fields map[string]json.RawMessage) 
 		return err
 	}
 	if p.MaxFindingsPerCheck != nil && (*p.MaxFindingsPerCheck < 1 || *p.MaxFindingsPerCheck > 500) {
-		return fmt.Errorf("max_findings_per_check must be between 1 and 500")
+		return errors.New("max_findings_per_check must be between 1 and 500")
 	}
 	if p.ProjectRoot != "" && len(strings.TrimSpace(p.ProjectRoot)) == 0 {
-		return fmt.Errorf("project_root must be non-empty when provided")
+		return errors.New("project_root must be non-empty when provided")
 	}
 	if len(p.ProjectRoot) > 2048 {
-		return fmt.Errorf("project_root too long")
+		return errors.New("project_root too long")
 	}
 	if err := validateRulesFile(p.RulesFile); err != nil {
 		return err
@@ -576,7 +586,7 @@ func validateHealthPayload(p *HealthPayload, fields map[string]json.RawMessage) 
 		return err
 	}
 	if len(p.Fixers) > 4 {
-		return fmt.Errorf("fixers may include at most 4 entries")
+		return errors.New("fixers may include at most 4 entries")
 	}
 	if err := validateUniqueStrings(healthFixerStrings(p.Fixers), "fixers"); err != nil {
 		return err
@@ -591,7 +601,7 @@ func validateHealthPayload(p *HealthPayload, fields map[string]json.RawMessage) 
 	isFixMode := len(p.Fixers) > 0 || p.Apply != nil || strings.TrimSpace(p.ProjectRoot) != "" || strings.TrimSpace(p.RulesFile) != "" || strings.TrimSpace(p.TagsFile) != ""
 	if isFixMode {
 		if p.IncludeDetails != nil || p.MaxFindingsPerCheck != nil {
-			return fmt.Errorf("include_details and max_findings_per_check are only valid in health inspection mode")
+			return errors.New("include_details and max_findings_per_check are only valid in health inspection mode")
 		}
 	}
 	return nil
@@ -633,11 +643,11 @@ func validateStatusPayload(p *StatusPayload) error {
 	}
 	if trimmed := strings.TrimSpace(p.TaskText); trimmed != "" {
 		if len(trimmed) > 4000 {
-			return fmt.Errorf("task_text too long")
+			return errors.New("task_text too long")
 		}
 	}
 	if p.Phase != "" && p.Phase != PhasePlan && p.Phase != PhaseExecute && p.Phase != PhaseReview {
-		return fmt.Errorf("phase must be plan|execute|review")
+		return errors.New("phase must be plan|execute|review")
 	}
 	return nil
 }
@@ -655,13 +665,13 @@ func validateVerifyPayload(p *VerifyPayload, fields map[string]json.RawMessage) 
 		}
 	}
 	if p.Phase != "" && p.Phase != PhasePlan && p.Phase != PhaseExecute && p.Phase != PhaseReview {
-		return fmt.Errorf("phase must be plan|execute|review")
+		return errors.New("phase must be plan|execute|review")
 	}
 	if err := validateOptionalArrayField(fields, "test_ids", len(p.TestIDs)); err != nil {
 		return err
 	}
 	if len(p.TestIDs) > 256 {
-		return fmt.Errorf("test_ids may include at most 256 entries")
+		return errors.New("test_ids may include at most 256 entries")
 	}
 	if err := validateUniqueStrings(p.TestIDs, "test_ids"); err != nil {
 		return err
@@ -685,7 +695,7 @@ func validateVerifyPayload(p *VerifyPayload, fields map[string]json.RawMessage) 
 		return err
 	}
 	if len(p.TestIDs) == 0 && receiptID == "" && planKey == "" && p.Phase == "" && len(p.FilesChanged) == 0 {
-		return fmt.Errorf("test_ids or selection context is required")
+		return errors.New("test_ids or selection context is required")
 	}
 	return nil
 }
@@ -706,10 +716,10 @@ func validateInitPayload(p *InitPayload, fields map[string]json.RawMessage) erro
 	if p.OutputCandidatesPath != nil {
 		value := strings.TrimSpace(*p.OutputCandidatesPath)
 		if value == "" {
-			return fmt.Errorf("output_candidates_path must be non-empty when provided")
+			return errors.New("output_candidates_path must be non-empty when provided")
 		}
 		if len(value) > 2048 {
-			return fmt.Errorf("output_candidates_path too long")
+			return errors.New("output_candidates_path too long")
 		}
 	}
 	if err := validateOptionalArrayField(fields, "apply_templates", len(p.ApplyTemplates)); err != nil {
@@ -790,10 +800,10 @@ func validateReceiptOrPlanReference(receiptID, planKey string) error {
 	trimmedReceiptID := strings.TrimSpace(receiptID)
 	trimmedPlanKey := strings.TrimSpace(planKey)
 	if trimmedReceiptID == "" && trimmedPlanKey == "" {
-		return fmt.Errorf("either receipt_id or plan_key is required")
+		return errors.New("either receipt_id or plan_key is required")
 	}
 	if trimmedReceiptID != "" && !requestIDRe.MatchString(trimmedReceiptID) {
-		return fmt.Errorf("receipt_id format is invalid")
+		return errors.New("receipt_id format is invalid")
 	}
 	if trimmedPlanKey == "" {
 		return nil
@@ -803,7 +813,7 @@ func validateReceiptOrPlanReference(receiptID, planKey string) error {
 	}
 	derivedReceiptID := strings.TrimSpace(trimmedPlanKey[len("plan:"):])
 	if trimmedReceiptID != "" && trimmedReceiptID != derivedReceiptID {
-		return fmt.Errorf("plan_key and receipt_id must reference the same receipt")
+		return errors.New("plan_key and receipt_id must reference the same receipt")
 	}
 	return nil
 }
@@ -818,7 +828,7 @@ func validateBoundedKey(value string, maxLength int) error {
 
 func validateProjectID(v string) error {
 	if !projectIDRe.MatchString(v) {
-		return fmt.Errorf("project_id format is invalid")
+		return errors.New("project_id format is invalid")
 	}
 	return nil
 }
@@ -851,25 +861,25 @@ func validateScopeMode(mode ScopeMode) error {
 	case "", ScopeModeStrict, ScopeModeWarn:
 		return nil
 	default:
-		return fmt.Errorf("scope_mode must be strict|warn")
+		return errors.New("scope_mode must be strict|warn")
 	}
 }
 
 func validateRelativePath(path string) error {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
-		return fmt.Errorf("relative path must not be empty")
+		return errors.New("relative path must not be empty")
 	}
 	normalized := strings.ReplaceAll(trimmed, "\\", "/")
 	if strings.HasPrefix(normalized, "/") {
-		return fmt.Errorf("absolute paths are not allowed")
+		return errors.New("absolute paths are not allowed")
 	}
 	if len(normalized) >= 3 && normalized[1] == ':' && normalized[2] == '/' {
-		return fmt.Errorf("absolute paths are not allowed")
+		return errors.New("absolute paths are not allowed")
 	}
 	cleaned := pathpkg.Clean(normalized)
 	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return fmt.Errorf("path must be repository-relative")
+		return errors.New("path must be repository-relative")
 	}
 	return nil
 }
@@ -882,7 +892,7 @@ func decodeStrict(data []byte, out any) error {
 	}
 	var extra any
 	if err := dec.Decode(&extra); err == nil {
-		return fmt.Errorf("unexpected trailing JSON tokens")
+		return errors.New("unexpected trailing JSON tokens")
 	}
 	return nil
 }
@@ -905,17 +915,6 @@ func validateOptionalArrayField(fields map[string]json.RawMessage, field string,
 	}
 	if length == 0 {
 		return fmt.Errorf("%s must not be empty when provided", field)
-	}
-	return nil
-}
-
-func validateRequiredArrayField(fields map[string]json.RawMessage, field string) error {
-	raw, ok := fields[field]
-	if !ok {
-		return fmt.Errorf("%s is required", field)
-	}
-	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-		return fmt.Errorf("%s must be an array", field)
 	}
 	return nil
 }
@@ -946,31 +945,15 @@ func validateRelativePathList(values []string, maxItems int, field string) error
 	return nil
 }
 
-func validateUniqueBoundedStringList(values []string, maxItems, maxLen int, field string) error {
-	if len(values) > maxItems {
-		return fmt.Errorf("%s may include at most %d entries", field, maxItems)
-	}
-	if err := validateUniqueStrings(values, field); err != nil {
-		return err
-	}
-	for i, raw := range values {
-		trimmed := strings.TrimSpace(raw)
-		if trimmed == "" || len(trimmed) > maxLen {
-			return fmt.Errorf("%s[%d] must be 1..%d chars", field, i, maxLen)
-		}
-	}
-	return nil
-}
-
 func validateOptionalProjectRoot(projectRoot string) error {
 	if projectRoot == "" {
 		return nil
 	}
 	if len(strings.TrimSpace(projectRoot)) == 0 {
-		return fmt.Errorf("project_root must be non-empty when provided")
+		return errors.New("project_root must be non-empty when provided")
 	}
 	if len(projectRoot) > 2048 {
-		return fmt.Errorf("project_root too long")
+		return errors.New("project_root too long")
 	}
 	return nil
 }

@@ -4,14 +4,16 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
 	"path"
 	"regexp"
 	"sort"
 	"strings"
 
-	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 	"gopkg.in/yaml.v3"
+
+	bootstrapkit "github.com/bonztm/agent-workflow-manager/internal/bootstrap"
 )
 
 const (
@@ -147,9 +149,7 @@ func loadMergedCanonicalTagAliasMap(projectRoot, tagsFile string) (map[string]st
 	if err != nil {
 		return nil, err
 	}
-	for alias, canonical := range loadCanonicalTagAliasMapFromDocument(document) {
-		aliasMap[alias] = canonical
-	}
+	maps.Copy(aliasMap, loadCanonicalTagAliasMapFromDocument(document))
 	return aliasMap, nil
 }
 
@@ -164,7 +164,7 @@ func discoverCanonicalTagsSource(projectRoot, tagsFile string) (canonicalTagsSou
 		return canonicalTagsSource{}, err
 	}
 	stat, err := os.Stat(absolutePath)
-	exists := false
+	var exists bool
 	switch {
 	case err == nil:
 		exists = !stat.IsDir()
@@ -208,9 +208,7 @@ func cloneCanonicalTagAliasMap(source map[string]string) map[string]string {
 		return map[string]string{}
 	}
 	cloned := make(map[string]string, len(source))
-	for alias, canonical := range source {
-		cloned[alias] = canonical
-	}
+	maps.Copy(cloned, source)
 	return cloned
 }
 
@@ -232,7 +230,7 @@ func syncInitCanonicalTagsFile(projectRoot, tagsFile string, candidatePaths []st
 		if len(existing.CanonicalTags) > 0 || len(suggestions.CanonicalTags) == 0 {
 			return nil
 		}
-		return os.WriteFile(source.AbsolutePath, renderCanonicalTagsDocumentYAML(suggestions), 0o644)
+		return os.WriteFile(source.AbsolutePath, renderCanonicalTagsDocumentYAML(suggestions), 0o644) //nolint:gosec // G306: committed repo config file, standard world-readable permissions by design
 	}
 
 	return bootstrapkit.WriteScaffoldFile(source.AbsolutePath, renderCanonicalTagsDocumentYAML(suggestions))
@@ -333,7 +331,7 @@ func initTagTokensForPath(candidatePath string) ([]string, []string) {
 	dirTokens := make(map[string]struct{})
 	dirPath := path.Dir(normalizedPath)
 	if dirPath != "" && dirPath != "." {
-		for _, segment := range strings.Split(dirPath, "/") {
+		for segment := range strings.SplitSeq(dirPath, "/") {
 			addInitTagTokens(dirTokens, segment)
 		}
 	}
@@ -407,16 +405,8 @@ func renderCanonicalTagsDocumentYAML(document canonicalTagsDocumentV1) []byte {
 	return []byte(builder.String())
 }
 
-func normalizeCanonicalTag(raw string) string {
-	return defaultCanonicalTagNormalizer.normalizeTag(raw)
-}
-
 func normalizeCanonicalTags(values []string) []string {
 	return defaultCanonicalTagNormalizer.normalizeTags(values)
-}
-
-func canonicalTagsFromTaskText(taskText string) []string {
-	return defaultCanonicalTagNormalizer.canonicalTagsFromTaskText(taskText)
 }
 
 func (n canonicalTagNormalizer) normalizeTag(raw string) string {

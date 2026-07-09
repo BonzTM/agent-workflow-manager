@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -35,9 +36,7 @@ func (s *Service) captureWorkingTreeBaseline(ctx context.Context, projectRoot st
 	details := map[string]any{
 		"project_root": strings.TrimSpace(projectRoot),
 		"git_error":    err.Error(),
-	}
-	if walkErr != nil {
-		details["walk_error"] = walkErr.Error()
+		"walk_error":   walkErr.Error(),
 	}
 	return nil, backendError(v1.ErrCodeInternalError, "failed to capture working-tree baseline", details)
 }
@@ -389,13 +388,7 @@ func mergeCompletionViolations(groups ...[]v1.CompletionViolation) []v1.Completi
 				continue
 			}
 			reasons := reasonsByPath[filePath]
-			duplicate := false
-			for _, existing := range reasons {
-				if existing == reason {
-					duplicate = true
-					break
-				}
-			}
+			duplicate := slices.Contains(reasons, reason)
 			if duplicate {
 				continue
 			}

@@ -6,6 +6,9 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/contracts/v1"
 )
 
+// Service is the core API surface of the workflow manager. Each method
+// handles one v1 operation, returning the operation's result or an
+// *APIError describing the failure.
 type Service interface {
 	Context(context.Context, v1.ContextPayload) (v1.ContextResult, *APIError)
 	Fetch(context.Context, v1.FetchPayload) (v1.FetchResult, *APIError)

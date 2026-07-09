@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -143,24 +142,6 @@ func (mcpMainFakeService) Verify(_ context.Context, _ v1.VerifyPayload) (v1.Veri
 
 func (mcpMainFakeService) Init(_ context.Context, _ v1.InitPayload) (v1.InitResult, *core.APIError) {
 	return v1.InitResult{}, nil
-}
-
-type mcpMainFailingService struct {
-	mcpMainFakeService
-}
-
-func (mcpMainFailingService) Context(_ context.Context, _ v1.ContextPayload) (v1.ContextResult, *core.APIError) {
-	return v1.ContextResult{}, core.NewError(v1.ErrCodeNotImplemented, errors.New("boom").Error(), nil)
-}
-
-type mcpMainReviewCaptureService struct {
-	mcpMainFakeService
-	reviewCalls []v1.ReviewPayload
-}
-
-func (s *mcpMainReviewCaptureService) Review(_ context.Context, payload v1.ReviewPayload) (v1.ReviewResult, *core.APIError) {
-	s.reviewCalls = append(s.reviewCalls, payload)
-	return v1.ReviewResult{ReviewKey: payload.Key, Executed: payload.Run}, nil
 }
 
 func decodeSingleJSONRPCResponse(t *testing.T, raw []byte) JSONRPCResponse {

@@ -20,6 +20,8 @@ const (
 	mcpToolsCallID     = "mcp.tools/call"
 )
 
+// Server is a stateful MCP server that handles the initialize handshake and
+// dispatches tools/list and tools/call requests to the underlying service.
 type Server struct {
 	svc         core.Service
 	logger      logging.Logger
@@ -51,6 +53,8 @@ type toolsCallResult struct {
 	IsError bool          `json:"isError,omitempty"`
 }
 
+// NewServer returns a Server that executes tool calls against svc and logs
+// through logger (a nil logger is normalized to a no-op).
 func NewServer(svc core.Service, logger logging.Logger) *Server {
 	return &Server{
 		svc:    svc,
