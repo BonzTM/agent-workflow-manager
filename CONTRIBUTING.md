@@ -6,16 +6,14 @@ Thank you for your interest in contributing to awm (agent-workflow-manager).
 
 1. Fork the repository and clone your fork.
 2. Install Go 1.26+.
-3. Run `go test ./...` to verify everything builds and passes.
+3. Run `make verify` — the full gate (tidy, format check, lint, vet, tests, race detector, vulnerability scan, build).
 4. Create a branch for your change.
 
 ## Development Workflow
 
 ```bash
 # Build all binaries
-go build -o dist/awm ./cmd/awm
-go build -o dist/awm-mcp ./cmd/awm-mcp
-go build -o dist/awm-web ./cmd/awm-web
+make build     # compiles all packages and the dist/ binaries
 
 # Run tests
 go test ./...
@@ -28,7 +26,7 @@ go test ./internal/service/backend/...
 
 - Keep PRs focused on a single change.
 - Include tests for new behavior under `cmd/**` or `internal/**`.
-- Ensure `go test ./...` passes before submitting.
+- Ensure `make verify` passes before submitting; it is the same gate CI runs.
 - Follow the existing code style — no linter configuration is imposed, but consistency with surrounding code is expected.
 
 ## What to Contribute

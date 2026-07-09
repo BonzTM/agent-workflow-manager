@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- House-standard repository governance, matching agent-context-manager:
+  `.github/CODEOWNERS`, weekly grouped Dependabot updates (`gomod` +
+  `github-actions`), a pull-request template, and `.editorconfig`.
+- A single canonical verification gate: `make verify` runs tidy, format check
+  (gofumpt + gci), golangci-lint, vet, tests, the race detector, govulncheck,
+  and the build. golangci-lint and govulncheck are pinned as `go.mod` tool
+  directives, and the full lint policy (`.golangci.yml`) was applied across
+  the codebase.
+- CI (`ci.yml`) runs `make verify` plus a six-target cross-compile check on
+  every push and pull request, replacing the build-only `go-build.yml`.
+
+### Changed
+
+- Release archives now include per-archive `.sha256` checksums, and the
+  release workflow mirrors the `vX.Y.Z` tag alias onto the release commit —
+  bare `X.Y.Z` stays the house tag convention, while the `v` alias makes
+  `go install github.com/bonztm/agent-workflow-manager/cmd/awm@latest`
+  resolve the canonical release instead of a `main` pseudo-version. A
+  retroactive `v1.3.0` alias was pushed for the current release (older tags
+  predate the module rename and cannot carry aliases). The workflow also
+  supports `workflow_dispatch` to rebuild assets for an existing tag.
+- Displayed versions are v-less everywhere (`awm --version`, stamped
+  binaries); the `v` prefix exists only on git tags.
+- Codebase-wide mechanical lint remediation (no behavior changes): error-wrap
+  and shadowing fixes, godoc contracts on exported identifiers, dead-code
+  removal, modernized idioms, and tightened file permissions.
+
+### Security
+
+- Upgraded `github.com/jackc/pgx/v5` 5.8.0 → 5.9.2, fixing GO-2026-5004 (SQL
+  injection via placeholder confusion with dollar-quoted string literals),
+  which the new `govulncheck` gate flagged on a called path
+  (`ListReviewAttempts`). The gate now blocks releases with known-vulnerable
+  called code.
+
 ## [1.3.0] - 2026-06-18
 
 Project renamed `agent-context-manager` (`acm`) → `agent-workflow-manager` (`awm`), reflecting the tool's role as a governed-workflow control plane. Breaking change across binaries, Go module path, `.awm/` config, `AWM_*` env prefix, and `awm_*` database identifiers, with an automatic in-place legacy-database upgrade guard. The Codex hooks bootstrap template is corrected to `[features] hooks = true`.

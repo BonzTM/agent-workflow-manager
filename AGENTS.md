@@ -31,26 +31,23 @@ Read this file first, then use the linked docs when you need deeper reference ma
 
 ## Build And Verify
 
-```bash
-# Build all binaries
-go build -o dist/awm ./cmd/awm
-go build -o dist/awm-mcp ./cmd/awm-mcp
-go build -o dist/awm-web ./cmd/awm-web
+`make verify` is THE gate — the same ordered sequence humans and CI run
+(tidy, fmt-check, lint, vet, test, race, govulncheck, build). Run it before
+every push.
 
-# Run the full test suite
-go test ./...
+```bash
+# The full gate (required before push; CI runs the identical target)
+make verify
+
+# Individual steps during the inner loop
+make build     # compile all packages + dist/ binaries
+make test      # go test ./...
+make race      # go test -race ./...
+make lint      # golangci-lint (pinned via go.mod tool directive)
+make fmt       # apply gofumpt + gci
 
 # Run a specific package
 go test ./internal/service/backend/...
-
-# Run with race detector
-go test -race ./...
-
-# Format check
-gofmt -s -l .
-
-# Static analysis
-go vet ./...
 ```
 
 Postgres integration tests require `AWM_PG_DSN`:
