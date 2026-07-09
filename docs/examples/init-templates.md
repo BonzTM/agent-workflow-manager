@@ -16,7 +16,7 @@ Add `--apply-template codex-hooks` when you want the current experimental repo-l
 Use `--apply-template opencode-pack` when you want repo-local OpenCode companion docs under `.opencode/awm-broker/`.
 Use `scripts/install-skill-pack.sh --opencode` when you want to add those same docs to an existing repo without rerunning `init`.
 
-For repos that want stricter feature planning, add `--apply-template detailed-planning-enforcement`. It can be applied directly or after `starter-contract` + `verify-generic`, and it only upgrades those scaffolds while they are still pristine.
+For repos that want stricter feature planning, add `--apply-template detailed-planning-enforcement`. It can be applied directly or after `starter-contract` plus any `verify-*` profile (generic or language-specific), and it only upgrades those scaffolds while they are still pristine.
 
 Current built-ins:
 
@@ -25,7 +25,7 @@ Current built-ins:
   - upgrades blank AWM rules scaffolds to a richer starter ruleset
 - `detailed-planning-enforcement`
   - seeds `docs/feature-plans.md` and `scripts/awm-feature-plan-validate.py`
-  - upgrades pristine `starter-contract` docs/rules and pristine blank or `verify-generic` test scaffolds to the richer feature-plan workflow
+  - upgrades pristine `starter-contract` docs/rules and pristine blank or `verify-*` (generic or language profile) test scaffolds to the richer feature-plan workflow
 - `verify-generic`
   - upgrades blank AWM test scaffolds to a language-agnostic verify profile
   - uses `awm status` plus git checks so it works out of the box

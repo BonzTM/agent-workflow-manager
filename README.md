@@ -84,7 +84,7 @@ awm init \
   --apply-template git-hooks-precommit
 ```
 
-`--apply-template` is repeatable and safe to re-run. Templates only create missing files, upgrade pristine scaffolds, and merge additive JSON fragments (e.g. `.claude/settings.json`). They never delete files or overwrite files you've edited.
+`--apply-template` is repeatable and safe to re-run. Templates only create missing files, upgrade pristine scaffolds, and merge additive JSON fragments (e.g. `.claude/settings.json`). They never delete files or overwrite files you've edited. Template names that have been removed or renamed resolve through a deprecated-alias map to their current replacement, so recorded init commands keep working across releases.
 Add `--apply-template codex-pack` when you want repo-local Codex companion docs under `.codex/awm-broker/`.
 Add `--apply-template codex-hooks` when you want the current experimental repo-local Codex hook layer under `.codex/`.
 Add `--apply-template opencode-pack` when you want repo-local OpenCode companion docs under `.opencode/awm-broker/`.
@@ -99,7 +99,7 @@ Starter verify profiles:
 
 Planning profile:
 
-- `detailed-planning-enforcement` — seeds `docs/feature-plans.md` and `scripts/awm-feature-plan-validate.py`, and upgrades pristine `starter-contract` / `verify-generic` scaffolds to the richer feature-planning workflow
+- `detailed-planning-enforcement` — seeds `docs/feature-plans.md` and `scripts/awm-feature-plan-validate.py`, and upgrades pristine `starter-contract` and `verify-*` scaffolds (generic or language profiles) to the richer feature-planning workflow
 
 Tooling companions:
 
