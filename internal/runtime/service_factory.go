@@ -56,8 +56,16 @@ func NewServiceWithLogger(ctx context.Context, cfg Config, logger logging.Logger
 		}, nil
 	}
 
+	sqlitePath := cfg.EffectiveSQLitePath()
+	if sqlitePath == "" {
+		return nil, nil, fmt.Errorf(
+			"resolve sqlite path: no project root detected and no explicit path configured; set %s or %s",
+			SQLitePathEnvVar, ProjectRootEnvVar,
+		)
+	}
+
 	sqliteRepo, err := sqliteadapter.New(ctx, sqliteadapter.Config{
-		Path: cfg.EffectiveSQLitePath(),
+		Path: sqlitePath,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("initialize sqlite repository: %w", err)

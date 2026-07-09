@@ -55,7 +55,10 @@ func (c Config) PostgresConfigured() bool {
 
 // EffectiveSQLitePath resolves the SQLite database path: an explicit
 // SQLitePath (absolute, or relative to the effective project root), else
-// the default path under the project root, else a file in the OS temp dir.
+// the default path under the project root. It returns "" when no explicit
+// path is set and no project root can be resolved; callers that need a
+// database must treat "" as a configuration error rather than falling back
+// to an implicit location.
 func (c Config) EffectiveSQLitePath() string {
 	if path := strings.TrimSpace(c.SQLitePath); path != "" {
 		if filepath.IsAbs(path) {
@@ -70,7 +73,7 @@ func (c Config) EffectiveSQLitePath() string {
 	if base := c.effectiveProjectRoot(); base != "" {
 		return filepath.Join(base, filepath.FromSlash(workspace.DefaultSQLiteRelativePath))
 	}
-	return filepath.Join(os.TempDir(), "agent-workflow-manager-context.db")
+	return ""
 }
 
 // UsesImplicitSQLitePath reports whether no explicit SQLite path was

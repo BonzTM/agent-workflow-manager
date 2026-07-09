@@ -72,6 +72,20 @@ func TestNewServiceWithLogger_PostgresDSNTakesPrecedenceOverSQLite(t *testing.T)
 	}
 }
 
+func TestNewServiceWithLogger_UnresolvableSQLitePathFailsLoud(t *testing.T) {
+	chdirIntoDeletedDir(t)
+
+	_, _, err := NewServiceWithLogger(context.Background(), Config{}, logging.NewRecorder())
+	if err == nil {
+		t.Fatal("expected an error when no sqlite path can be resolved")
+	}
+	for _, remedy := range []string{SQLitePathEnvVar, ProjectRootEnvVar} {
+		if !strings.Contains(err.Error(), remedy) {
+			t.Fatalf("expected error to name %s as a remedy, got: %v", remedy, err)
+		}
+	}
+}
+
 func TestNewServiceWithLogger_ImplicitRepoSQLiteDoesNotMutateGitIgnore(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
