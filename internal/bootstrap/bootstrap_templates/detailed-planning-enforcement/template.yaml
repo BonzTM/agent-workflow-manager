@@ -20,12 +20,20 @@ operations:
     pristine:
       - blank_tests_v1
       - verify_generic_tests_v1
+      - verify_go_tests_v1
+      - verify_ts_tests_v1
+      - verify_python_tests_v1
+      - verify_rust_tests_v1
   - type: replace_if_pristine
     target: awm-tests.yaml
     source: files/.awm/awm-tests.yaml
     pristine:
       - blank_tests_v1
       - verify_generic_tests_v1
+      - verify_go_tests_v1
+      - verify_ts_tests_v1
+      - verify_python_tests_v1
+      - verify_rust_tests_v1
   - type: create_if_missing
     target: docs/feature-plans.md
     source: files/docs/feature-plans.md

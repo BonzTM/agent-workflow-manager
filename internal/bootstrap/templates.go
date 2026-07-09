@@ -128,8 +128,35 @@ func ResolveTemplates(templateIDs []string) ([]Template, error) {
 	return templates, nil
 }
 
+// TemplateIDs returns every embedded init template ID, sorted ascending. It
+// is the canonical source for surfaces (such as status integration reporting)
+// that must track the catalog without hardcoding template names.
+func TemplateIDs() ([]string, error) {
+	catalog, err := loadInitTemplateCatalog()
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(catalog))
+	for id := range catalog {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids, nil
+}
+
+// initTemplateAliases maps removed or renamed template IDs to their current
+// canonical replacements so init re-runs recorded against old names keep
+// working instead of hard-failing the whole init.
+var initTemplateAliases = map[string]string{
+	"claude-receipt-guard": "claude-hooks",
+}
+
 func canonicalInitTemplateID(templateID string) string {
-	return strings.TrimSpace(templateID)
+	trimmed := strings.TrimSpace(templateID)
+	if canonical, ok := initTemplateAliases[trimmed]; ok {
+		return canonical
+	}
+	return trimmed
 }
 
 func loadInitTemplateCatalog() (map[string]Template, error) {
@@ -624,6 +651,14 @@ func initPristineContent(pristineID string) ([]byte, bool) {
 		return initPristineEmbeddedContent("bootstrap_templates/starter-contract/files/.awm/awm-rules.yaml")
 	case "verify_generic_tests_v1":
 		return initPristineEmbeddedContent("bootstrap_templates/verify-generic/files/.awm/awm-tests.yaml")
+	case "verify_go_tests_v1":
+		return initPristineEmbeddedContent("bootstrap_templates/verify-go/files/.awm/awm-tests.yaml")
+	case "verify_ts_tests_v1":
+		return initPristineEmbeddedContent("bootstrap_templates/verify-ts/files/.awm/awm-tests.yaml")
+	case "verify_python_tests_v1":
+		return initPristineEmbeddedContent("bootstrap_templates/verify-python/files/.awm/awm-tests.yaml")
+	case "verify_rust_tests_v1":
+		return initPristineEmbeddedContent("bootstrap_templates/verify-rust/files/.awm/awm-tests.yaml")
 	default:
 		return nil, false
 	}

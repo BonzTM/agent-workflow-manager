@@ -87,7 +87,7 @@ This scans your repo and creates auto-indexed pointer stubs for discovered files
 
 Use `--persist-candidates` to save the enumerated file list to `.awm/init_candidates.json`.
 
-Templates (`--apply-template`) are repeatable and safe to re-run. They only create missing files, upgrade pristine scaffolds, and merge additive JSON fragments — they never delete or overwrite files you've edited. Built-ins: `starter-contract`, `detailed-planning-enforcement`, `verify-generic`, `verify-go`, `verify-ts`, `verify-python`, `verify-rust`, `codex-pack`, `codex-hooks`, `opencode-pack`, `claude-command-pack`, `claude-hooks`, `git-hooks-precommit`. See [docs/examples/init-templates.md](examples/init-templates.md) for the seeded files and template-specific behavior.
+Templates (`--apply-template`) are repeatable and safe to re-run. They only create missing files, upgrade pristine scaffolds, and merge additive JSON fragments — they never delete or overwrite files you've edited. Removed or renamed template names resolve through a deprecated-alias map to their current replacement. Built-ins: `starter-contract`, `detailed-planning-enforcement`, `verify-generic`, `verify-go`, `verify-ts`, `verify-python`, `verify-rust`, `codex-pack`, `codex-hooks`, `opencode-pack`, `claude-command-pack`, `claude-hooks`, `git-hooks-precommit`. See [docs/examples/init-templates.md](examples/init-templates.md) for the seeded files and template-specific behavior.
 
 If you want to inspect indexing drift later, use `awm health --include-details` or `awm status`. The standalone `coverage` command is gone; the useful signals now live in health/status.
 
@@ -150,7 +150,7 @@ For a starter verify profile, rerun `init` with one of:
 - `awm init --apply-template verify-ts` for TypeScript repos
 - `awm init --apply-template verify-python` for Python repos
 - `awm init --apply-template verify-rust` for Rust repos
-- `awm init --apply-template detailed-planning-enforcement` for the richer feature-plan contract; it can be applied directly or after `starter-contract` + `verify-generic`, and it upgrades those pristine files when present
+- `awm init --apply-template detailed-planning-enforcement` for the richer feature-plan contract; it can be applied directly or after `starter-contract` plus any `verify-*` profile, and it upgrades those pristine files when present
 
 ### Workflow gates
 

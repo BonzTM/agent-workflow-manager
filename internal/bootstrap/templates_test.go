@@ -177,15 +177,6 @@ func TestClaudeProcessHooksTrackWorkflowState(t *testing.T) {
 	}
 }
 
-func TestResolveTemplatesRejectsRemovedClaudeReceiptGuardAlias(t *testing.T) {
-	t.Parallel()
-
-	_, err := ResolveTemplates([]string{"claude-receipt-guard"})
-	if err == nil {
-		t.Fatalf("expected removed legacy template alias to be rejected")
-	}
-}
-
 func TestGitHooksPrecommitTemplateIncludesDeletedFiles(t *testing.T) {
 	t.Parallel()
 

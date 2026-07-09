@@ -15,22 +15,6 @@ import (
 	"github.com/bonztm/agent-workflow-manager/internal/workspace"
 )
 
-var statusTemplateIDs = []string{
-	"claude-command-pack",
-	"claude-hooks",
-	"codex-pack",
-	"codex-hooks",
-	"opencode-pack",
-	"detailed-planning-enforcement",
-	"git-hooks-precommit",
-	"starter-contract",
-	"verify-generic",
-	"verify-go",
-	"verify-python",
-	"verify-rust",
-	"verify-ts",
-}
-
 // Status reports project readiness: which configuration sources (rules, tags,
 // tests, workflows) exist and load cleanly, what is missing, how the storage
 // backend was resolved, and — given a task — which tests and gates would run.
@@ -364,7 +348,13 @@ func (s *Service) statusContextPreview(ctx context.Context, payload v1.StatusPay
 }
 
 func statusIntegrations(projectRoot string) ([]v1.StatusIntegration, error) {
-	templates, err := bootstrapkit.ResolveTemplates(statusTemplateIDs)
+	// Derive the list from the embedded catalog so adding or dropping a
+	// template can never leave status resolving a stale hardcoded name.
+	templateIDs, err := bootstrapkit.TemplateIDs()
+	if err != nil {
+		return nil, err
+	}
+	templates, err := bootstrapkit.ResolveTemplates(templateIDs)
 	if err != nil {
 		return nil, err
 	}

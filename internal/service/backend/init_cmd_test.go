@@ -1266,7 +1266,7 @@ func TestInit_ClaudeHooksMergesSettingsJSONIdempotently(t *testing.T) {
 	}
 }
 
-func TestInit_RemovedClaudeReceiptGuardAliasReturnsInvalidInput(t *testing.T) {
+func TestInit_RemovedClaudeReceiptGuardAliasResolvesToClaudeHooks(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
 		t.Fatalf("mkdir .claude: %v", err)
@@ -1281,14 +1281,20 @@ func TestInit_RemovedClaudeReceiptGuardAliasReturnsInvalidInput(t *testing.T) {
 		t.Fatalf("new service: %v", err)
 	}
 
-	_, apiErr := svc.Init(context.Background(), v1.InitPayload{
+	result, apiErr := svc.Init(context.Background(), v1.InitPayload{
 		ProjectID:        "project.alpha",
 		ProjectRoot:      root,
 		RespectGitIgnore: &respectGitIgnore,
 		ApplyTemplates:   []string{"claude-receipt-guard"},
 	})
-	if apiErr == nil || apiErr.Code != "INVALID_INPUT" {
-		t.Fatalf("expected invalid input for removed legacy template alias, got %+v", apiErr)
+	if apiErr != nil {
+		t.Fatalf("expected deprecated alias to apply its canonical template, got %+v", apiErr)
+	}
+	if len(result.TemplateResults) != 1 || result.TemplateResults[0].TemplateID != "claude-hooks" {
+		t.Fatalf("expected alias to apply claude-hooks, got %+v", result.TemplateResults)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "hooks", "awm-receipt-guard.sh")); err != nil {
+		t.Fatalf("expected claude-hooks assets to be seeded via the alias: %v", err)
 	}
 }
 
