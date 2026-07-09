@@ -86,11 +86,22 @@ type ResultEnvelope struct {
 
 // ContextPayload is the input for the context command: the task and phase to resolve context for.
 type ContextPayload struct {
-	ProjectID         string   `json:"project_id"`
-	TaskText          string   `json:"task_text"`
-	Phase             Phase    `json:"phase"`
-	TagsFile          string   `json:"tags_file,omitempty"`
-	InitialScopePaths []string `json:"initial_scope_paths,omitempty"`
+	ProjectID         string    `json:"project_id"`
+	TaskText          string    `json:"task_text"`
+	Phase             Phase     `json:"phase"`
+	TagsFile          string    `json:"tags_file,omitempty"`
+	InitialScopePaths []string  `json:"initial_scope_paths,omitempty"`
+	Actor             *ActorRef `json:"actor,omitempty"`
+}
+
+// ActorRef optionally identifies the agent that performed a workflow action:
+// the harness (e.g. claude-code, codex, opencode), the model it ran, and a
+// harness-scoped session identifier. Every field is optional; absent actors
+// leave audit records exactly as before.
+type ActorRef struct {
+	Harness   string `json:"harness,omitempty"`
+	Model     string `json:"model,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
 }
 
 // FetchPayload is the input for the fetch command: keys or a receipt to resolve, with optional expected versions.
@@ -167,6 +178,7 @@ type DonePayload struct {
 	NoFileChanges bool      `json:"no_file_changes,omitempty"`
 	Outcome       string    `json:"outcome"`
 	ScopeMode     ScopeMode `json:"scope_mode,omitempty"`
+	Actor         *ActorRef `json:"actor,omitempty"`
 }
 
 // WorkItemStatus is the lifecycle state of a plan, task, or plan stage.
@@ -242,6 +254,7 @@ type WorkPayload struct {
 	Mode      WorkPlanMode      `json:"mode,omitempty"`
 	Plan      *WorkPlanPayload  `json:"plan,omitempty"`
 	Tasks     []WorkTaskPayload `json:"tasks,omitempty"`
+	Actor     *ActorRef         `json:"actor,omitempty"`
 }
 
 // HistoryScope filters history searches by an item's lifecycle bucket.
@@ -334,15 +347,16 @@ type StatusPayload struct {
 
 // VerifyPayload is the input for the verify command: what changed and which tests to select or run.
 type VerifyPayload struct {
-	ProjectID    string   `json:"project_id"`
-	ReceiptID    string   `json:"receipt_id,omitempty"`
-	PlanKey      string   `json:"plan_key,omitempty"`
-	Phase        Phase    `json:"phase,omitempty"`
-	TestIDs      []string `json:"test_ids,omitempty"`
-	FilesChanged []string `json:"files_changed,omitempty"`
-	TestsFile    string   `json:"tests_file,omitempty"`
-	TagsFile     string   `json:"tags_file,omitempty"`
-	DryRun       bool     `json:"dry_run,omitempty"`
+	ProjectID    string    `json:"project_id"`
+	ReceiptID    string    `json:"receipt_id,omitempty"`
+	PlanKey      string    `json:"plan_key,omitempty"`
+	Phase        Phase     `json:"phase,omitempty"`
+	TestIDs      []string  `json:"test_ids,omitempty"`
+	FilesChanged []string  `json:"files_changed,omitempty"`
+	TestsFile    string    `json:"tests_file,omitempty"`
+	TagsFile     string    `json:"tags_file,omitempty"`
+	DryRun       bool      `json:"dry_run,omitempty"`
+	Actor        *ActorRef `json:"actor,omitempty"`
 }
 
 // InitPayload is the input for the init command: project location, source files, and candidate/template options.
@@ -525,15 +539,16 @@ type ExportReceiptDocument struct {
 
 // ExportRunDocument is the exported representation of a recorded run and its outcome.
 type ExportRunDocument struct {
-	RunID        int64    `json:"run_id"`
-	ReceiptID    string   `json:"receipt_id,omitempty"`
-	RequestID    string   `json:"request_id,omitempty"`
-	TaskText     string   `json:"task_text,omitempty"`
-	Phase        Phase    `json:"phase,omitempty"`
-	Status       string   `json:"status,omitempty"`
-	FilesChanged []string `json:"files_changed,omitempty"`
-	Outcome      string   `json:"outcome,omitempty"`
-	UpdatedAt    string   `json:"updated_at,omitempty"`
+	RunID        int64     `json:"run_id"`
+	ReceiptID    string    `json:"receipt_id,omitempty"`
+	RequestID    string    `json:"request_id,omitempty"`
+	TaskText     string    `json:"task_text,omitempty"`
+	Phase        Phase     `json:"phase,omitempty"`
+	Status       string    `json:"status,omitempty"`
+	FilesChanged []string  `json:"files_changed,omitempty"`
+	Outcome      string    `json:"outcome,omitempty"`
+	UpdatedAt    string    `json:"updated_at,omitempty"`
+	Actor        *ActorRef `json:"actor,omitempty"`
 }
 
 // ExportBundleItemKind identifies which record type an ExportBundleItem carries.
@@ -638,6 +653,7 @@ type HistoryItem struct {
 	TaskCounts    *ContextPlanTaskCounts `json:"task_counts,omitempty"`
 	FetchKeys     []string               `json:"fetch_keys,omitempty"`
 	UpdatedAt     string                 `json:"updated_at"`
+	Actor         *ActorRef              `json:"actor,omitempty"`
 }
 
 // HistorySearchResult is the output of the history command: the effective search parameters and matched items.

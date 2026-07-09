@@ -133,6 +133,62 @@ CREATE TABLE awm_work_plan_tasks (
 		t.Fatalf("create legacy work plan tasks table: %v", execErr)
 	}
 
+	// The remaining historical tables 0016+ migrations alter; a real pre-0013
+	// database has these from migrations 0001, 0007, and 0010.
+	if _, execErr := db.ExecContext(ctx, `
+CREATE TABLE awm_runs (
+	run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	project_id TEXT NOT NULL,
+	request_id TEXT NOT NULL DEFAULT '',
+	receipt_id TEXT NOT NULL,
+	status TEXT NOT NULL,
+	files_changed_json TEXT NOT NULL DEFAULT '[]',
+	outcome TEXT NOT NULL DEFAULT '',
+	summary_json TEXT NOT NULL DEFAULT '{}',
+	created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)`); execErr != nil {
+		t.Fatalf("create legacy runs table: %v", execErr)
+	}
+	if _, execErr := db.ExecContext(ctx, `
+CREATE TABLE awm_verification_batches (
+	batch_run_id TEXT PRIMARY KEY,
+	project_id TEXT NOT NULL,
+	receipt_id TEXT NOT NULL DEFAULT '',
+	plan_key TEXT NOT NULL DEFAULT '',
+	phase TEXT NOT NULL DEFAULT '',
+	tests_source_path TEXT NOT NULL DEFAULT '',
+	status TEXT NOT NULL,
+	passed INTEGER NOT NULL CHECK (passed IN (0, 1)),
+	selected_test_ids_json TEXT NOT NULL DEFAULT '[]',
+	created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)`); execErr != nil {
+		t.Fatalf("create legacy verification batches table: %v", execErr)
+	}
+	if _, execErr := db.ExecContext(ctx, `
+CREATE TABLE awm_review_attempts (
+	attempt_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	project_id TEXT NOT NULL,
+	receipt_id TEXT NOT NULL,
+	plan_key TEXT NOT NULL DEFAULT '',
+	review_key TEXT NOT NULL,
+	summary TEXT NOT NULL DEFAULT '',
+	fingerprint TEXT NOT NULL,
+	status TEXT NOT NULL,
+	passed INTEGER NOT NULL CHECK (passed IN (0, 1)),
+	outcome TEXT NOT NULL DEFAULT '',
+	workflow_source_path TEXT NOT NULL DEFAULT '',
+	command_argv_json TEXT NOT NULL DEFAULT '[]',
+	command_cwd TEXT NOT NULL DEFAULT '',
+	timeout_sec INTEGER NOT NULL DEFAULT 0,
+	exit_code INTEGER NULL,
+	timed_out INTEGER NOT NULL DEFAULT 0 CHECK (timed_out IN (0, 1)),
+	stdout_excerpt TEXT NOT NULL DEFAULT '',
+	stderr_excerpt TEXT NOT NULL DEFAULT '',
+	created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)`); execErr != nil {
+		t.Fatalf("create legacy review attempts table: %v", execErr)
+	}
+
 	if _, execErr := db.ExecContext(ctx, `
 INSERT INTO awm_receipts (
 	receipt_id,

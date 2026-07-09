@@ -54,6 +54,9 @@
           },
           "maxItems": 4096,
           "uniqueItems": true
+        },
+        "actor": {
+          "$ref": "shared.schema.json#/$defs/actor"
         }
       }
     },
@@ -100,6 +103,9 @@
             "warn"
           ],
           "default": "warn"
+        },
+        "actor": {
+          "$ref": "shared.schema.json#/$defs/actor"
         }
       },
       "allOf": [
@@ -197,6 +203,9 @@
         },
         "tags_file": {
           "$ref": "shared.schema.json#/$defs/overrideFilePath"
+        },
+        "actor": {
+          "$ref": "shared.schema.json#/$defs/actor"
         }
       },
       "allOf": [
@@ -449,6 +458,9 @@
         "dry_run": {
           "type": "boolean",
           "default": false
+        },
+        "actor": {
+          "$ref": "shared.schema.json#/$defs/actor"
         }
       },
       "allOf": [
@@ -835,6 +847,9 @@
         },
         "tasks": {
           "$ref": "shared.schema.json#/$defs/workTasks"
+        },
+        "actor": {
+          "$ref": "shared.schema.json#/$defs/actor"
         }
       },
       "anyOf": [

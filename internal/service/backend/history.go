@@ -211,6 +211,7 @@ func (s *Service) listRunHistoryItems(ctx context.Context, projectID, query stri
 			ReceiptID: strings.TrimSpace(row.ReceiptID),
 			RunID:     row.RunID,
 			RequestID: strings.TrimSpace(row.RequestID),
+			Actor:     actorRefFromCore(row.Actor),
 			Phase:     v1.Phase(strings.TrimSpace(row.Phase)),
 			FetchKeys: []string{runFetchKey(row.RunID)},
 			UpdatedAt: historyTimestamp(row.UpdatedAt),

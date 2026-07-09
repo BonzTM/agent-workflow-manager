@@ -625,6 +625,24 @@
         "verify",
         "init"
       ]
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "harness": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "session_id": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
     }
   }
 }

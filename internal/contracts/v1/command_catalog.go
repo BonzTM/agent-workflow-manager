@@ -50,7 +50,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandContext,
 		"context",
-		"awm context [--project <id>] [--task-text <text>|--task-file <path>] [--tags-file <path>] [--scope-path <path>]... [--format <json|markdown>] [--out-file <path>] [--force[=true|false]]",
+		"awm context [--project <id>] [--task-text <text>|--task-file <path>] [--tags-file <path>] [--scope-path <path>]... [--format <json|markdown>] [--out-file <path>] [--force[=true|false]] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]",
 		"Resolve a scoped receipt with rules, active work, and optional known scope paths.",
 		CommandGroupWorkflow,
 		"contextPayload",
@@ -111,7 +111,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandDone,
 		"done",
-		"awm done [--project <id>] [--receipt-id <id>|--plan-key <key>] [--outcome <text>|--outcome-file <path>] [--file-changed <path>]... [--files-changed-file <path>] [--files-changed-json <json>] [--no-file-changes[=true|false]] [--scope-mode <mode>] [--tags-file <path>]",
+		"awm done [--project <id>] [--receipt-id <id>|--plan-key <key>] [--outcome <text>|--outcome-file <path>] [--file-changed <path>]... [--files-changed-file <path>] [--files-changed-json <json>] [--no-file-changes[=true|false]] [--scope-mode <mode>] [--tags-file <path>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]",
 		"Close a receipt, validate scope, and enforce configured completion task gates.",
 		CommandGroupWorkflow,
 		"donePayload",
@@ -130,7 +130,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandReview,
 		"review",
-		"awm review [--project <id>] [--receipt-id <id>|--plan-key <key>] [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>]",
+		"awm review [--project <id>] [--receipt-id <id>|--plan-key <key>] [--run] [--key <task-key>] [--summary <text>] [--status <pending|in_progress|complete|blocked|superseded>] [--outcome <text>|--outcome-file <path>] [--blocked-reason <text>] [--evidence <text>]... [--evidence-file <path>|--evidence-json <json>] [--tags-file <path>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]",
 		"Record or execute a single review gate such as `review:cross-llm` through the work tracker, using `--run` to satisfy runnable gates.",
 		CommandGroupWorkflow,
 		"reviewPayload",
@@ -149,7 +149,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandWork,
 		"work",
-		"awm work [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>]",
+		"awm work [--project <id>] [--plan-key <key>|--receipt-id <id>] [--plan-title <text>] [--mode <merge|replace>] [--discovered-path <path>]... [--plan-file <path>|--plan-json <json>] [--tasks-file <path>|--tasks-json <json>] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]",
 		"Create or update structured plans and tasks that survive compaction.",
 		CommandGroupWorkflow,
 		"workPayload",
@@ -244,7 +244,7 @@ var commandCatalog = []CommandSpec{
 	newCommandSpec(
 		CommandVerify,
 		"verify",
-		"awm verify [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run]",
+		"awm verify [--project <id>] [--receipt-id <id>] [--plan-key <key>] [--phase <plan|execute|review>] [--test-id <id>]... [--file-changed <path>]... [--files-changed-file <path>|--files-changed-json <json>] [--tests-file <path>] [--tags-file <path>] [--dry-run] [--actor-harness <text>] [--actor-model <text>] [--actor-session <text>]",
 		"Select and execute repo-defined verification checks from `.awm/awm-tests.yaml` or `awm-tests.yaml`.",
 		CommandGroupMaintenance,
 		"verifyPayload",

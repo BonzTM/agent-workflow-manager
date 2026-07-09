@@ -39,6 +39,7 @@ type NormalizedRunSummary struct {
 	FilesChanged           []string
 	DefinitionOfDoneIssues []string
 	Outcome                string
+	Actor                  core.Actor
 }
 
 // NormalizedReceiptScope is a receipt scope whose fields have been trimmed,
@@ -53,6 +54,7 @@ type NormalizedReceiptScope struct {
 	InitialScopePaths []string
 	BaselineCaptured  bool
 	BaselinePaths     []core.SyncPath
+	Actor             core.Actor
 }
 
 // NormalizedVerificationBatch is a verification batch whose fields have been
@@ -69,6 +71,7 @@ type NormalizedVerificationBatch struct {
 	SelectedTestIDs []string
 	Results         []core.VerificationTestRun
 	CreatedAt       time.Time
+	Actor           core.Actor
 }
 
 // NormalizedReviewAttempt is a review attempt whose fields have been validated
@@ -92,6 +95,7 @@ type NormalizedReviewAttempt struct {
 	StdoutExcerpt      string
 	StderrExcerpt      string
 	CreatedAt          time.Time
+	Actor              core.Actor
 }
 
 // NormalizeWorkPlanMode maps a raw mode to WorkPlanModeReplace when it matches
@@ -504,6 +508,16 @@ func MergeWorkPlanStages(current, incoming core.WorkPlanStages, mode core.WorkPl
 	return out
 }
 
+// NormalizeActor trims the optional actor identity fields; a zero actor stays
+// zero so unattributed records persist exactly as before.
+func NormalizeActor(input core.Actor) core.Actor {
+	return core.Actor{
+		Harness:   strings.TrimSpace(input.Harness),
+		Model:     strings.TrimSpace(input.Model),
+		SessionID: strings.TrimSpace(input.SessionID),
+	}
+}
+
 // NormalizeRunReceiptSummary trims and defaults a run receipt summary: status
 // defaults to "accepted" and phase to "execute" when blank, and list fields are
 // deduplicated and sorted. It returns an error when project_id is empty.
@@ -532,6 +546,7 @@ func NormalizeRunReceiptSummary(input core.RunReceiptSummary) (NormalizedRunSumm
 		FilesChanged:           NormalizeStringList(input.FilesChanged),
 		DefinitionOfDoneIssues: NormalizeStringList(input.DefinitionOfDoneIssues),
 		Outcome:                strings.TrimSpace(input.Outcome),
+		Actor:                  NormalizeActor(input.Actor),
 	}, nil
 }
 
@@ -561,6 +576,7 @@ func NormalizeReceiptScope(input core.ReceiptScope) (NormalizedReceiptScope, err
 		InitialScopePaths: NormalizeRepoPathList(input.InitialScopePaths),
 		BaselineCaptured:  input.BaselineCaptured,
 		BaselinePaths:     NormalizeSyncPathList(input.BaselinePaths),
+		Actor:             NormalizeActor(input.Actor),
 	}, nil
 }
 
@@ -654,6 +670,7 @@ func NormalizeVerificationBatch(input core.VerificationBatch) (NormalizedVerific
 		SelectedTestIDs: NormalizeStringListPreserveOrder(input.SelectedTestIDs),
 		Results:         results,
 		CreatedAt:       createdAt,
+		Actor:           NormalizeActor(input.Actor),
 	}, nil
 }
 
@@ -715,6 +732,7 @@ func NormalizeReviewAttempt(input core.ReviewAttempt) (NormalizedReviewAttempt, 
 		StdoutExcerpt:      strings.TrimSpace(input.StdoutExcerpt),
 		StderrExcerpt:      strings.TrimSpace(input.StderrExcerpt),
 		CreatedAt:          createdAt,
+		Actor:              NormalizeActor(input.Actor),
 	}, nil
 }
 

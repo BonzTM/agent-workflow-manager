@@ -80,6 +80,28 @@ func validateContextPayload(p *ContextPayload) error {
 	if err := validateRelativePathList(p.InitialScopePaths, 4096, "initial_scope_paths"); err != nil {
 		return err
 	}
+	if err := validateActor(p.Actor); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateActor bounds the optional actor identity fields; a nil actor is
+// always valid because attribution is opt-in.
+func validateActor(actor *ActorRef) error {
+	if actor == nil {
+		return nil
+	}
+	fields := map[string]string{
+		"actor.harness":    actor.Harness,
+		"actor.model":      actor.Model,
+		"actor.session_id": actor.SessionID,
+	}
+	for name, value := range fields {
+		if len(value) > 200 {
+			return fmt.Errorf("%s must be at most 200 chars", name)
+		}
+	}
 	return nil
 }
 
@@ -243,6 +265,9 @@ func validateDonePayload(p *DonePayload, fields map[string]json.RawMessage) erro
 			return errors.New("files_changed cannot be combined with no_file_changes")
 		}
 	}
+	if err := validateActor(p.Actor); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -310,6 +335,9 @@ func validateReviewPayload(p *ReviewPayload, fields map[string]json.RawMessage) 
 		if len(p.Evidence) > 0 {
 			return errors.New("evidence must be omitted when run=true")
 		}
+	}
+	if err := validateActor(p.Actor); err != nil {
+		return err
 	}
 	return nil
 }
@@ -460,6 +488,9 @@ func validateWorkPayload(p *WorkPayload) error {
 		if err := validateStringList(task.Evidence, 128, 1600, prefix+".evidence"); err != nil {
 			return err
 		}
+	}
+	if err := validateActor(p.Actor); err != nil {
+		return err
 	}
 	return nil
 }
@@ -696,6 +727,9 @@ func validateVerifyPayload(p *VerifyPayload, fields map[string]json.RawMessage) 
 	}
 	if len(p.TestIDs) == 0 && receiptID == "" && planKey == "" && p.Phase == "" && len(p.FilesChanged) == 0 {
 		return errors.New("test_ids or selection context is required")
+	}
+	if err := validateActor(p.Actor); err != nil {
+		return err
 	}
 	return nil
 }

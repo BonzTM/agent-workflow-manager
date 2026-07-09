@@ -209,6 +209,7 @@ executeReview:
 		StdoutExcerpt:      excerptVerifyOutput(run.Stdout),
 		StderrExcerpt:      excerptVerifyOutput(run.Stderr),
 		CreatedAt:          run.FinishedAt,
+		Actor:              actorFromPayload(normalized.Actor),
 	})
 	if err != nil {
 		return v1.ReviewResult{}, backendError(v1.ErrCodeInternalError, "failed to persist review attempt", map[string]any{

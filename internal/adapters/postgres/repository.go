@@ -318,6 +318,7 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		InitialScopePaths []string
 		BaselineCaptured  bool
 		BaselinePathsJSON []byte
+		Actor             core.Actor
 	}
 	if scanErr := r.pool.QueryRow(ctx, query, args...).Scan(
 		&row.ReceiptID,
@@ -328,6 +329,9 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		&row.InitialScopePaths,
 		&row.BaselineCaptured,
 		&row.BaselinePathsJSON,
+		&row.Actor.Harness,
+		&row.Actor.Model,
+		&row.Actor.SessionID,
 	); scanErr != nil {
 		if errors.Is(scanErr, pgx.ErrNoRows) {
 			return core.ReceiptScope{}, core.ErrReceiptScopeNotFound
@@ -350,6 +354,7 @@ func (r *Repository) FetchReceiptScope(ctx context.Context, input core.ReceiptSc
 		InitialScopePaths: normalizeStringList(row.InitialScopePaths),
 		BaselineCaptured:  row.BaselineCaptured,
 		BaselinePaths:     baselinePaths,
+		Actor:             row.Actor,
 	}, nil
 }
 
@@ -1037,6 +1042,9 @@ SELECT
 	run.status,
 	run.files_changed,
 	run.outcome,
+	run.actor_harness,
+	run.actor_model,
+	run.actor_session,
 	run.created_at
 FROM awm_runs run
 LEFT JOIN awm_receipts r
@@ -1091,6 +1099,9 @@ ORDER BY run.created_at DESC, run.run_id DESC
 			&row.Status,
 			&row.FilesChanged,
 			&row.Outcome,
+			&row.Actor.Harness,
+			&row.Actor.Model,
+			&row.Actor.SessionID,
 			&row.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan run history: %w", err)
@@ -1138,6 +1149,9 @@ SELECT
 	run.status,
 	run.files_changed,
 	run.outcome,
+	run.actor_harness,
+	run.actor_model,
+	run.actor_session,
 	run.created_at
 FROM awm_runs run
 LEFT JOIN awm_receipts r
@@ -1154,6 +1168,9 @@ WHERE run.project_id = $1
 		&row.Status,
 		&row.FilesChanged,
 		&row.Outcome,
+		&row.Actor.Harness,
+		&row.Actor.Model,
+		&row.Actor.SessionID,
 		&row.UpdatedAt,
 	)
 	if err != nil {
@@ -1310,10 +1327,13 @@ INSERT INTO awm_runs (
 	status,
 	files_changed,
 	outcome,
+	actor_harness,
+	actor_model,
+	actor_session,
 	summary_json
-) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
 RETURNING run_id
-`, normalized.ProjectID, normalized.RequestID, normalized.ReceiptID, normalized.Status, nonNilStringList(normalized.FilesChanged), normalized.Outcome, runJSON).Scan(&runID)
+`, normalized.ProjectID, normalized.RequestID, normalized.ReceiptID, normalized.Status, nonNilStringList(normalized.FilesChanged), normalized.Outcome, normalized.Actor.Harness, normalized.Actor.Model, normalized.Actor.SessionID, runJSON).Scan(&runID)
 	if err != nil {
 		return core.RunReceiptIDs{}, fmt.Errorf("insert run summary: %w", err)
 	}
@@ -1356,8 +1376,11 @@ INSERT INTO awm_receipts (
 	initial_scope_paths,
 	baseline_captured,
 	baseline_paths_json,
+	actor_harness,
+	actor_model,
+	actor_session,
 	summary_json
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, '{}'::jsonb)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, '{}'::jsonb)
 ON CONFLICT (receipt_id) DO UPDATE
 SET
 	project_id = EXCLUDED.project_id,
@@ -1367,8 +1390,11 @@ SET
 	pointer_keys = EXCLUDED.pointer_keys,
 	initial_scope_paths = EXCLUDED.initial_scope_paths,
 	baseline_captured = EXCLUDED.baseline_captured,
-	baseline_paths_json = EXCLUDED.baseline_paths_json
-`, normalized.ReceiptID, normalized.ProjectID, normalized.TaskText, normalized.Phase, nonNilStringList(normalized.ResolvedTags), nonNilStringList(normalized.PointerKeys), nonNilStringList(normalized.InitialScopePaths), normalized.BaselineCaptured, baselinePathsJSON)
+	baseline_paths_json = EXCLUDED.baseline_paths_json,
+	actor_harness = EXCLUDED.actor_harness,
+	actor_model = EXCLUDED.actor_model,
+	actor_session = EXCLUDED.actor_session
+`, normalized.ReceiptID, normalized.ProjectID, normalized.TaskText, normalized.Phase, nonNilStringList(normalized.ResolvedTags), nonNilStringList(normalized.PointerKeys), nonNilStringList(normalized.InitialScopePaths), normalized.BaselineCaptured, baselinePathsJSON, normalized.Actor.Harness, normalized.Actor.Model, normalized.Actor.SessionID)
 	if err != nil {
 		return fmt.Errorf("upsert receipt scope: %w", err)
 	}
@@ -1407,12 +1433,15 @@ INSERT INTO awm_review_attempts (
 	timed_out,
 	stdout_excerpt,
 	stderr_excerpt,
+	actor_harness,
+	actor_model,
+	actor_session,
 	created_at
 ) VALUES (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
 )
 RETURNING attempt_id
-`, normalized.ProjectID, normalized.ReceiptID, normalized.PlanKey, normalized.ReviewKey, normalized.Summary, normalized.Fingerprint, normalized.Status, normalized.Passed, normalized.Outcome, normalized.WorkflowSourcePath, nonNilStringListPreserveOrder(normalized.CommandArgv), normalized.CommandCWD, normalized.TimeoutSec, normalized.ExitCode, normalized.TimedOut, normalized.StdoutExcerpt, normalized.StderrExcerpt, normalized.CreatedAt).Scan(&attemptID)
+`, normalized.ProjectID, normalized.ReceiptID, normalized.PlanKey, normalized.ReviewKey, normalized.Summary, normalized.Fingerprint, normalized.Status, normalized.Passed, normalized.Outcome, normalized.WorkflowSourcePath, nonNilStringListPreserveOrder(normalized.CommandArgv), normalized.CommandCWD, normalized.TimeoutSec, normalized.ExitCode, normalized.TimedOut, normalized.StdoutExcerpt, normalized.StderrExcerpt, normalized.Actor.Harness, normalized.Actor.Model, normalized.Actor.SessionID, normalized.CreatedAt).Scan(&attemptID)
 	if err != nil {
 		return 0, fmt.Errorf("insert review attempt: %w", err)
 	}
@@ -1455,6 +1484,9 @@ SELECT
 	timed_out,
 	stdout_excerpt,
 	stderr_excerpt,
+	actor_harness,
+	actor_model,
+	actor_session,
 	created_at
 FROM awm_review_attempts
 WHERE project_id = $1
@@ -1491,6 +1523,9 @@ ORDER BY created_at ASC, attempt_id ASC
 			&row.TimedOut,
 			&row.StdoutExcerpt,
 			&row.StderrExcerpt,
+			&row.Actor.Harness,
+			&row.Actor.Model,
+			&row.Actor.SessionID,
 			&row.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan review attempt: %w", err)
@@ -1546,9 +1581,12 @@ INSERT INTO awm_verification_batches (
 	status,
 	passed,
 	selected_test_ids,
+	actor_harness,
+	actor_model,
+	actor_session,
 	created_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-`, normalized.BatchRunID, normalized.ProjectID, normalized.ReceiptID, normalized.PlanKey, normalized.Phase, normalized.TestsSourcePath, normalized.Status, normalized.Passed, nonNilStringListPreserveOrder(normalized.SelectedTestIDs), normalized.CreatedAt)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+`, normalized.BatchRunID, normalized.ProjectID, normalized.ReceiptID, normalized.PlanKey, normalized.Phase, normalized.TestsSourcePath, normalized.Status, normalized.Passed, nonNilStringListPreserveOrder(normalized.SelectedTestIDs), normalized.Actor.Harness, normalized.Actor.Model, normalized.Actor.SessionID, normalized.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("insert verification batch: %w", err)
 	}

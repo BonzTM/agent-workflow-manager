@@ -24,6 +24,7 @@ type ReviewPayload struct {
 	Evidence      []string       `json:"evidence,omitempty"`
 	Run           bool           `json:"run,omitempty"`
 	TagsFile      string         `json:"tags_file,omitempty"`
+	Actor         *ActorRef      `json:"actor,omitempty"`
 }
 
 // ReviewExecution describes one executed review gate command: the workflow
@@ -74,6 +75,7 @@ func NormalizeReviewPayload(p ReviewPayload) ReviewPayload {
 		BlockedReason: strings.TrimSpace(p.BlockedReason),
 		Run:           p.Run,
 		TagsFile:      strings.TrimSpace(p.TagsFile),
+		Actor:         p.Actor,
 	}
 	if normalized.Key == "" {
 		normalized.Key = DefaultReviewTaskKey

@@ -380,6 +380,9 @@ export AWM_PROJECT_ROOT=/path/to/repo  # optional when running awm from another 
 export AWM_UNBOUNDED=false             # true removes built-in history/list caps for supported surfaces
 export AWM_LOG_LEVEL=debug             # debug|info|warn|error (default: info)
 export AWM_LOG_SINK=stderr             # stderr|stdout|discard (default: stderr)
+export AWM_ACTOR_HARNESS=claude-code   # optional actor identity recorded on audit records
+export AWM_ACTOR_MODEL=claude-fable-5  # optional actor model identity
+export AWM_ACTOR_SESSION=session-123   # optional actor session identity
 ```
 
 ## License

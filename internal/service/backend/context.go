@@ -75,6 +75,7 @@ func (s *Service) Context(ctx context.Context, payload v1.ContextPayload) (v1.Co
 		InitialScopePaths: append([]string(nil), initialScopePaths...),
 		BaselineCaptured:  baselineCaptured,
 		BaselinePaths:     append([]core.SyncPath(nil), baselinePaths...),
+		Actor:             actorFromPayload(payload.Actor),
 	}); err != nil {
 		return v1.ContextResult{}, internalError("persist_receipt_scope", err)
 	}
@@ -83,6 +84,32 @@ func (s *Service) Context(ctx context.Context, payload v1.ContextPayload) (v1.Co
 		Status:  "ok",
 		Receipt: &receipt,
 	}, nil
+}
+
+// actorFromPayload converts the optional wire actor into its persisted form;
+// a nil actor persists as the zero (unattributed) value.
+func actorFromPayload(actor *v1.ActorRef) core.Actor {
+	if actor == nil {
+		return core.Actor{}
+	}
+	return core.Actor{
+		Harness:   actor.Harness,
+		Model:     actor.Model,
+		SessionID: actor.SessionID,
+	}
+}
+
+// actorRefFromCore converts a persisted actor back to its wire form; the zero
+// (unattributed) value maps to nil so responses omit the block entirely.
+func actorRefFromCore(actor core.Actor) *v1.ActorRef {
+	if actor == (core.Actor{}) {
+		return nil
+	}
+	return &v1.ActorRef{
+		Harness:   actor.Harness,
+		Model:     actor.Model,
+		SessionID: actor.SessionID,
+	}
 }
 
 func loadCanonicalContextRules(projectRoot, projectID string, tagNormalizer canonicalTagNormalizer) ([]core.CandidatePointer, []string, []string, error) {

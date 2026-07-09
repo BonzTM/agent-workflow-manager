@@ -501,6 +501,11 @@ func renderRunMarkdown(document *v1.ExportDocument) string {
 	appendMarkdownKeyValue(&b, "Phase", strings.TrimSpace(string(document.Run.Phase)))
 	appendMarkdownKeyValue(&b, "Status", strings.TrimSpace(document.Run.Status))
 	appendMarkdownKeyValue(&b, "Outcome", strings.TrimSpace(document.Run.Outcome))
+	if actor := document.Run.Actor; actor != nil {
+		appendMarkdownKeyValue(&b, "Actor Harness", strings.TrimSpace(actor.Harness))
+		appendMarkdownKeyValue(&b, "Actor Model", strings.TrimSpace(actor.Model))
+		appendMarkdownKeyValue(&b, "Actor Session", strings.TrimSpace(actor.SessionID))
+	}
 	appendMarkdownKeyValue(&b, "Updated At", strings.TrimSpace(document.Run.UpdatedAt))
 	appendMarkdownStringListSection(&b, 2, "Files Changed", document.Run.FilesChanged, true)
 
