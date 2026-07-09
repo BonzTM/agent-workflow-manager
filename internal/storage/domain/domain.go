@@ -40,6 +40,7 @@ type NormalizedRunSummary struct {
 	DefinitionOfDoneIssues []string
 	Outcome                string
 	Actor                  core.Actor
+	VCS                    core.VCSInfo
 }
 
 // NormalizedReceiptScope is a receipt scope whose fields have been trimmed,
@@ -547,6 +548,10 @@ func NormalizeRunReceiptSummary(input core.RunReceiptSummary) (NormalizedRunSumm
 		DefinitionOfDoneIssues: NormalizeStringList(input.DefinitionOfDoneIssues),
 		Outcome:                strings.TrimSpace(input.Outcome),
 		Actor:                  NormalizeActor(input.Actor),
+		VCS: core.VCSInfo{
+			Sha:    strings.TrimSpace(input.VCS.Sha),
+			Branch: strings.TrimSpace(input.VCS.Branch),
+		},
 	}, nil
 }
 

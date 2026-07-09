@@ -62,6 +62,8 @@ If the repo has uncommitted changes but the current effective scope captures non
 
 Keep raw reviewer commands in repo-local scripts and workflow definitions, not maintainer prose. If a repo-local reviewer script needs model, reasoning, or sandbox settings, pass them through the workflow `run.argv` list.
 
+**Receipt evidence (opt-in CI report):** `scripts/awm-receipt-evidence.sh` reports, for every file changed in a git range, whether a closed receipt's run lists it in `files_changed` (run history items carry `files_changed`, the recording actor, and — when git was available at `done` time — the head sha/branch). It always exits 0; `--enforce` (or `AWM_EVIDENCE_ENFORCE=true`) opts into failing on uncovered files. Copy [docs/examples/receipt-evidence-workflow.yml](docs/examples/receipt-evidence-workflow.yml) into `.github/workflows/` to run it on pull requests — `awm init` never seeds it.
+
 **History discovery:** use `awm history` for both work-specific and multi-entity discovery. Set `--entity work` when you need `--scope` or `--kind`; use other entities for receipts or runs. Results include `fetch_keys` for follow-up `awm fetch`.
 
 ## Human-Facing Setup And Maintenance

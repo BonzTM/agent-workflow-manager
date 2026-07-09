@@ -944,6 +944,13 @@ ALTER TABLE awm_review_attempts ADD COLUMN actor_model TEXT NOT NULL DEFAULT '';
 ALTER TABLE awm_review_attempts ADD COLUMN actor_session TEXT NOT NULL DEFAULT '';
 `,
 	},
+	{
+		Name: "0017_awm_run_vcs_metadata.sql",
+		SQL: `
+ALTER TABLE awm_runs ADD COLUMN vcs_sha TEXT NOT NULL DEFAULT '';
+ALTER TABLE awm_runs ADD COLUMN vcs_branch TEXT NOT NULL DEFAULT '';
+`,
+	},
 }
 
 func applyMigrations(ctx context.Context, db *sql.DB) error {

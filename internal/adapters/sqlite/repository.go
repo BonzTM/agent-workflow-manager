@@ -1204,6 +1204,8 @@ SELECT
 	run.actor_harness,
 	run.actor_model,
 	run.actor_session,
+	run.vcs_sha,
+	run.vcs_branch,
 	run.created_at
 FROM awm_runs run
 LEFT JOIN awm_receipts r
@@ -1263,6 +1265,8 @@ ORDER BY run.created_at DESC, run.run_id DESC
 			&row.Actor.Harness,
 			&row.Actor.Model,
 			&row.Actor.SessionID,
+			&row.VCS.Sha,
+			&row.VCS.Branch,
 			&updatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan run history: %w", err)
@@ -1322,6 +1326,8 @@ SELECT
 	run.actor_harness,
 	run.actor_model,
 	run.actor_session,
+	run.vcs_sha,
+	run.vcs_branch,
 	run.created_at
 FROM awm_runs run
 LEFT JOIN awm_receipts r
@@ -1341,6 +1347,8 @@ WHERE run.project_id = ?
 		&row.Actor.Harness,
 		&row.Actor.Model,
 		&row.Actor.SessionID,
+		&row.VCS.Sha,
+		&row.VCS.Branch,
 		&updatedAt,
 	)
 	if err != nil {
@@ -1532,9 +1540,11 @@ INSERT INTO awm_runs (
 	actor_harness,
 	actor_model,
 	actor_session,
+	vcs_sha,
+	vcs_branch,
 	summary_json,
 	created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
 `,
 		normalized.ProjectID,
 		normalized.RequestID,
@@ -1545,6 +1555,8 @@ INSERT INTO awm_runs (
 		normalized.Actor.Harness,
 		normalized.Actor.Model,
 		normalized.Actor.SessionID,
+		normalized.VCS.Sha,
+		normalized.VCS.Branch,
 		string(runJSON),
 	)
 	if err != nil {

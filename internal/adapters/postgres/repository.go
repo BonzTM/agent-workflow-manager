@@ -1045,6 +1045,8 @@ SELECT
 	run.actor_harness,
 	run.actor_model,
 	run.actor_session,
+	run.vcs_sha,
+	run.vcs_branch,
 	run.created_at
 FROM awm_runs run
 LEFT JOIN awm_receipts r
@@ -1102,6 +1104,8 @@ ORDER BY run.created_at DESC, run.run_id DESC
 			&row.Actor.Harness,
 			&row.Actor.Model,
 			&row.Actor.SessionID,
+			&row.VCS.Sha,
+			&row.VCS.Branch,
 			&row.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan run history: %w", err)
@@ -1152,6 +1156,8 @@ SELECT
 	run.actor_harness,
 	run.actor_model,
 	run.actor_session,
+	run.vcs_sha,
+	run.vcs_branch,
 	run.created_at
 FROM awm_runs run
 LEFT JOIN awm_receipts r
@@ -1171,6 +1177,8 @@ WHERE run.project_id = $1
 		&row.Actor.Harness,
 		&row.Actor.Model,
 		&row.Actor.SessionID,
+		&row.VCS.Sha,
+		&row.VCS.Branch,
 		&row.UpdatedAt,
 	)
 	if err != nil {
@@ -1330,10 +1338,12 @@ INSERT INTO awm_runs (
 	actor_harness,
 	actor_model,
 	actor_session,
+	vcs_sha,
+	vcs_branch,
 	summary_json
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
 RETURNING run_id
-`, normalized.ProjectID, normalized.RequestID, normalized.ReceiptID, normalized.Status, nonNilStringList(normalized.FilesChanged), normalized.Outcome, normalized.Actor.Harness, normalized.Actor.Model, normalized.Actor.SessionID, runJSON).Scan(&runID)
+`, normalized.ProjectID, normalized.RequestID, normalized.ReceiptID, normalized.Status, nonNilStringList(normalized.FilesChanged), normalized.Outcome, normalized.Actor.Harness, normalized.Actor.Model, normalized.Actor.SessionID, normalized.VCS.Sha, normalized.VCS.Branch, runJSON).Scan(&runID)
 	if err != nil {
 		return core.RunReceiptIDs{}, fmt.Errorf("insert run summary: %w", err)
 	}

@@ -506,6 +506,10 @@ func renderRunMarkdown(document *v1.ExportDocument) string {
 		appendMarkdownKeyValue(&b, "Actor Model", strings.TrimSpace(actor.Model))
 		appendMarkdownKeyValue(&b, "Actor Session", strings.TrimSpace(actor.SessionID))
 	}
+	if vcs := document.Run.VCS; vcs != nil {
+		appendMarkdownKeyValue(&b, "VCS Sha", strings.TrimSpace(vcs.Sha))
+		appendMarkdownKeyValue(&b, "VCS Branch", strings.TrimSpace(vcs.Branch))
+	}
 	appendMarkdownKeyValue(&b, "Updated At", strings.TrimSpace(document.Run.UpdatedAt))
 	appendMarkdownStringListSection(&b, 2, "Files Changed", document.Run.FilesChanged, true)
 

@@ -395,6 +395,9 @@ func runForFetch(run core.RunHistorySummary) map[string]any {
 	if actor := actorRefFromCore(run.Actor); actor != nil {
 		content["actor"] = actor
 	}
+	if run.VCS != (core.VCSInfo{}) {
+		content["vcs"] = v1.VCSRef{Sha: run.VCS.Sha, Branch: run.VCS.Branch}
+	}
 	if !run.UpdatedAt.IsZero() {
 		content["updated_at"] = run.UpdatedAt.UTC().Format(time.RFC3339)
 	}

@@ -204,17 +204,18 @@ func (s *Service) listRunHistoryItems(ctx context.Context, projectID, query stri
 			summary = fmt.Sprintf("Run %d", row.RunID)
 		}
 		items = append(items, v1.HistoryItem{
-			Key:       runFetchKey(row.RunID),
-			Entity:    v1.HistoryEntityRun,
-			Summary:   summary,
-			Status:    strings.TrimSpace(row.Status),
-			ReceiptID: strings.TrimSpace(row.ReceiptID),
-			RunID:     row.RunID,
-			RequestID: strings.TrimSpace(row.RequestID),
-			Actor:     actorRefFromCore(row.Actor),
-			Phase:     v1.Phase(strings.TrimSpace(row.Phase)),
-			FetchKeys: []string{runFetchKey(row.RunID)},
-			UpdatedAt: historyTimestamp(row.UpdatedAt),
+			Key:          runFetchKey(row.RunID),
+			Entity:       v1.HistoryEntityRun,
+			Summary:      summary,
+			Status:       strings.TrimSpace(row.Status),
+			ReceiptID:    strings.TrimSpace(row.ReceiptID),
+			RunID:        row.RunID,
+			RequestID:    strings.TrimSpace(row.RequestID),
+			Actor:        actorRefFromCore(row.Actor),
+			FilesChanged: append([]string(nil), row.FilesChanged...),
+			Phase:        v1.Phase(strings.TrimSpace(row.Phase)),
+			FetchKeys:    []string{runFetchKey(row.RunID)},
+			UpdatedAt:    historyTimestamp(row.UpdatedAt),
 		})
 	}
 	return items, nil
