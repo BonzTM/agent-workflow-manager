@@ -25,7 +25,17 @@ If `--project` is omitted, convenience commands default to `AWM_PROJECT_ID` and 
 
 For raw rendered artifacts, use the backend-only `export` command through `awm run` or MCP. Example request envelope: [docs/examples/export-request.json](docs/examples/export-request.json).
 
-For ad hoc CLI rendering, `context`, `fetch`, `history`, and `status` also accept `--format json|markdown`, plus `--out-file` and `--force` for raw artifact output through the same backend export path. Example command: [docs/examples/context-export-command.txt](docs/examples/context-export-command.txt).
+For ad hoc CLI rendering, `context`, `fetch`, `history`, and `status` also accept `--format json|markdown`, plus `--out-file` and `--force` for raw artifact output through the same backend export path. `--out-file` and `--force` require `--format`, and `--force` requires `--out-file`. Example command: [docs/examples/context-export-command.txt](docs/examples/context-export-command.txt).
+
+```bash
+# Markdown artifact written to a file
+awm context --task-text "resume payment work" --phase execute --format markdown --out-file artifacts/context.md --force
+
+# Stable JSON document on stdout
+awm history --entity run --limit 10 --format json
+```
+
+Export documents cover the `context`, `plan`, `receipt`, `task`, `run`, `fetch_bundle`, `history`, and `status` kinds. The `plan`, `receipt`, `task`, and `run` kinds render through `fetch` selectors (see the request envelope example above); the rest map one-to-one onto the read surfaces.
 
 Most list and text flags support inline values and `--*-file` alternatives (`-` for stdin). JSON list/object inputs also support `--*-json` for one-shot agent calls without temporary files.
 
